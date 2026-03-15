@@ -670,14 +670,23 @@
                 box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             }
             .controls { 
-                display: grid; 
-                grid-template-columns: 1fr 1fr; 
+                display: flex; 
+                flex-direction: column; 
                 width: 100%; 
-                gap: 10px; 
+                gap: 12px; 
             }
-            .search-wrap { grid-column: span 2; width: 100%; }
+            .controls > div, .controls > button { width: 100%; }
+            .search-wrap { width: 100%; }
             .search-input { width: 100%; }
             .search-input:focus { width: 100%; }
+            
+            /* Enhanced Mobile Buttons for Touch Targets */
+            .sidebar-btn, .btn-action, .btn-outline {
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
 
             /* Bottom Bar Navigation */
             .nav-tabs { 
@@ -695,6 +704,10 @@
                 flex: 1; 
                 text-align: center; 
                 white-space: nowrap;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .app-view { padding-bottom: calc(90px + env(safe-area-inset-bottom)); } 
@@ -712,13 +725,13 @@
                 scroll-snap-align: start;
             }
             .task-card { padding: 14px; }
-            .complete-btn { width: 36px; height: 36px; font-size: 1rem; } 
+            .complete-btn { width: 44px; height: 44px; font-size: 1.2rem; } 
 
             /* Bottom-Sheet Modals */
             .modal-overlay { align-items: flex-end; padding: 0; }
             .modal-content {
                 border-radius: 28px 28px 0 0;
-                padding: 24px 20px 40px 20px;
+                padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
                 max-height: 92vh;
                 margin-top: auto;
             }
@@ -727,7 +740,7 @@
                 width: calc(100% + 40px);
                 border-radius: 28px 28px 0 0;
             }
-            .close-modal { top: 12px; right: 12px; z-index: 100; }
+            .close-modal { top: 12px; right: 12px; z-index: 100; width: 44px; height: 44px; font-size: 1.8rem; }
 
             .modal-grid { grid-template-columns: 1fr; gap: 20px; }
             .form-row { grid-template-columns: 1fr; gap: 10px; }
@@ -757,7 +770,11 @@
             }
             .calendar-day-header { font-size: 0.75rem; }
             
-            .bulk-bar { bottom: calc(100px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
+            .bulk-bar { bottom: calc(90px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
+            
+            /* Checklists on mobile */
+            .checklist-item { min-height: 44px; }
+            .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
         }
     </style>
 </head>
@@ -852,9 +869,9 @@
             <div class="settings-card admin-only" id="adminUserManagement">
                 <h3 class="section-title">User Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Manage who can access this workspace via email.</p>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <input type="email" id="newUserEmail" class="modern-input" placeholder="user@email.com">
-                    <button class="btn-action" onclick="addUser()">Add User</button>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="email" id="newUserEmail" class="modern-input" placeholder="user@email.com" style="flex-grow: 1;">
+                    <button class="btn-action" onclick="addUser()" style="flex-shrink: 0;">Add User</button>
                 </div>
                 <div id="userListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
             </div>
@@ -890,9 +907,9 @@
             <div class="settings-card admin-only">
                 <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
-                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                    <button class="btn-outline" style="flex: 1;" onclick="exportData()">Export Data (JSON)</button>
-                    <label class="btn-outline" style="flex: 1; text-align: center; margin: 0; cursor: pointer;">
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="btn-outline" style="flex: 1; min-width: 200px;" onclick="exportData()">Export Data (JSON)</button>
+                    <label class="btn-outline" style="flex: 1; min-width: 200px; text-align: center; margin: 0; cursor: pointer;">
                         Import Data
                         <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
                     </label>
@@ -970,7 +987,7 @@
                             </div>
                             <div>
                                 <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
-                                <div style="display: flex; gap: 8px; align-items: center;">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                     <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 220px; font-size: 16px;">
                                     <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
                                 </div>
@@ -984,11 +1001,11 @@
                             <h3 class="section-title">Description</h3>
                             <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); overflow: hidden;">
                                 <div style="display: flex; gap: 5px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); flex-wrap: wrap;">
-                                    <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold"><b>B</b></button>
-                                    <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic"><i>I</i></button>
+                                    <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold" style="min-height:44px;min-width:44px;"><b>B</b></button>
+                                    <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic" style="min-height:44px;min-width:44px;"><i>I</i></button>
                                     <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 4px 5px;"></div>
-                                    <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link">🔗 Link</button>
-                                    <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link">🚫 Unlink</button>
+                                    <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link" style="min-height:44px;">🔗 Link</button>
+                                    <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link" style="min-height:44px;">🚫 Unlink</button>
                                 </div>
                                 <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto;" onclick="handleRichTextClick(event)"></div>
                             </div>
@@ -1033,8 +1050,8 @@
                             <div id="checklistAddContainer" style="margin-top: 15px; display: none; gap: 10px; flex-wrap: wrap; align-items: center;">
                                 <input type="text" id="newChecklistInput" class="modern-input" placeholder="Add an item..." style="flex-grow: 1; padding: 8px 12px; font-size: 16px; min-width: 200px;">
                                 <input type="date" id="newChecklistDate" class="modern-input" style="width: auto; padding: 8px 12px; font-size: 16px; color: var(--text-muted); flex-shrink: 0;">
-                                <button type="button" class="btn-action" style="padding: 8px 15px; flex-shrink: 0;" onclick="confirmAddChecklistItem()">Add</button>
-                                <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0;" onclick="hideChecklistInput()">Cancel</button>
+                                <button type="button" class="btn-action" style="padding: 8px 15px; flex-shrink: 0; min-height: 44px;" onclick="confirmAddChecklistItem()">Add</button>
+                                <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0; min-height: 44px;" onclick="hideChecklistInput()">Cancel</button>
                             </div>
                             <button type="button" class="sidebar-btn" id="showChecklistInputBtn" style="margin-top: 10px; width: fit-content;" onclick="showChecklistInput()">+ Add an item</button>
                         </div>
@@ -3141,7 +3158,7 @@
                 <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')" style="margin: 0; flex-shrink: 0;">
                 <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; padding-right: 10px; min-width: 50px;">${item.text}</div>
                 <input type="date" class="modern-input" value="${item.dueDate || ''}" onchange="updateChecklistDueDate('${item.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem !important; height: auto; width: 125px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: ${dateColor}; flex-shrink: 0;">
-                <button type="button" class="task-btn delete" onclick="deleteChecklistItem('${item.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0;" title="Remove">&times;</button>
+                <button type="button" class="task-btn delete" onclick="deleteChecklistItem('${item.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center;" title="Remove">&times;</button>
             </div>
         `}).join('');
     }
@@ -3785,20 +3802,8 @@
     window.onload = async () => {
         _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         await initData();
-        // By default login screen is visible in CSS; checkLogin hides it upon authentication.
     };
 </script>
-
-<!-- WORKSPACE MODAL -->
-<div id="workspaceModal" class="modal-overlay" onclick="closeModal(event, 'workspaceModal')">
-    <div class="modal-content" style="max-width:460px;" onclick="event.stopPropagation()">
-        <button class="close-modal" onclick="closeModal(null,'workspaceModal')">&times;</button>
-        <h2 style="margin:0 0 6px; font-weight:800;">Workspaces</h2>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;">Switch between academic years or create a new workspace.</p>
-        <div id="workspaceList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
-        <button class="btn-action" style="width:100%;" onclick="openNewWorkspace()">+ New Academic Year</button>
-    </div>
-</div>
 
 <!-- CUSTOM DIALOG SYSTEM -->
 <div id="customDialog" style="
@@ -3825,4 +3830,139 @@
             <input id="customDialogInput" type="text" class="modern-input" style="font-size: 1rem;" autocomplete="off">
         </div>
         <div id="customDialogSelectWrap" style="margin-bottom: 20px; display: none;">
-            <select id="customDialogSelect" class="modern-input
+            <select id="customDialogSelect" class="modern-input" style="font-size: 1rem;"></select>
+        </div>
+        <div id="customDialogComboWrap" style="margin-bottom: 20px; display: none; position: relative;">
+            <input id="customDialogComboInput" type="text" class="modern-input" style="font-size: 1rem;" autocomplete="off">
+            <div id="customDialogComboList" style="position: absolute; top: 100%; left: 0; right: 0; background: #222; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; margin-top: 4px; max-height: 150px; overflow-y: auto; z-index: 10; display: none;"></div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
+            <button id="customDialogCancel" class="btn-outline" style="border: none; padding: 10px 16px;">Cancel</button>
+            <button id="customDialogConfirm" class="btn-action" style="padding: 10px 20px;"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let dialogResolve = null;
+
+    function showDialog({ title, message, type = 'alert', options = [], defaultValue = '', confirmText = 'OK', danger = false }) {
+        return new Promise((resolve) => {
+            dialogResolve = resolve;
+            
+            const overlay = document.getElementById('customDialog');
+            const box = document.getElementById('customDialogBox');
+            const titleEl = document.getElementById('customDialogTitle');
+            const msgEl = document.getElementById('customDialogMessage');
+            const btnCancel = document.getElementById('customDialogCancel');
+            const btnConfirm = document.getElementById('customDialogConfirm');
+            
+            const inputWrap = document.getElementById('customDialogInputWrap');
+            const inputEl = document.getElementById('customDialogInput');
+            const selectWrap = document.getElementById('customDialogSelectWrap');
+            const selectEl = document.getElementById('customDialogSelect');
+            const comboWrap = document.getElementById('customDialogComboWrap');
+            const comboInput = document.getElementById('customDialogComboInput');
+            const comboList = document.getElementById('customDialogComboList');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+            btnConfirm.innerText = confirmText;
+
+            btnConfirm.style.background = danger ? 'var(--gradient-danger)' : 'var(--gradient-accent)';
+            
+            inputWrap.style.display = 'none';
+            selectWrap.style.display = 'none';
+            comboWrap.style.display = 'none';
+            btnCancel.style.display = type === 'alert' ? 'none' : 'block';
+
+            if (type === 'prompt') {
+                inputWrap.style.display = 'block';
+                inputEl.value = defaultValue;
+            } else if (type === 'select') {
+                selectWrap.style.display = 'block';
+                selectEl.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+                if (defaultValue) selectEl.value = defaultValue;
+            } else if (type === 'combo') {
+                comboWrap.style.display = 'block';
+                comboInput.value = defaultValue;
+                
+                const updateList = () => {
+                    const val = comboInput.value.toLowerCase();
+                    const matches = options.filter(o => o.toLowerCase().includes(val));
+                    if (matches.length > 0) {
+                        comboList.innerHTML = matches.map(m => `<div style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);" class="combo-item">${m}</div>`).join('');
+                        comboList.style.display = 'block';
+                        comboList.querySelectorAll('.combo-item').forEach(el => {
+                            el.onclick = () => { comboInput.value = el.innerText; comboList.style.display = 'none'; };
+                            el.onmouseover = () => el.style.background = 'rgba(255,255,255,0.05)';
+                            el.onmouseout = () => el.style.background = 'transparent';
+                        });
+                    } else {
+                        comboList.style.display = 'none';
+                    }
+                };
+                comboInput.oninput = updateList;
+                comboInput.onfocus = updateList;
+                document.addEventListener('click', (e) => {
+                    if(!comboWrap.contains(e.target)) comboList.style.display = 'none';
+                });
+            }
+
+            overlay.style.display = 'flex';
+            setTimeout(() => { 
+                overlay.style.opacity = '1'; 
+                box.style.transform = 'translateY(0)';
+                if (type === 'prompt') inputEl.focus();
+                if (type === 'combo') comboInput.focus();
+            }, 10);
+
+            const closeDialog = (val) => {
+                overlay.style.opacity = '0';
+                box.style.transform = 'translateY(16px)';
+                setTimeout(() => { overlay.style.display = 'none'; }, 200);
+                
+                btnConfirm.onclick = null;
+                btnCancel.onclick = null;
+                inputEl.onkeydown = null;
+                comboInput.onkeydown = null;
+                
+                if (dialogResolve) {
+                    dialogResolve(val);
+                    dialogResolve = null;
+                }
+            };
+
+            btnConfirm.onclick = () => {
+                if (type === 'prompt') closeDialog(inputEl.value);
+                else if (type === 'select') closeDialog(selectEl.value);
+                else if (type === 'combo') closeDialog(comboInput.value);
+                else closeDialog(true); // confirm
+            };
+            btnCancel.onclick = () => closeDialog(type === 'confirm' ? false : null);
+
+            const enterHandler = (e) => { if (e.key === 'Enter') btnConfirm.click(); };
+            if (type === 'prompt') inputEl.onkeydown = enterHandler;
+            if (type === 'combo') comboInput.onkeydown = enterHandler;
+        });
+    }
+
+    function showPrompt(title, message, defaultValue = '') {
+        return showDialog({ type: 'prompt', title, message, defaultValue, confirmText: 'Save' });
+    }
+    
+    function showConfirm(title, message, confirmText = 'Confirm', danger = false) {
+        return showDialog({ type: 'confirm', title, message, confirmText, danger });
+    }
+
+    function showSelect(title, message, options, defaultValue = '') {
+        return showDialog({ type: 'select', title, message, options, defaultValue, confirmText: 'Select' });
+    }
+    
+    function showComboPrompt(title, message, options) {
+        return showDialog({ type: 'combo', title, message, options, confirmText: 'Save' });
+    }
+</script>
+
+</body>
+</html>
