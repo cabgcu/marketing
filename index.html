@@ -98,9 +98,9 @@
         }
 
         @keyframes pulseGlow {
-            0% { box-shadow: 0 0 20px rgba(10, 132, 255, 0.4), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.3); }
-            50% { box-shadow: 0 0 45px rgba(191, 90, 242, 0.8), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(191, 90, 242, 0.5); }
-            100% { box-shadow: 0 0 20px rgba(10, 132, 255, 0.4), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.3); }
+            0% { box-shadow: 0 0 10px rgba(10, 132, 255, 0.15), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.15); }
+            50% { box-shadow: 0 0 25px rgba(191, 90, 242, 0.3), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(191, 90, 242, 0.25); }
+            100% { box-shadow: 0 0 10px rgba(10, 132, 255, 0.15), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.15); }
         }
 
         .login-box {
@@ -713,13 +713,13 @@
             }
 
             .app-view { 
-                padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
+                padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
                 padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important; 
             } 
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
-                padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
+                padding: calc(60px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
                 scroll-snap-type: x mandatory; scroll-padding: 16px; gap: 16px;
             }
             .kanban-column, .add-col-btn { min-width: 85vw; width: 85vw; scroll-snap-align: start; }
