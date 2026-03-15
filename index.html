@@ -315,26 +315,28 @@
         }
 
         .task-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: linear-gradient(160deg, rgba(35, 35, 35, 0.6) 0%, rgba(15, 15, 15, 0.4) 100%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px; 
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px; 
             padding: 18px;
             cursor: grab; 
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             color: var(--text-main); 
             font-size: 0.95rem; 
             line-height: 1.5;
             position: relative;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.05);
-            backdrop-filter: blur(20px) saturate(200%);
-            -webkit-backdrop-filter: blur(20px) saturate(200%);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
         }
 
         .task-card:hover { 
-            background: rgba(255, 255, 255, 0.06);
+            background: linear-gradient(160deg, rgba(45, 45, 45, 0.7) 0%, rgba(20, 20, 20, 0.5) 100%);
             border-color: rgba(255, 255, 255, 0.2); 
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.1);
+            border-top-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.1);
         }
 
         .task-card:active { cursor: grabbing; transform: scale(0.98); }
@@ -437,7 +439,7 @@
         
         .checklist-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);}
         .checklist-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: #0A84FF; cursor: pointer; }
-        .checklist-text { flex-grow: 1; font-size: 0.95rem; line-height: 1.4; color: #ddd; outline: none; }
+        .checklist-text { flex-grow: 1; font-size: 0.95rem; line-height: 1.4; color: #ddd; outline: none; word-break: break-word; }
         .checklist-item.done .checklist-text { text-decoration: line-through; color: var(--text-muted); }
         
         .progress-container { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
@@ -528,7 +530,7 @@
             height: 140px;
             background-size: cover;
             background-position: center;
-            border-radius: 16px 16px 0 0;
+            border-radius: 20px 20px 0 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -719,10 +721,16 @@
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
-                padding: calc(60px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
-                scroll-snap-type: x mandatory; scroll-padding: 16px; gap: 16px;
+                padding: calc(40px + env(safe-area-inset-top, 0px)) 7.5vw calc(110px + env(safe-area-inset-bottom)) 7.5vw !important;
+                scroll-snap-type: x mandatory; scroll-padding: 7.5vw; gap: 16px;
+                align-items: stretch !important;
             }
-            .kanban-column, .add-col-btn { min-width: 85vw; width: 85vw; scroll-snap-align: start; }
+            .kanban-column, .add-col-btn { 
+                min-width: 85vw; 
+                width: 85vw; 
+                scroll-snap-align: center; 
+                max-height: 100%;
+            }
             .task-card { padding: 14px; }
             .complete-btn { width: 28px; height: 28px; font-size: 0.9rem; } 
 
@@ -731,7 +739,7 @@
             .modal-content {
                 border-radius: 28px 28px 0 0;
                 padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
-                max-height: 92vh; margin-top: auto; width: 100vw; max-width: 100vw; overflow-x: hidden;
+                max-height: 92vh; margin-top: auto; width: 100%; max-width: 100%; overflow-x: hidden; box-sizing: border-box;
             }
             .modal-cover { margin: -24px -20px 20px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 44px; height: 44px; font-size: 1.8rem; }
@@ -998,7 +1006,7 @@
                                     <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link" style="min-height:44px;">🔗 Link</button>
                                     <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link" style="min-height:44px;">🚫 Unlink</button>
                                 </div>
-                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto;" onclick="handleRichTextClick(event)"></div>
+                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto; word-break: break-word;" onclick="handleRichTextClick(event)"></div>
                             </div>
                         </div>
                         <div id="customFieldsSection" style="margin-top: 20px;">
@@ -1039,7 +1047,7 @@
                             </div>
                             <div id="checklistContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
                             <div id="checklistAddContainer" style="margin-top: 15px; display: none; gap: 10px; flex-wrap: wrap; align-items: center;">
-                                <input type="text" id="newChecklistInput" class="modern-input" placeholder="Add an item..." style="flex-grow: 1; padding: 8px 12px; font-size: 16px; min-width: 200px;">
+                                <input type="text" id="newChecklistInput" class="modern-input" placeholder="Add an item..." style="flex-grow: 1; padding: 8px 12px; font-size: 16px; min-width: 120px;">
                                 <input type="date" id="newChecklistDate" class="modern-input" style="width: auto; padding: 8px 12px; font-size: 16px; color: var(--text-muted); flex-shrink: 0;">
                                 <button type="button" class="btn-action" style="padding: 8px 15px; flex-shrink: 0; min-height: 44px;" onclick="confirmAddChecklistItem()">Add</button>
                                 <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0; min-height: 44px;" onclick="hideChecklistInput()">Cancel</button>
@@ -2019,7 +2027,7 @@
                     const doneCnt = task.checklist.filter(i => i.done).length;
                     const total = task.checklist.length;
                     const clColor = doneCnt === total ? '#34C759' : 'var(--text-muted)';
-                    clHtml = `<div style="margin-top: 10px; font-size: 0.8rem; color: ${clColor}; font-weight: bold; display: flex; align-items: center; gap: 4px;">${doneCnt}/${total} Complete</div>`;
+                    clHtml = `<div style="margin-top: 12px; font-size: 0.8rem; color: ${clColor}; font-weight: 700; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 100px; width: fit-content;">☑️ ${doneCnt}/${total} Complete</div>`;
                 }
                 let labelsHtml = '';
                 if(task.labels && task.labels.length > 0) {
@@ -2075,12 +2083,12 @@
                     else { countdownStr = mins + 'm away'; countdownColor = 'color: #FF3B30;'; }
                     const dateStr = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(evDate);
                     const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(evDate);
-                    postingHtml = `<div style="margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: flex; flex-direction: column; gap: 5px;">
+                    postingHtml = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.78rem; color: #fff; font-weight: 700;">📅 ${dateStr} @ ${timeStr}</span>
                             <span style="font-size: 0.72rem; font-weight: 800; ${countdownColor}">${countdownStr}</span>
                         </div>
-                        ${task.eventLocation ? `<div style="font-size: 0.75rem; color: #a1a1aa;">📍 ${task.eventLocation}</div>` : ''}
+                        ${task.eventLocation ? `<div style="font-size: 0.75rem; color: #a1a1aa; font-weight: 600;">📍 ${task.eventLocation}</div>` : ''}
                     </div>`;
                 }
                 const priorityDotHtml = task.priority ? `<span class="priority-dot priority-${task.priority}" style="margin-right:6px; vertical-align:middle;"></span>` : '';
@@ -3059,6 +3067,10 @@
             let displayUrl = isNativeUpload ? toDirectDriveUrl(att.url) : att.url;
             let viewUrl = att.viewerUrl || att.url;
             let downloadUrl = att.viewerUrl || att.url;
+            
+            // Sanitize name to prevent quotes from breaking the HTML attributes
+            const safeName = (att.name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
             if (!isNativeUpload) {
                 const preview = getLinkPreview(att.url);
                 metaText = `${att.date} \u2022 ${preview.label}`;
@@ -3091,14 +3103,14 @@
             <div class="attachment-item">
                 ${thumbHtml}
                 <div class="attachment-details">
-                    <div class="attachment-name" title="${att.name}">${att.name}</div>
+                    <div class="attachment-name" title="${safeName}">${safeName}</div>
                     <div class="attachment-meta">${metaText}</div>
                 </div>
                 <div class="attachment-actions">
-                    <a href="${viewUrl}" target="_blank" class="attachment-btn view">${viewLabel}</a>
-                    ${!isLink ? `<a href="${downloadUrl}" target="_blank" class="attachment-btn dl">Download</a>` : ''}
-                    <button type="button" class="attachment-btn rename-btn" onclick="renameAttachment('${att.id}')" title="Rename">✏️</button>
-                    <button type="button" class="attachment-btn delete-btn" onclick="deleteAttachment('${att.id}')" title="Delete">✕</button>
+                    <a href="${viewUrl}" target="_blank" class="attachment-btn view" onclick="event.stopPropagation()">${viewLabel}</a>
+                    ${!isLink ? `<a href="${downloadUrl}" target="_blank" class="attachment-btn dl" onclick="event.stopPropagation()">Download</a>` : ''}
+                    <button type="button" class="attachment-btn rename-btn" onclick="event.preventDefault(); event.stopPropagation(); renameAttachment('${att.id}')" title="Rename">✏️</button>
+                    <button type="button" class="attachment-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteAttachment('${att.id}')" title="Delete">✕</button>
                 </div>
             </div>
             `;
@@ -3109,21 +3121,24 @@
         const okDel = await showConfirm('Delete Attachment', "Remove this attachment? If it's a native upload, it will also be deleted from Google Drive.", 'Delete', true);
         if (okDel) {
             const att = currentEditingTask.attachments.find(a => a.id === id);
+            
+            // Remove from local state and update UI immediately
+            currentEditingTask.attachments = currentEditingTask.attachments.filter(a => a.id !== id);
+            renderAttachments(); 
+            autoSaveAttachments(); 
+            showToast("Attachment removed.");
+
+            // Perform Drive deletion in the background so it doesn't freeze the UI
             if (att && !att.isLink && att.viewerUrl && att.viewerUrl.includes('drive.google.com')) {
                 const fileIdMatch = att.viewerUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
                 if (fileIdMatch && fileIdMatch[1]) {
-                    showToast("Deleting from Google Drive...");
-                    try {
-                        await fetch(GAS_UPLOAD_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ action: 'delete', fileId: fileIdMatch[1] })
-                        });
-                    } catch (e) { console.error("G-Drive delete error:", e); }
+                    fetch(GAS_UPLOAD_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'delete', fileId: fileIdMatch[1] })
+                    }).catch(e => console.error("G-Drive delete error:", e));
                 }
             }
-            currentEditingTask.attachments = currentEditingTask.attachments.filter(a => a.id !== id);
-            renderAttachments(); autoSaveAttachments(); showToast("Attachment removed.");
         }
     }
 
