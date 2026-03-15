@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA / Native App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CAB Manager">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#050505">
+
     <title>CAB Marketing Project Manager</title>
     
     <!-- Supabase SDK -->
@@ -47,6 +55,14 @@
             overflow-x: hidden;
             overflow-y: hidden;
             overscroll-behavior-y: none;
+            /* Native App Feel: Prevent text selection everywhere except inputs */
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        input, textarea, [contenteditable] {
+            -webkit-user-select: auto;
+            user-select: auto;
         }
 
         #bg-container { 
@@ -310,7 +326,6 @@
         .task-card.dragging { opacity: 0.35; border: 1px dashed #0A84FF; transform: scale(0.97); }
         .task-card.drag-over-top { border-top: 2px solid #0A84FF !important; }
         .task-card.drag-over-bottom { border-bottom: 2px solid #0A84FF !important; }
-        /* Removed ghost effect for mirrored tasks */
         .column-body.drag-over { background: rgba(10,132,255,0.06); border-radius: 12px; }
         
         /* Drag polyfill ghost styling */
@@ -463,6 +478,17 @@
         .attachment-btn.delete-btn { padding: 5px 8px; }
         .attachment-btn.delete-btn:hover { background: rgba(255,59,48,0.2); border-color: #FF3B30; color: #FF3B30; }
 
+        /* Rich Text Editor */
+        .rt-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px 12px; border-radius: 8px; font-size: 1rem; transition: 0.2s; }
+        .rt-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .rich-text-editor a { color: #0A84FF; text-decoration: underline; cursor: pointer; }
+        .rich-text-editor[contenteditable]:empty::before {
+            content: attr(placeholder);
+            color: var(--text-muted);
+            pointer-events: none;
+            display: block;
+        }
+
         .comment-box { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; }
         .activity-item { display: flex; gap: 15px; margin-bottom: 15px; }
         .activity-details { font-size: 0.9rem; color: #ccc; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); flex-grow: 1;}
@@ -533,6 +559,22 @@
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
         input:checked + .slider { background: var(--gradient-success); border-color: transparent;}
         input:checked + .slider:before { transform: translateX(20px); }
+
+        #sync-indicator {
+            display: none; 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            background: rgba(0,0,0,0.8); 
+            border: 1px solid var(--glass-border); 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            z-index: 9999; 
+            font-size: 0.85rem; 
+            font-weight: 600;
+            color: #a1a1aa; 
+            backdrop-filter: blur(10px);
+        }
 
         .member-chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 100px; padding: 6px 12px; font-size: 0.85rem; }
         .member-chip button { background: none; border: none; color: #FF3B30; cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
@@ -641,7 +683,7 @@
             .nav-tabs { 
                 bottom: 0; left: 0; width: 100%; transform: none; 
                 border-radius: 20px 20px 0 0; 
-                padding: 12px 10px 25px 10px; /* Safe area padding */
+                padding: 12px 10px calc(15px + env(safe-area-inset-bottom)) 10px; 
                 justify-content: space-around;
                 background: rgba(15, 15, 15, 0.98);
                 border-bottom: none; border-left: none; border-right: none;
@@ -655,7 +697,7 @@
                 white-space: nowrap;
             }
 
-            .app-view { padding-bottom: 90px; } /* Prevent nav bar overlap */
+            .app-view { padding-bottom: calc(90px + env(safe-area-inset-bottom)); } 
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
@@ -670,7 +712,7 @@
                 scroll-snap-align: start;
             }
             .task-card { padding: 14px; }
-            .complete-btn { width: 36px; height: 36px; font-size: 1rem; } /* Larger touch target */
+            .complete-btn { width: 36px; height: 36px; font-size: 1rem; } 
 
             /* Bottom-Sheet Modals */
             .modal-overlay { align-items: flex-end; padding: 0; }
@@ -708,14 +750,14 @@
             .calendar-header { flex-direction: column; gap: 15px; }
             .calendar-wrapper { padding: 15px; overflow-x: auto; }
             .calendar-grid { 
-                min-width: 700px; /* Forces horizontal scroll to avoid squishing */
+                min-width: 700px; 
                 grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); 
                 height: auto;
                 min-height: 100%;
             }
             .calendar-day-header { font-size: 0.75rem; }
             
-            .bulk-bar { bottom: 100px; width: 90%; flex-wrap: wrap; justify-content: center; }
+            .bulk-bar { bottom: calc(100px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
         }
     </style>
 </head>
@@ -723,6 +765,7 @@
 
 <div id="bg-container"></div>
 <div id="toast">Notification</div>
+<div id="sync-indicator">Syncing...</div>
 
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
@@ -735,7 +778,7 @@
     </div>
 </div>
 
-<div class="app-container">
+<div class="app-container" style="padding-top: env(safe-area-inset-top);">
     <div class="frosted topbar">
         <div class="brand">
             <div class="brand-text" onclick="switchView('board')" style="cursor: pointer; display: flex; align-items: center; gap: 12px;" title="Return to Board">
@@ -912,7 +955,16 @@
                         </div>
                         <div style="margin-top: 20px;">
                             <h3 class="section-title">Description</h3>
-                            <textarea id="taskContentInput" oninput="scheduleAutoSave()" class="modern-input" rows="8" placeholder="Add a more detailed description..." style="resize: vertical; font-size: 16px; line-height: 1.6; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.1);"></textarea>
+                            <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); overflow: hidden;">
+                                <div style="display: flex; gap: 5px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); flex-wrap: wrap;">
+                                    <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold"><b>B</b></button>
+                                    <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic"><i>I</i></button>
+                                    <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 4px 5px;"></div>
+                                    <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link">🔗 Link</button>
+                                    <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link">🚫 Unlink</button>
+                                </div>
+                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto;" onclick="handleRichTextClick(event)"></div>
+                            </div>
                         </div>
                         <div id="customFieldsSection" style="margin-top: 20px;">
                             <h3 class="section-title">Custom Fields</h3>
@@ -979,7 +1031,11 @@
                         <h3 class="section-title">Card Settings</h3>
                         <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); margin-top: 20px;">
                             <label class="stat-label" style="margin-top: 0;">Move to List</label>
-                            <select id="settingMoveList" class="modern-input" style="margin-bottom: 30px; font-size:16px;"></select>
+                            <select id="settingMoveList" class="modern-input" style="margin-bottom: 20px; font-size:16px;"></select>
+                            
+                            <label class="stat-label">Position in List</label>
+                            <select id="settingTaskPosition" class="modern-input" style="margin-bottom: 30px; font-size:16px;" onchange="scheduleAutoSave()"></select>
+
                             <label class="stat-label">Danger Zone</label>
                             <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 15px;">Once you delete a card, there is no going back. Please be certain.</p>
                             <button type="button" class="btn-action" style="background: var(--gradient-danger); width: 100%; padding: 12px;" onclick="archiveTask()">Delete This Task</button>
@@ -1026,6 +1082,23 @@
     </div>
 </div>
 
+<div id="editColModal" class="modal-overlay" onclick="closeModal(event, 'editColModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-modal" onclick="closeModal(null, 'editColModal')">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:20px; font-weight: 800;">Edit List</h2>
+        <form id="editColForm" onsubmit="handleEditColumn(event)">
+            <input type="hidden" id="editColId">
+            <label class="stat-label">List Name</label>
+            <input type="text" id="editColNameInput" class="modern-input" required style="margin-bottom: 20px; font-size:16px;">
+            <label class="stat-label">Assigned To (Optional)</label>
+            <input type="text" id="editColAssignedInput" class="modern-input" style="margin-bottom: 20px; font-size:16px;">
+            <label class="stat-label">Position</label>
+            <select id="editColPositionInput" class="modern-input" style="margin-bottom: 20px; font-size:16px;"></select>
+            <button type="submit" class="btn-action" style="width: 100%; margin-top: 15px; padding: 15px;">Save Changes</button>
+        </form>
+    </div>
+</div>
+
 <div id="quickPostModal" class="modal-overlay" onclick="closeModal(event, 'quickPostModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'quickPostModal')">&times;</button>
@@ -1048,7 +1121,7 @@
 </div>
 
 <div id="automationsModal" class="modal-overlay" onclick="closeModal(event, 'automationsModal')">
-    <div class="modal-content" style="max-width: 760px;" onclick="event.stopPropagation()">
+    <div class="modal-content" style="max-width: 760px; max-height: 92vh; overflow-y: auto;" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'automationsModal')">&times;</button>
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
             <h2 style="margin:0; font-weight:800; font-size:1.4rem;">✨ Automations</h2>
@@ -1115,6 +1188,46 @@
     const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbysZ3ONcyd5Ky68U412uV8TZZokTDSKzF0-aBAkCicnV64aMye1GDkXQI-z8XGfcs5G/exec'; 
 
     let isAuthenticated = false;
+
+    // Add inline script to dynamically add manifest blob for PWA installation
+    const pwaManifest = {
+        "name": "CAB Marketing Manager",
+        "short_name": "CAB Manager",
+        "description": "CAB Marketing Project Management",
+        "start_url": "./",
+        "display": "standalone",
+        "background_color": "#050505",
+        "theme_color": "#050505",
+        "icons": [
+            {
+                "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A84FF' width='100' height='100' rx='20'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='white' font-family='sans-serif'>CAB</text></svg>",
+                "sizes": "192x192",
+                "type": "image/svg+xml"
+            },
+            {
+                "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A84FF' width='100' height='100' rx='20'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='white' font-family='sans-serif'>CAB</text></svg>",
+                "sizes": "512x512",
+                "type": "image/svg+xml"
+            }
+        ]
+    };
+    const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: 'application/json' });
+    const manifestUrl = URL.createObjectURL(manifestBlob);
+    const linkManifest = document.createElement('link');
+    linkManifest.rel = 'manifest';
+    linkManifest.href = manifestUrl;
+    document.head.appendChild(linkManifest);
+
+    // Dummy Service Worker to satisfy Chrome's PWA install requirement
+    if ('serviceWorker' in navigator) {
+        const swCode = `
+            self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
+            self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+            self.addEventListener('fetch', (e) => {});
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+    }
 
     // Mobile Drag & Drop Initialization
     MobileDragDrop.polyfill({
@@ -1288,7 +1401,7 @@
             tasks: [{
                 id: generateId(), boardId: defaultBoardId, columnId: colInProgress,
                 title: "Put Your Records On",
-                description: "Submitted By: Shae Dale_\nSubmission Date: 01-25-2026\nStudent Contact: sdale10@my.gcu.edu\nTeam: CAB\nStaff Email: chris.hinojosa@gcu.edu\n\nEvent Information\nEvent Description: This event will be held on the quad where students come to paint records and watch local GCU artist sing at the lopes live.\nEvent Date: 04-07-2026\nStart Time: 06:00 PM\nEnd Time: 08:00 PM\nEvent Location: The Quad\nDesign Inspiration: Posters\nApproved Marketing Request : Chris Hinojosa",
+                description: "Submitted By: Shae Dale_<br>Submission Date: 01-25-2026<br>Student Contact: sdale10@my.gcu.edu<br>Team: CAB<br>Staff Email: chris.hinojosa@gcu.edu<br><br>Event Information<br>Event Description: This event will be held on the quad where students come to paint records and watch local GCU artist sing at the lopes live.<br>Event Date: 04-07-2026<br>Start Time: 06:00 PM<br>End Time: 08:00 PM<br>Event Location: The Quad<br>Design Inspiration: Posters<br>Approved Marketing Request : Chris Hinojosa",
                 text: "Legacy Text fallback", dueDate: "",
                 postingSchedule: { story: "", photo: "", reel: "" },
                 customFields: [
@@ -1379,6 +1492,23 @@
     function handleSearch(val) {
         searchQuery = val.toLowerCase().trim();
         if (currentView === 'board') renderBoard();
+    }
+
+    function formatText(command) {
+        if (command === 'createLink') {
+            const url = prompt('Enter the full URL (e.g. https://google.com):', 'https://');
+            if (url) document.execCommand(command, false, url);
+        } else {
+            document.execCommand(command, false, null);
+        }
+        document.getElementById('taskContentInput').focus();
+        scheduleAutoSave();
+    }
+
+    function handleRichTextClick(e) {
+        if (e.target.tagName === 'A') {
+            window.open(e.target.href, '_blank');
+        }
     }
 
     function renderDueSoon() {
@@ -1576,6 +1706,38 @@
         saveData(); clearBulkSelection(); renderBoard(); showToast('Cards deleted.');
     }
 
+    window.moveTaskUp = function(taskId, e) {
+        e.stopPropagation();
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const colTasks = appData.tasks.filter(t => t.columnId === task.columnId);
+        const idx = colTasks.findIndex(t => t.id === taskId);
+        if (idx > 0) {
+            const globalIdx1 = appData.tasks.findIndex(t => t.id === colTasks[idx].id);
+            const globalIdx2 = appData.tasks.findIndex(t => t.id === colTasks[idx - 1].id);
+            const temp = appData.tasks[globalIdx1];
+            appData.tasks[globalIdx1] = appData.tasks[globalIdx2];
+            appData.tasks[globalIdx2] = temp;
+            saveData(); renderBoard();
+        }
+    };
+
+    window.moveTaskDown = function(taskId, e) {
+        e.stopPropagation();
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        const colTasks = appData.tasks.filter(t => t.columnId === task.columnId);
+        const idx = colTasks.findIndex(t => t.id === taskId);
+        if (idx > -1 && idx < colTasks.length - 1) {
+            const globalIdx1 = appData.tasks.findIndex(t => t.id === colTasks[idx].id);
+            const globalIdx2 = appData.tasks.findIndex(t => t.id === colTasks[idx + 1].id);
+            const temp = appData.tasks[globalIdx1];
+            appData.tasks[globalIdx1] = appData.tasks[globalIdx2];
+            appData.tasks[globalIdx2] = temp;
+            saveData(); renderBoard();
+        }
+    };
+
     function toggleComplete(taskId, e) {
         e.stopPropagation();
         const t = appData.tasks.find(t => t.id === taskId);
@@ -1620,8 +1782,6 @@
                     ${memberBar}
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <button class="col-action-btn" onclick="moveColumnLeft('${col.id}')" title="Move Left" style="padding: 4px 8px; font-size: 0.9rem;">&lt;</button>
-                    <button class="col-action-btn" onclick="moveColumnRight('${col.id}')" title="Move Right" style="padding: 4px 8px; font-size: 0.9rem;">&gt;</button>
                     <button class="col-action-btn" onclick="editColumnDetails('${col.id}')" title="Edit List">Edit</button>
                     <button class="col-action-btn delete" onclick="deleteColumn('${col.id}')" title="Delete List">&times;</button>
                 </div>`;
@@ -1643,12 +1803,13 @@
                 colTasks = colTasks.concat(mirrored);
             }
             if (searchQuery) {
-                colTasks = colTasks.filter(t =>
-                    (t.title || '').toLowerCase().includes(searchQuery) ||
-                    (t.description || '').toLowerCase().includes(searchQuery) ||
-                    (t.eventLocation || '').toLowerCase().includes(searchQuery) ||
-                    (t.labels || []).some(l => l.text.toLowerCase().includes(searchQuery))
-                );
+                colTasks = colTasks.filter(t => {
+                    const cleanDesc = (t.description || '').replace(/<[^>]*>?/gm, '').toLowerCase();
+                    return (t.title || '').toLowerCase().includes(searchQuery) ||
+                           cleanDesc.includes(searchQuery) ||
+                           (t.eventLocation || '').toLowerCase().includes(searchQuery) ||
+                           (t.labels || []).some(l => l.text.toLowerCase().includes(searchQuery));
+                });
             }
             colTasks.forEach(task => {
                 const taskEl = document.createElement('div');
@@ -1727,7 +1888,15 @@
                 }
                 const priorityDotHtml = task.priority ? `<span class="priority-dot priority-${task.priority}" style="margin-right:6px; vertical-align:middle;"></span>` : '';
                 const completeBtnHtml = `<button class="complete-btn" onclick="toggleComplete('${task.id}', event)" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '✓' : '○'}</button>`;
-                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 28px;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 8px;">${attachmentBadge}${membersHtml}</div>`;
+                
+                const orderBtnsHtml = task._mirrored ? '' : `
+                    <div style="display:flex; gap: 4px;">
+                        <button class="col-action-btn" style="padding: 2px 6px; font-size: 0.6rem;" onclick="moveTaskUp('${task.id}', event)" title="Move Up">▲</button>
+                        <button class="col-action-btn" style="padding: 2px 6px; font-size: 0.6rem;" onclick="moveTaskDown('${task.id}', event)" title="Move Down">▼</button>
+                    </div>
+                `;
+
+                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 28px;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
                 taskEl.onclick = (e) => {
                     if (e.target.classList.contains('complete-btn')) return;
                     if (e.shiftKey || selectedCards.size > 0) {
@@ -2166,18 +2335,27 @@
         const cards = [...this.querySelectorAll('.task-card:not(.dragging)')];
         const topTarget = cards.find(c => c.classList.contains('drag-over-top'));
         const botTarget = cards.find(c => c.classList.contains('drag-over-bottom'));
+        
+        appData.tasks.splice(taskIndex, 1);
+        
+        let inserted = false;
         if (topTarget || botTarget) {
-            const refId = (topTarget || botTarget).id;
-            if (topTarget) {
-                appData.tasks.splice(taskIndex, 1);
-                const newRefIndex = appData.tasks.findIndex(t => t.id === refId);
-                appData.tasks.splice(newRefIndex, 0, task);
-            } else {
-                appData.tasks.splice(taskIndex, 1);
-                const newRefIndex = appData.tasks.findIndex(t => t.id === refId);
-                appData.tasks.splice(newRefIndex + 1, 0, task);
+            const targetEl = topTarget || botTarget;
+            const refTask = appData.tasks.find(t => t.id === targetEl.id);
+            if (refTask && refTask.columnId === newColId) {
+                const newRefIndex = appData.tasks.findIndex(t => t.id === refTask.id);
+                if (topTarget) {
+                    appData.tasks.splice(newRefIndex, 0, task);
+                } else {
+                    appData.tasks.splice(newRefIndex + 1, 0, task);
+                }
+                inserted = true;
             }
         }
+        if (!inserted) {
+            appData.tasks.push(task);
+        }
+
         if (oldColId !== newColId) {
             processAutomations(task, 'card_moved', { newColId });
         }
@@ -2217,19 +2395,48 @@
         }
     }
 
-    async function editColumnDetails(id) {
+    function editColumnDetails(id) {
         const col = appData.columns.find(c => c.id === id);
         if (!col) return;
         
-        // Use a timeout to ensure sequential dialogs aren't accidentally hidden by the CSS transition of the previous dialog closing.
-        const newTitle = await showPrompt('Rename List', 'Enter a new name for this list:', col.title);
-        if (newTitle !== null && newTitle.trim()) col.title = newTitle.trim();
+        document.getElementById('editColId').value = id;
+        document.getElementById('editColNameInput').value = col.title || '';
+        document.getElementById('editColAssignedInput').value = col.assignedTo || '';
         
-        setTimeout(async () => {
-            const newAssignee = await showPrompt('Assigned To', 'Enter assigned person or team (leave blank for none):', col.assignedTo || '');
-            if (newAssignee !== null) col.assignedTo = (newAssignee || '').trim();
-            saveData(); renderBoard();
-        }, 300);
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a,b) => a.order - b.order);
+        const posSelect = document.getElementById('editColPositionInput');
+        posSelect.innerHTML = boardCols.map((c, idx) => `<option value="${idx}" ${c.id === id ? 'selected' : ''}>Position ${idx + 1}</option>`).join('');
+        
+        openModal('editColModal');
+    }
+    
+    function handleEditColumn(e) {
+        e.preventDefault();
+        const id = document.getElementById('editColId').value;
+        const name = document.getElementById('editColNameInput').value.trim();
+        const assigned = document.getElementById('editColAssignedInput').value.trim();
+        const newPos = parseInt(document.getElementById('editColPositionInput').value);
+
+        const col = appData.columns.find(c => c.id === id);
+        if (col && name) {
+            col.title = name;
+            col.assignedTo = assigned;
+            
+            // Handle reordering
+            let boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a,b) => a.order - b.order);
+            const oldPos = boardCols.findIndex(c => c.id === id);
+            
+            if (oldPos !== newPos) {
+                boardCols.splice(oldPos, 1); // remove from old
+                boardCols.splice(newPos, 0, col); // insert at new
+                boardCols.forEach((c, i) => c.order = i); // re-normalize order values
+            }
+
+            saveData();
+            closeModal(null, 'editColModal');
+            renderBoard();
+            showToast('List updated!');
+        }
     }
 
     function addColumnMember(colId, btnEl) {
@@ -2312,34 +2519,6 @@
         }
     }
 
-    function moveColumnLeft(id) {
-        let boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
-        const idx = boardCols.findIndex(c => c.id === id);
-        if (idx > 0) {
-            // Swap positions
-            const temp = boardCols[idx];
-            boardCols[idx] = boardCols[idx - 1];
-            boardCols[idx - 1] = temp;
-            // Clean/normalize order values
-            boardCols.forEach((col, i) => col.order = i);
-            saveData(); renderBoard();
-        }
-    }
-
-    function moveColumnRight(id) {
-        let boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
-        const idx = boardCols.findIndex(c => c.id === id);
-        if (idx > -1 && idx < boardCols.length - 1) {
-            // Swap positions
-            const temp = boardCols[idx];
-            boardCols[idx] = boardCols[idx + 1];
-            boardCols[idx + 1] = temp;
-            // Clean/normalize order values
-            boardCols.forEach((col, i) => col.order = i);
-            saveData(); renderBoard();
-        }
-    }
-
     function showToast(message) {
         const toast = document.getElementById('toast');
         toast.innerText = message;
@@ -2370,20 +2549,46 @@
         const postPhoto = document.getElementById('postPhoto');
         const postReel = document.getElementById('postReel');
         switchTaskTab('details');
+        
         const moveSelect = document.getElementById('settingMoveList');
+        const posSelect = document.getElementById('settingTaskPosition');
         const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a,b) => a.order - b.order);
+        
         moveSelect.innerHTML = boardCols.map(c => `<option value="${c.id}" ${c.id === colId ? 'selected' : ''}>${c.title}</option>`).join('');
+        
+        const colTasks = appData.tasks.filter(t => t.columnId === colId);
+        let currentPos = colTasks.findIndex(t => t.id === taskId);
+        if (currentPos === -1) currentPos = colTasks.length;
+        
+        posSelect.innerHTML = Array.from({length: colTasks.length + (taskId ? 0 : 1)}).map((_, idx) => 
+            `<option value="${idx}" ${idx === currentPos ? 'selected' : ''}>Position ${idx + 1}</option>`
+        ).join('');
+
         moveSelect.onchange = (e) => {
             document.getElementById('taskModalColId').value = e.target.value;
             const selectedCol = boardCols.find(c => c.id === e.target.value);
             if(selectedCol) document.getElementById('taskModalListName').innerText = selectedCol.title;
+            
+            const newColTasks = appData.tasks.filter(t => t.columnId === e.target.value);
+            posSelect.innerHTML = Array.from({length: newColTasks.length + 1}).map((_, idx) => 
+                `<option value="${idx}" ${idx === newColTasks.length ? 'selected' : ''}>Position ${idx + 1}</option>`
+            ).join('');
+            
+            scheduleAutoSave();
         };
+        
         const coverEl = document.getElementById('taskModalCover');
         if (taskId) {
             const task = appData.tasks.find(t => t.id === taskId);
             currentEditingTask = JSON.parse(JSON.stringify(task));
             titleEl.value = task.title || '';
-            descEl.value = task.description || task.text || '';
+            
+            let content = task.description || task.text || '';
+            if (content && !content.includes('<') && content.includes('\n')) {
+                content = content.replace(/\n/g, '<br>');
+            }
+            descEl.innerHTML = content;
+            
             dueEl.value = task.dueDate || '';
             document.getElementById('taskEventLocation').value = task.eventLocation || '';
             document.getElementById('taskPriority').value = task.priority || '';
@@ -2399,7 +2604,7 @@
             renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments();
         } else {
             currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: '', photo: '', reel: '' } };
-            titleEl.value = ''; descEl.value = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
+            titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
             postStory.value = ''; postPhoto.value = ''; postReel.value = '';
             
             postStory.type = 'text'; postPhoto.type = 'text'; postReel.type = 'text';
@@ -2854,16 +3059,38 @@
         const taskId = document.getElementById('taskModalTaskId').value;
         const title = document.getElementById('taskTitleInput').value.trim();
         if (!title || !colId) return;
-        const desc = document.getElementById('taskContentInput').value.trim();
+        const desc = document.getElementById('taskContentInput').innerHTML;
         const dueDate = document.getElementById('taskDueDate').value;
         const postingObj = { story: document.getElementById('postStory').value, photo: document.getElementById('postPhoto').value, reel: document.getElementById('postReel').value };
         const eventLocation = document.getElementById('taskEventLocation').value.trim();
         const priority = document.getElementById('taskPriority').value;
+        const newPos = parseInt(document.getElementById('settingTaskPosition').value);
         const prevPriority = taskId ? (appData.tasks.find(t => t.id === taskId)?.priority || '') : '';
+        
         if (taskId) {
             const taskIndex = appData.tasks.findIndex(t => t.id === taskId);
             if (taskIndex > -1) {
-                appData.tasks[taskIndex] = { ...appData.tasks[taskIndex], columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: currentEditingTask.comments || [] };
+                const task = appData.tasks[taskIndex];
+                const oldColId = task.columnId;
+                
+                appData.tasks[taskIndex] = { ...task, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: currentEditingTask.comments || [] };
+                
+                const colTasks = appData.tasks.filter(t => t.columnId === colId);
+                const actualCurrentPos = colTasks.findIndex(t => t.id === taskId);
+                
+                if (oldColId !== colId || (!isNaN(newPos) && actualCurrentPos !== newPos)) {
+                    const globalIdx = appData.tasks.findIndex(t => t.id === taskId);
+                    const extracted = appData.tasks.splice(globalIdx, 1)[0];
+                    const updatedColTasks = appData.tasks.filter(t => t.columnId === colId);
+                    if (isNaN(newPos) || newPos >= updatedColTasks.length) {
+                        appData.tasks.push(extracted);
+                    } else {
+                        const refTask = updatedColTasks[newPos];
+                        const refGlobalIdx = appData.tasks.findIndex(t => t.id === refTask.id);
+                        appData.tasks.splice(refGlobalIdx, 0, extracted);
+                    }
+                }
+
                 if (priority && priority !== prevPriority) processAutomations(appData.tasks[taskIndex], 'priority_set', { priority });
                 processAutomations(appData.tasks[taskIndex], 'task_saved');
             }
@@ -3352,7 +3579,7 @@
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal'].forEach(id => {
+            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && m.classList.contains('show')) closeModal(null, id);
             });
@@ -3402,194 +3629,4 @@
             <input id="customDialogInput" type="text" class="modern-input" style="font-size: 1rem;" autocomplete="off">
         </div>
         <div id="customDialogSelectWrap" style="margin-bottom: 20px; display: none;">
-            <select id="customDialogSelect" class="modern-input"></select>
-        </div>
-        <div id="customDialogComboWrap" style="margin-bottom: 20px; display: none;">
-            <select id="customDialogComboSelect" class="modern-input" style="margin-bottom: 10px; font-size: 16px;"></select>
-            <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 10px;">&mdash; OR &mdash;</div>
-            <input id="customDialogComboInput" type="text" class="modern-input" style="font-size: 16px;" placeholder="Type new..." autocomplete="off">
-        </div>
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button id="customDialogCancel" style="
-                background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.1);
-                color: #fff; padding: 10px 20px;
-                border-radius: 100px; font-weight: 600;
-                cursor: pointer; font-size: 0.9rem;
-                font-family: inherit; transition: 0.2s;
-            " onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">Cancel</button>
-            <button id="customDialogConfirm" style="
-                background: linear-gradient(135deg, #0A84FF, #BF5AF2);
-                border: none; color: #fff; padding: 10px 22px;
-                border-radius: 100px; font-weight: 700;
-                cursor: pointer; font-size: 0.9rem;
-                font-family: inherit; transition: 0.2s;
-            ">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<script>
-(function() {
-    const overlay  = document.getElementById('customDialog');
-    const box      = document.getElementById('customDialogBox');
-    const titleEl  = document.getElementById('customDialogTitle');
-    const msgEl    = document.getElementById('customDialogMessage');
-    const inputWrap= document.getElementById('customDialogInputWrap');
-    const inputEl  = document.getElementById('customDialogInput');
-    const selWrap  = document.getElementById('customDialogSelectWrap');
-    const selEl    = document.getElementById('customDialogSelect');
-    const comboWrap = document.getElementById('customDialogComboWrap');
-    const comboSelect = document.getElementById('customDialogComboSelect');
-    const comboInput = document.getElementById('customDialogComboInput');
-    const btnOk    = document.getElementById('customDialogConfirm');
-    const btnCancel= document.getElementById('customDialogCancel');
-
-    let _resolve = null;
-    let _dialogTimeout = null;
-
-    function openDialog() {
-        clearTimeout(_dialogTimeout);
-        overlay.style.display = 'flex';
-        requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
-            box.style.transform = 'translateY(0)';
-        });
-    }
-
-    function closeDialog() {
-        overlay.style.opacity = '0';
-        box.style.transform = 'translateY(16px)';
-        _dialogTimeout = setTimeout(() => { overlay.style.display = 'none'; }, 200);
-    }
-
-    function reset() {
-        inputWrap.style.display = 'none';
-        selWrap.style.display = 'none';
-        comboWrap.style.display = 'none';
-        inputEl.value = '';
-        inputEl.removeAttribute('list');
-        comboInput.value = '';
-        comboSelect.innerHTML = '';
-        titleEl.innerText = '';
-        msgEl.innerText = '';
-        btnOk.style.background = 'linear-gradient(135deg, #0A84FF, #BF5AF2)';
-        btnCancel.style.display = '';
-        
-        // Remove existing datalist if any
-        const oldDl = document.getElementById('prompt-datalist');
-        if (oldDl) oldDl.remove();
-    }
-
-    window.showComboPrompt = function(title, message, options) {
-        return new Promise(resolve => {
-            reset();
-            _resolve = resolve;
-            titleEl.innerText = title;
-            msgEl.innerText = message || '';
-            
-            if (options && options.length > 0) {
-                comboSelect.innerHTML = '<option value="">-- Select Existing --</option>' + 
-                    options.map(o => `<option value="${o}">${o}</option>`).join('');
-                comboSelect.style.display = 'block';
-                comboWrap.querySelector('div').style.display = 'block';
-            } else {
-                comboSelect.style.display = 'none';
-                comboWrap.querySelector('div').style.display = 'none';
-            }
-            
-            comboWrap.style.display = 'block';
-            btnOk.innerText = 'Add';
-            openDialog();
-            setTimeout(() => comboInput.focus(), 220);
-        });
-    };
-
-    window.showPrompt = function(title, message, defaultValue = '', datalistOptions = null) {
-        return new Promise(resolve => {
-            reset();
-            _resolve = resolve;
-            titleEl.innerText = title;
-            msgEl.innerText = message || '';
-            inputEl.value = defaultValue;
-            inputWrap.style.display = 'block';
-            
-            // Generate datalist for suggestions if provided
-            if (datalistOptions && datalistOptions.length > 0) {
-                inputEl.setAttribute('list', 'prompt-datalist');
-                const dl = document.createElement('datalist');
-                dl.id = 'prompt-datalist';
-                dl.innerHTML = datalistOptions.map(opt => `<option value="${opt}"></option>`).join('');
-                document.body.appendChild(dl);
-            }
-
-            btnOk.innerText = 'Save';
-            openDialog();
-            setTimeout(() => inputEl.focus(), 220);
-        });
-    };
-
-    window.showConfirm = function(title, message, confirmLabel = 'Confirm', isDanger = false) {
-        return new Promise(resolve => {
-            reset();
-            _resolve = resolve;
-            titleEl.innerText = title;
-            msgEl.innerText = message;
-            btnOk.innerText = confirmLabel;
-            if (isDanger) btnOk.style.background = 'linear-gradient(135deg, #FF3B30, #FF9500)';
-            openDialog();
-        });
-    };
-
-    window.showSelect = function(title, message, options) {
-        return new Promise(resolve => {
-            reset();
-            _resolve = resolve;
-            titleEl.innerText = title;
-            msgEl.innerText = message || '';
-            selEl.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
-            selWrap.style.display = 'block';
-            btnOk.innerText = 'Select';
-            openDialog();
-        });
-    };
-
-    btnOk.addEventListener('click', () => {
-        if (inputWrap.style.display !== 'none') {
-            const val = inputEl.value.trim();
-            closeDialog();
-            _resolve(val || null);
-        } else if (selWrap.style.display !== 'none') {
-            const val = selEl.value;
-            closeDialog();
-            _resolve(val);
-        } else if (comboWrap.style.display !== 'none') {
-            const val = comboInput.value.trim() || comboSelect.value;
-            closeDialog();
-            _resolve(val || null);
-        } else {
-            closeDialog();
-            _resolve(true);
-        }
-    });
-
-    btnCancel.addEventListener('click', () => {
-        closeDialog();
-        _resolve(null);
-    });
-
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) { closeDialog(); _resolve(null); }
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (overlay.style.display === 'flex') {
-            if (e.key === 'Enter' && (inputWrap.style.display !== 'none' || comboWrap.style.display !== 'none')) { btnOk.click(); e.preventDefault(); }
-            if (e.key === 'Escape') { btnCancel.click(); }
-        }
-    });
-})();
-</script>
-
-</body>
-</html>
+            <select id="customDialogSelect" class="modern-input
