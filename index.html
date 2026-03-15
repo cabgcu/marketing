@@ -321,7 +321,7 @@
             border-radius: 20px; 
             padding: 18px;
             cursor: grab; 
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.15s ease;
             color: var(--text-main); 
             font-size: 0.95rem; 
             line-height: 1.5;
@@ -406,19 +406,19 @@
             background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             z-index: 10000; display: none; align-items: center; justify-content: center; 
             padding: 20px;
-            opacity: 0; transition: opacity 0.3s ease;
+            opacity: 0; transition: opacity 0.2s ease;
         }
         .modal-content { 
             background: #111; border: 1px solid var(--glass-border); padding: 30px; 
             border-radius: var(--radius-card); width: 100%; max-width: 900px; position: relative; 
-            transform: translateY(20px); transition: transform 0.3s ease;
+            transform: translateY(30px) scale(0.95); transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
             max-height: 90vh;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
         }
         .modal-overlay.show { opacity: 1; }
-        .modal-overlay.show .modal-content { transform: translateY(0); }
+        .modal-overlay.show .modal-content { transform: translateY(0) scale(1); }
 
         .close-modal { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); border: none; color: #fff; font-size: 1.5rem; cursor: pointer; z-index: 10; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: 0.2s;}
         .close-modal:hover { background: rgba(0,0,0,0.8); transform: scale(1.05); }
@@ -746,6 +746,10 @@
                 overflow-y: auto !important; 
                 box-sizing: border-box;
                 -webkit-overflow-scrolling: touch;
+                transform: translateY(100%) !important; /* Start completely off-screen at the bottom */
+            }
+            .modal-overlay.show .modal-content {
+                transform: translateY(0) !important; /* Slide up cleanly */
             }
             .modal-content * { max-width: 100%; } /* Prevent any internal element from causing horizontal scroll */
             .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 100px; }
@@ -3861,7 +3865,7 @@
         }
         const modal = document.getElementById(id);
         modal.classList.remove('show');
-        setTimeout(() => { modal.style.display = 'none'; }, 300);
+        setTimeout(() => { modal.style.display = 'none'; }, 250);
     }
 
     window.addEventListener('keydown', (e) => {
