@@ -676,46 +676,26 @@
 
         /* ================= MOBILE OPTIMIZATIONS ================= */
         @media (max-width: 900px) {
+            .view-toggle-wrap { display: none !important; }
             .app-container { padding: 0; }
-            .topbar { 
-                display: none !important;
-            }
-            .controls { 
-                display: flex; 
-                flex-direction: column; 
-                width: 100%; 
-                gap: 12px; 
-            }
+            .topbar { display: none !important; }
+            .controls { display: flex; flex-direction: column; width: 100%; gap: 12px; }
             .controls > div, .controls > button { width: 100%; }
             .search-wrap { width: 100%; }
             .search-input { width: 100%; }
             .search-input:focus { width: 100%; }
             
             /* Enhanced Mobile Buttons for Touch Targets */
-            .sidebar-btn, .btn-action, .btn-outline {
-                min-height: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
+            .sidebar-btn, .btn-action, .btn-outline { min-height: 44px; display: flex; align-items: center; justify-content: center; }
 
             /* Fix squished add circles */
             #taskMembersList .sidebar-btn, #taskLabelsList .sidebar-btn {
-                min-height: 32px !important;
-                min-width: 32px !important;
-                width: 32px !important;
-                height: 32px !important;
-                padding: 0 !important;
-                flex-shrink: 0;
+                min-height: 32px !important; min-width: 32px !important; width: 32px !important; height: 32px !important;
+                padding: 0 !important; flex-shrink: 0;
             }
 
             /* Fix post button layout */
-            .post-btn {
-                min-height: 36px !important;
-                padding: 0 20px !important;
-                width: auto !important;
-                flex-grow: 0 !important;
-            }
+            .post-btn { min-height: 36px !important; padding: 0 20px !important; width: auto !important; flex-grow: 0 !important; }
 
             /* Bottom Bar Navigation */
             .nav-tabs { 
@@ -728,34 +708,21 @@
                 box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
             }
             .nav-tab { 
-                padding: 10px 5px; 
-                font-size: 0.75rem; 
-                flex: 1; 
-                text-align: center; 
-                white-space: nowrap;
-                min-height: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                padding: 10px 5px; font-size: 0.75rem; flex: 1; text-align: center; white-space: nowrap;
+                min-height: 44px; display: flex; align-items: center; justify-content: center;
             }
 
             .app-view { 
-                padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
+                padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
                 padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important; 
             } 
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
-                padding: calc(60px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
-                scroll-snap-type: x mandatory;
-                scroll-padding: 16px;
-                gap: 16px;
+                padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
+                scroll-snap-type: x mandatory; scroll-padding: 16px; gap: 16px;
             }
-            .kanban-column, .add-col-btn {
-                min-width: 85vw;
-                width: 85vw;
-                scroll-snap-align: start;
-            }
+            .kanban-column, .add-col-btn { min-width: 85vw; width: 85vw; scroll-snap-align: start; }
             .task-card { padding: 14px; }
             .complete-btn { width: 32px; height: 32px; font-size: 1rem; } 
 
@@ -764,45 +731,24 @@
             .modal-content {
                 border-radius: 28px 28px 0 0;
                 padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
-                max-height: 92vh;
-                margin-top: auto;
-                width: 100vw;
-                max-width: 100vw;
-                overflow-x: hidden;
+                max-height: 92vh; margin-top: auto; width: 100vw; max-width: 100vw; overflow-x: hidden;
             }
-            .modal-cover {
-                margin: -24px -20px 20px -20px;
-                width: calc(100% + 40px);
-                border-radius: 28px 28px 0 0;
-            }
+            .modal-cover { margin: -24px -20px 20px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 44px; height: 44px; font-size: 1.8rem; }
 
             .modal-grid { grid-template-columns: 1fr; gap: 20px; }
             .form-row { grid-template-columns: 1fr; gap: 10px; }
             
             /* Compact Sidebar in Modal */
-            .modal-sidebar {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-            .modal-sidebar h4 {
-                grid-column: span 2;
-                margin-top: 15px;
-                margin-bottom: 5px;
-            }
+            .modal-sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .modal-sidebar h4 { grid-column: span 2; margin-top: 15px; margin-bottom: 5px; }
             .modal-sidebar button { font-size: 0.85rem; padding: 8px 12px; }
             #autoSaveIndicator { grid-column: span 2; }
 
             /* Scrollable Calendar */
             .calendar-header { flex-direction: column; gap: 15px; }
             .calendar-wrapper { padding: 15px; overflow-x: auto; }
-            .calendar-grid { 
-                min-width: 700px; 
-                grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); 
-                height: auto;
-                min-height: 100%;
-            }
+            .calendar-grid { min-width: 700px; grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); height: auto; min-height: 100%; }
             .calendar-day-header { font-size: 0.75rem; }
             
             .bulk-bar { bottom: calc(90px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
@@ -821,18 +767,28 @@
 
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
-    <div class="login-box frosted" id="login-overlay-default">
+    <div class="login-box frosted" id="login-overlay-email">
         <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CAB Marketing</h1>
-        <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace credentials to unlock</p>
-        <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 10px; text-align: center;" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
-        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
-        <button class="btn-action" style="width:100%;" onclick="checkLogin()">Unlock</button>
+        <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace email to continue</p>
+        <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkEmailStep()">
+        <button class="btn-action" style="width:100%;" onclick="checkEmailStep()">Next</button>
     </div>
+
+    <div class="login-box frosted" id="login-overlay-password" style="display: none;">
+        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back</h1>
+        <p style="color:var(--text-muted); margin-bottom: 25px;" id="pwdEmailDisplay"></p>
+        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
+        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="checkLogin()">Unlock</button>
+        <button class="btn-outline" style="width:100%; border: none;" onclick="goBackToEmail()">Back</button>
+    </div>
+
     <div class="login-box frosted" id="login-overlay-setup" style="display: none;">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome!</h1>
         <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
         <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
+        <input type="text" id="setupName" class="modern-input" placeholder="Your Full Name" style="margin-bottom: 10px; text-align: center;">
         <input type="password" id="newPassword1" class="modern-input" placeholder="New Password" style="margin-bottom: 10px; text-align: center;">
         <input type="password" id="newPassword2" class="modern-input" placeholder="Confirm Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') createNewPassword()">
         <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">Save &amp; Enter</button>
@@ -1095,7 +1051,7 @@
                                 <h3 class="section-title">Activity</h3>
                             </div>
                             <div class="activity-item" style="margin-top: 15px;">
-                                <div class="avatar">Me</div>
+                                <div class="avatar" id="currentUserAvatar">Me</div>
                                 <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
                                     <textarea id="commentInput" class="modern-input" rows="2" placeholder="Write a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);"></textarea>
                                     <div style="display:flex; justify-content:flex-end;">
@@ -1269,6 +1225,8 @@
     let isAuthenticated = false;
     let currentUserRole = null; 
     let currentUserEmail = null;
+    let currentUserName = null;
+    let pendingLoginEmail = '';
 
     // Add inline script to dynamically add manifest blob for PWA installation
     const pwaManifest = {
@@ -1326,6 +1284,22 @@
         return url;
     }
 
+    let appData = { boards: [], columns: [], tasks: [], automations: [], settings: {}, activeBoardId: null };
+    let currentView = 'board';
+    let calDate = new Date();
+    let plannerDate = new Date();
+    let calendarMode = 'grid';
+    let plannerMode = 'grid';
+
+    function generateId() { return Math.random().toString(36).substr(2, 9); }
+    
+    function getInitials(name) {
+        if (!name || typeof name !== 'string') return '?';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
     async function handleDriveUpload(event) {
         const fileInput = event.target;
         const file = fileInput.files[0];
@@ -1368,15 +1342,6 @@
         };
         reader.readAsDataURL(file);
     }
-
-    let appData = { boards: [], columns: [], tasks: [], automations: [], settings: {}, activeBoardId: null };
-    let currentView = 'board';
-    let calDate = new Date();
-    let plannerDate = new Date();
-    let calendarMode = 'grid';
-    let plannerMode = 'grid';
-
-    function generateId() { return Math.random().toString(36).substr(2, 9); }
 
     async function autoSaveAttachments() {
         const taskId = document.getElementById('taskModalTaskId').value;
@@ -1494,7 +1459,7 @@
                 ],
                 attachments: [],
                 coverImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80",
-                members: ["SH"], labels: [{text: "CAB", color: "blue"}],
+                members: ["Jane Doe"], labels: [{text: "CAB", color: "blue"}],
                 checklist: [
                     { id: generateId(), text: "Meet with Assistant Director", done: false },
                     { id: generateId(), text: "Schedule Photoshoot or Video shoot dates", done: false },
@@ -1505,24 +1470,22 @@
                     { id: generateId(), text: "Post Event Stories during Event", done: false },
                     { id: generateId(), text: "Event Has Concluded", done: false }
                 ],
-                activity: [{ user: "Chris Hinojosa", action: "attached CAB_PutYourRecordsOn_Instagraml.jpg to this card", date: "Feb 16, 2026, 7:27 PM" }]
+                activity: [{ user: "Chris Hinojosa", text: "attached CAB_PutYourRecordsOn_Instagraml.jpg to this card", time: "Feb 16, 2026, 7:27 PM" }]
             }],
             activeBoardId: defaultBoardId
         };
         saveData();
     }
 
-    function checkLogin() {
+    function checkEmailStep() {
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-        const pass = document.getElementById('loginPassword').value;
-        const storedPass = appData.settings?.password || 'Marketing49!';
-
-        // Admin login
-        if ((email === 'admin' || email === '') && pass === storedPass) {
-            isAuthenticated = true;
-            currentUserRole = 'admin';
-            currentUserEmail = 'admin';
-            closeLoginOverlay();
+        
+        if (email === 'admin' || email === '') {
+            pendingLoginEmail = email;
+            document.getElementById('login-overlay-email').style.display = 'none';
+            document.getElementById('pwdEmailDisplay').innerText = email === '' ? 'Admin' : email;
+            document.getElementById('login-overlay-password').style.display = 'block';
+            setTimeout(() => document.getElementById('loginPassword').focus(), 100);
             return;
         }
 
@@ -1530,22 +1493,52 @@
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
         
         if (!user) {
-            showToast("Invalid email or password.");
-            document.getElementById('loginPassword').value = '';
+            showToast("Email not registered.");
             return;
         }
+
+        pendingLoginEmail = email;
 
         if (!user.password) {
-            document.getElementById('login-overlay-default').style.display = 'none';
+            document.getElementById('login-overlay-email').style.display = 'none';
             document.getElementById('login-overlay-setup').style.display = 'block';
             document.getElementById('setupEmailDisplay').innerText = email;
+            setTimeout(() => document.getElementById('setupName').focus(), 100);
             return;
         }
 
-        if (user.password === pass) {
+        document.getElementById('login-overlay-email').style.display = 'none';
+        document.getElementById('pwdEmailDisplay').innerText = user.name ? `${user.name} (${email})` : email;
+        document.getElementById('login-overlay-password').style.display = 'block';
+        setTimeout(() => document.getElementById('loginPassword').focus(), 100);
+    }
+
+    function goBackToEmail() {
+        document.getElementById('login-overlay-password').style.display = 'none';
+        document.getElementById('login-overlay-email').style.display = 'block';
+        document.getElementById('loginPassword').value = '';
+    }
+
+    function checkLogin() {
+        const email = pendingLoginEmail;
+        const pass = document.getElementById('loginPassword').value;
+        const storedPass = appData.settings?.password || 'Marketing49!';
+
+        if ((email === 'admin' || email === '') && pass === storedPass) {
+            isAuthenticated = true;
+            currentUserRole = 'admin';
+            currentUserEmail = 'admin';
+            currentUserName = 'Admin';
+            closeLoginOverlay();
+            return;
+        }
+
+        const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
+        if (user && user.password === pass) {
             isAuthenticated = true;
             currentUserRole = 'user';
             currentUserEmail = email;
+            currentUserName = user.name || email.split('@')[0];
             closeLoginOverlay();
         } else {
             showToast("Incorrect Password");
@@ -1560,19 +1553,24 @@
     }
 
     function createNewPassword() {
+        const name = document.getElementById('setupName').value.trim();
         const pass1 = document.getElementById('newPassword1').value;
         const pass2 = document.getElementById('newPassword2').value;
+        
+        if (!name) { showToast("Please enter your full name."); return; }
         if (pass1 !== pass2) { showToast("Passwords do not match!"); return; }
         if (pass1.length < 6) { showToast("Password must be at least 6 characters."); return; }
         
         const email = document.getElementById('setupEmailDisplay').innerText;
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
         if (user) {
+            user.name = name;
             user.password = pass1;
             saveData();
             isAuthenticated = true;
             currentUserRole = 'user';
             currentUserEmail = email;
+            currentUserName = name;
             closeLoginOverlay();
             showToast("Account ready!");
         }
@@ -1580,8 +1578,9 @@
 
     function cancelSetup() {
         document.getElementById('login-overlay-setup').style.display = 'none';
-        document.getElementById('login-overlay-default').style.display = 'block';
+        document.getElementById('login-overlay-email').style.display = 'block';
         document.getElementById('loginPassword').value = '';
+        document.getElementById('setupName').value = '';
         document.getElementById('newPassword1').value = '';
         document.getElementById('newPassword2').value = '';
     }
@@ -1590,10 +1589,14 @@
         isAuthenticated = false;
         currentUserRole = null;
         currentUserEmail = null;
+        currentUserName = null;
+        pendingLoginEmail = '';
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
+        document.getElementById('setupName').value = '';
         document.getElementById('login-overlay-setup').style.display = 'none';
-        document.getElementById('login-overlay-default').style.display = 'block';
+        document.getElementById('login-overlay-password').style.display = 'none';
+        document.getElementById('login-overlay-email').style.display = 'block';
         document.getElementById('login-overlay').style.display = 'flex';
         setTimeout(() => { document.getElementById('login-overlay').style.opacity = '1'; }, 10);
     }
@@ -1950,10 +1953,11 @@
             const header = document.createElement('div');
             header.className = 'column-header';
             const colMembers = col.members || [];
-            const memberAvatars = colMembers.map((m, i) =>
-                `<div class="avatar" style="width:22px;height:22px;font-size:0.55rem;border:2px solid #111;margin-left:${i===0?'0':'-6px'};" title="${m}">${m}</div>`
-            ).join('');
-            const memberBar = `<div style="display:flex;align-items:center;margin-top:5px;">${memberAvatars}<button onclick="event.stopPropagation();addColumnMember('${col.id}',this)" style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.07);border:1.5px dashed rgba(255,255,255,0.2);color:var(--text-muted);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:${colMembers.length?'-6px':'0'};flex-shrink:0;transition:0.2s;" onmouseover="this.style.background='rgba(10,132,255,0.2)';this.style.borderColor='#0A84FF';this.style.color='#0A84FF'" onmouseout="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-muted)'" title="Add member">+</button></div>`;
+            const memberAvatars = colMembers.map((m, i) => {
+                const initials = getInitials(m);
+                return `<div class="avatar" style="width:22px;height:22px;font-size:0.55rem;border:2px solid #111;margin-left:${i===0?'0':'-6px'};cursor:pointer;" title="Remove ${m}" onclick="event.stopPropagation(); removeColumnMember('${col.id}', '${m}')">${initials}</div>`;
+            }).join('');
+            const memberBar = `<div style="display:flex;align-items:center;margin-top:5px;">${memberAvatars}<button onclick="event.stopPropagation();addColumnMember('${col.id}')" style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.07);border:1.5px dashed rgba(255,255,255,0.2);color:var(--text-muted);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:${colMembers.length?'-6px':'0'};flex-shrink:0;transition:0.2s;" onmouseover="this.style.background='rgba(10,132,255,0.2)';this.style.borderColor='#0A84FF';this.style.color='#0A84FF'" onmouseout="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='var(--text-muted)'" title="Add member">+</button></div>`;
             let assignedHtml = col.assignedTo ? `<div class="column-assignee">${col.assignedTo}</div>` : '';
             header.innerHTML = `
                 <div style="display: flex; flex-direction: column; flex-grow: 1; padding-right: 10px; align-items: flex-start;">
@@ -2031,7 +2035,8 @@
                         const isTaskMember = taskMembersList.includes(m);
                         const borderStyle = (isListMember && isTaskMember) ? 'border-color:#0A84FF;' : isListMember ? 'border-color:#BF5AF2;' : '';
                         const titleNote = (isListMember && isTaskMember) ? ' (list + card)' : isListMember ? ' (list member)' : ' (card member)';
-                        return '<div class="avatar" style="width:24px;height:24px;font-size:0.6rem;' + borderStyle + '" title="' + m + titleNote + '">' + m + '</div>';
+                        const initials = getInitials(m);
+                        return '<div class="avatar" style="width:24px;height:24px;font-size:0.6rem;' + borderStyle + '" title="' + m + titleNote + '">' + initials + '</div>';
                     }).join('');
                     membersHtml = collabBadge + '<div class="collab-avatars">' + avatars + '</div>';
                 }
@@ -2114,6 +2119,10 @@
         const wrapper = document.getElementById('calendar-main-wrapper');
         if (!wrapper) return;
         wrapper.innerHTML = '';
+        
+        const isMobile = window.innerWidth <= 900;
+        const activeMode = isMobile ? 'list' : calendarMode;
+        
         const year = calDate.getFullYear();
         const month = calDate.getMonth();
         const monthYearStr = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calDate);
@@ -2124,7 +2133,7 @@
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(1)">Next</button>
                 </div>
                 <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: #0A84FF;">${monthYearStr}</h2>
-                <div style="display: flex; flex: 1; justify-content: flex-end;">
+                <div class="view-toggle-wrap" style="display: flex; flex: 1; justify-content: flex-end;">
                     <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
                         <button class="col-action-btn ${calendarMode === 'grid' ? 'active' : ''}" style="${calendarMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('grid')">Grid</button>
                         <button class="col-action-btn ${calendarMode === 'list' ? 'active' : ''}" style="${calendarMode === 'list' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('list')">List</button>
@@ -2132,7 +2141,7 @@
                 </div>
             </div>`;
         const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId && t.dueDate);
-        if (calendarMode === 'list') {
+        if (activeMode === 'list') {
             const listContainer = document.createElement('div');
             listContainer.className = 'list-view-container';
             const monthTasks = activeTasks.filter(t => { const d = new Date(t.dueDate); return d.getMonth() === month && d.getFullYear() === year; });
@@ -2174,7 +2183,7 @@
                 const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
                 if(isToday) cell.classList.add('today');
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                cell.innerHTML = `<div class="calendar-date"><span>${i}</span></div>`;
+                cell.innerHTML = `<div class="calendar-date"><span>${i}</span><button class="add-post-btn-cal" onclick="openQuickPostModal('${dateStr}')">+ Add Post</button></div>`;
                 const dayTasks = activeTasks.filter(t => t.dueDate.startsWith(dateStr));
                 dayTasks.forEach(t => { const pill = document.createElement('div'); pill.className = 'calendar-task-pill'; if(t.labels && t.labels.length > 0) { pill.style.borderLeft = `3px solid ${t.labels[0].color === 'blue' ? '#0A84FF' : '#BF5AF2'}`; } pill.innerText = t.title; pill.onclick = () => openTaskModal(t.columnId, t.id); cell.appendChild(pill); });
                 grid.appendChild(cell);
@@ -2193,6 +2202,10 @@
         const wrapper = document.getElementById('planner-main-wrapper');
         if (!wrapper) return;
         wrapper.innerHTML = '';
+        
+        const isMobile = window.innerWidth <= 900;
+        const activeMode = isMobile ? 'list' : plannerMode;
+        
         const year = plannerDate.getFullYear();
         const month = plannerDate.getMonth();
         const monthYearStr = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(plannerDate);
@@ -2203,7 +2216,7 @@
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changePlannerMonth(1)">Next</button>
                 </div>
                 <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: #BF5AF2;">${monthYearStr}</h2>
-                <div style="display: flex; flex: 1; justify-content: flex-end;">
+                <div class="view-toggle-wrap" style="display: flex; flex: 1; justify-content: flex-end;">
                     <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
                         <button class="col-action-btn ${plannerMode === 'grid' ? 'active' : ''}" style="${plannerMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setPlannerMode('grid')">Grid</button>
                         <button class="col-action-btn ${plannerMode === 'list' ? 'active' : ''}" style="${plannerMode === 'list' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setPlannerMode('list')">List</button>
@@ -2216,7 +2229,7 @@
             if (t.postingSchedule?.photo) plannerItems.push({ date: t.postingSchedule.photo, type: 'Photo', hex: '#0A84FF', task: t });
             if (t.postingSchedule?.reel)  plannerItems.push({ date: t.postingSchedule.reel,  type: 'Reel',  hex: '#FF2D55', task: t });
         });
-        if (plannerMode === 'list') {
+        if (activeMode === 'list') {
             const listContainer = document.createElement('div');
             listContainer.className = 'list-view-container';
             const monthItems = plannerItems.filter(item => { const d = new Date(item.date); return d.getMonth() === month && d.getFullYear() === year; });
@@ -2301,12 +2314,15 @@
     function applyBranding() {
         const logoEl = document.getElementById('brand-logo');
         const loginLogoEl = document.getElementById('login-brand-logo');
+        const pwdLogoEl = document.getElementById('login-brand-logo-pwd');
         if (appData.settings && appData.settings.logoUrl) {
             if(logoEl) { logoEl.src = appData.settings.logoUrl; logoEl.style.display = 'block'; }
             if(loginLogoEl) { loginLogoEl.src = appData.settings.logoUrl; loginLogoEl.style.display = 'block'; }
+            if(pwdLogoEl) { pwdLogoEl.src = appData.settings.logoUrl; pwdLogoEl.style.display = 'block'; }
         } else {
             if(logoEl) { logoEl.style.display = 'none'; logoEl.src = ''; }
             if(loginLogoEl) { loginLogoEl.style.display = 'none'; loginLogoEl.src = ''; }
+            if(pwdLogoEl) { pwdLogoEl.style.display = 'none'; pwdLogoEl.src = ''; }
         }
     }
 
@@ -2344,7 +2360,7 @@
         container.innerHTML = appData.settings.users.map(u => `
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-weight: bold; margin-bottom: 4px;">${u.email}</div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email}</div>
                     <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'};">${u.password ? 'Active' : 'Awaiting Setup'}</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -2688,75 +2704,37 @@
         }
     }
 
-    function addColumnMember(colId, btnEl) {
-        const existing = document.getElementById('memberPopover');
-        if (existing) { existing.remove(); if (existing.dataset.colId === colId) return; }
+    async function addColumnMember(colId) {
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password).map(u => ({ value: u.name, label: u.name }));
+        if (registeredUsers.length === 0) {
+            showToast("No registered users available. Admin must add users in Settings.");
+            return;
+        }
         const col = appData.columns.find(c => c.id === colId);
         if (!col) return;
-        if (!col.members) col.members = [];
-        const popover = document.createElement('div');
-        popover.id = 'memberPopover';
-        popover.dataset.colId = colId;
-        popover.style.cssText = 'position:absolute;z-index:9999;background:#1c1c1e;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:14px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
-        function renderPopover() {
-            const members = col.members || [];
-            popover.innerHTML = `
-                <div style="font-weight:800;font-size:0.85rem;margin-bottom:10px;color:var(--text-muted);">LIST MEMBERS</div>
-                ${members.length === 0 ? '<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;">No members yet.</div>' :
-                  members.map(m => `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <div class="avatar" style="width:24px;height:24px;font-size:0.58rem;">${m}</div>
-                        <span style="font-size:0.88rem;">${m}</span>
-                    </div>
-                    <button onclick="removeColMemberInline('${colId}','${m}')" style="background:none;border:none;color:#FF3B30;cursor:pointer;font-size:0.9rem;padding:2px 6px;">✕</button>
-                  </div>`).join('')}
-                <div style="display:flex;gap:6px;margin-top:10px;">
-                    <input id="memberInput_${colId}" type="text" maxlength="2" placeholder="Initials" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:7px 10px;color:#fff;font-size:0.85rem;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter'){event.stopPropagation();addColMemberInline('${colId}')}">
-                    <button onclick="addColMemberInline('${colId}')" style="background:#0A84FF;border:none;border-radius:8px;color:#fff;padding:7px 12px;cursor:pointer;font-size:0.85rem;font-weight:700;font-family:inherit;">Add</button>
-                </div>`;
+        const availableUsers = registeredUsers.filter(u => !(col.members || []).includes(u.value));
+        if (availableUsers.length === 0) {
+            showToast("All registered users are already in this list.");
+            return;
         }
-        renderPopover();
-        const rect = btnEl.getBoundingClientRect();
-        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-        popover.style.top = (rect.bottom + scrollTop + 6) + 'px';
-        popover.style.left = Math.max(8, rect.left - 80) + 'px';
-        document.body.appendChild(popover);
-        setTimeout(() => document.getElementById('memberInput_' + colId)?.focus(), 50);
-        setTimeout(() => {
-            document.addEventListener('click', function handler(e) {
-                if (!popover.contains(e.target) && e.target !== btnEl) {
-                    popover.remove();
-                    document.removeEventListener('click', handler);
-                }
-            });
-        }, 100);
-    }
-
-    function addColMemberInline(colId) {
-        const col = appData.columns.find(c => c.id === colId);
-        const input = document.getElementById('memberInput_' + colId);
-        if (!col || !input) return;
-        const clean = input.value.trim().substring(0, 2).toUpperCase();
-        if (!clean) return;
-        if (!col.members) col.members = [];
-        if (!col.members.includes(clean)) {
-            col.members.push(clean);
-            saveData(); renderBoard(); showToast(clean + ' added!');
-            const pop = document.getElementById('memberPopover');
-            if (pop) { pop.remove(); }
-        } else {
-            input.value = '';
-            showToast('Already in this list.');
+        
+        const selectedName = await showSelect('Add List Member', 'Select a user to add to this list:', availableUsers);
+        if (selectedName) {
+            if (!col.members) col.members = [];
+            col.members.push(selectedName);
+            saveData(); renderBoard(); showToast(selectedName + ' added!');
         }
     }
 
-    function removeColMemberInline(colId, initials) {
-        const col = appData.columns.find(c => c.id === colId);
-        if (!col) return;
-        col.members = col.members.filter(m => m !== initials);
-        saveData(); renderBoard(); showToast(initials + ' removed.');
-        const pop = document.getElementById('memberPopover');
-        if (pop) pop.remove();
+    async function removeColumnMember(colId, name) {
+        const ok = await showConfirm('Remove Member', `Remove ${name} from this list?`, 'Remove', true);
+        if (ok) {
+            const col = appData.columns.find(c => c.id === colId);
+            if (col) {
+                col.members = col.members.filter(m => m !== name);
+                saveData(); renderBoard(); showToast(name + ' removed.');
+            }
+        }
     }
 
     async function deleteColumn(id) {
@@ -2825,6 +2803,11 @@
             
             scheduleAutoSave();
         };
+
+        const avatarEl = document.getElementById('currentUserAvatar');
+        if (avatarEl) {
+            avatarEl.innerText = getInitials(currentUserName || 'Me');
+        }
         
         const coverEl = document.getElementById('taskModalCover');
         if (taskId) {
@@ -2870,7 +2853,7 @@
         const members = currentEditingTask.members || [];
         list.innerHTML = members.map(m => `
             <div class="avatar" title="Click to remove ${m}" style="cursor:pointer;" onclick="removeMember('${m}')">
-                ${m}
+                ${getInitials(m)}
             </div>
         `).join('') + 
             `<button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" onclick="addMember()">+</button>`;
@@ -2884,27 +2867,37 @@
     }
 
     async function addMember() {
-        const allMembers = new Set();
-        appData.tasks.forEach(t => (t.members||[]).forEach(m => allMembers.add(m)));
-        appData.columns.forEach(c => (c.members||[]).forEach(m => allMembers.add(m)));
-        const initials = await showComboPrompt('Add Member', 'Pick an existing member or type new initials (e.g. JD):', Array.from(allMembers));
-        if (initials && initials.trim()) {
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password);
+        if (registeredUsers.length === 0) {
+            showToast("No registered users available. Admin must invite users in Settings.");
+            return;
+        }
+
+        const availableUsers = registeredUsers.filter(u => !(currentEditingTask.members || []).includes(u.name));
+        if (availableUsers.length === 0) {
+            showToast("All registered users are already assigned to this card.");
+            return;
+        }
+
+        const options = availableUsers.map(u => ({ value: u.name, label: u.name }));
+        const selectedName = await showSelect('Assign Member', 'Select a registered user:', options);
+        
+        if (selectedName) {
             if(!currentEditingTask.members) currentEditingTask.members = [];
-            const cleanInitials = initials.trim().substring(0,2).toUpperCase();
-            if (!currentEditingTask.members.includes(cleanInitials)) {
-                currentEditingTask.members.push(cleanInitials);
+            if (!currentEditingTask.members.includes(selectedName)) {
+                currentEditingTask.members.push(selectedName);
                 renderMembers();
                 scheduleAutoSave();
             }
         }
     }
 
-    function removeMember(initials) {
+    function removeMember(name) {
         if (currentEditingTask.members) {
-            currentEditingTask.members = currentEditingTask.members.filter(m => m !== initials);
+            currentEditingTask.members = currentEditingTask.members.filter(m => m !== name);
             renderMembers();
             scheduleAutoSave();
-            showToast(initials + ' removed from task.');
+            showToast(name + ' removed from task.');
         }
     }
 
@@ -3257,9 +3250,11 @@
             log.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem; padding:8px 0;">No comments yet.</div>';
             return;
         }
-        log.innerHTML = comments.slice().reverse().map(c => `
+        log.innerHTML = comments.slice().reverse().map(c => {
+            const initials = getInitials(c.user || 'Me');
+            return `
             <div class="activity-item" style="margin-bottom:12px; align-items:flex-start;">
-                <div class="avatar" style="width:28px;height:28px;font-size:0.6rem;flex-shrink:0;">${c.user || 'Me'}</div>
+                <div class="avatar" style="width:28px;height:28px;font-size:0.6rem;flex-shrink:0;">${initials}</div>
                 <div style="flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px 14px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <span style="font-weight:700; font-size:0.85rem;">${c.user || 'Me'}</span>
@@ -3267,7 +3262,8 @@
                     </div>
                     <div style="font-size:0.9rem; line-height:1.5; color:#e0e0e0;">${c.text}</div>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function submitComment() {
@@ -3277,7 +3273,10 @@
         if (!currentEditingTask.comments) currentEditingTask.comments = [];
         const now = new Date();
         const timeStr = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(now);
-        currentEditingTask.comments.push({ id: generateId(), user: 'Me', text, time: timeStr });
+        
+        const userName = currentUserName || 'Me';
+        
+        currentEditingTask.comments.push({ id: generateId(), user: userName, text, time: timeStr });
         input.value = '';
         const taskId = document.getElementById('taskModalTaskId').value;
         if (taskId) {
@@ -3522,10 +3521,10 @@
                     }
                     case 'add_member': {
                         if (!task.members) task.members = [];
-                        const initials = act.value.substring(0,2).toUpperCase();
-                        if (!task.members.includes(initials)) { 
-                            task.members.push(initials); 
-                            modified = true; showToast(`🤖 Assigned ${initials}`); 
+                        const memberName = act.value.trim();
+                        if (!task.members.includes(memberName)) { 
+                            task.members.push(memberName); 
+                            modified = true; showToast(`🤖 Assigned ${memberName}`); 
                             if (isCurrentEditing) renderMembers();
                         }
                         break;
@@ -3709,7 +3708,7 @@
             case 'add_checklist':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Item 1, Item 2, Item 3 (comma separated)">`; break;
             case 'add_member':
-                area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Member initials (e.g. JD)">`; break;
+                area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Member Name (e.g. Jane Doe)">`; break;
             case 'set_due_offset':
                 area.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><input type="number" class="modern-input act-val-text" placeholder="7" min="1" max="365" style="width:100px;"><span style="color:var(--text-muted); font-size:0.85rem;">days from now</span></div>`; break;
             case 'notify':
@@ -3925,12 +3924,16 @@
                 
                 const updateList = () => {
                     const val = comboInput.value.toLowerCase();
-                    const matches = options.filter(o => o.toLowerCase().includes(val));
+                    const matches = options.filter(o => typeof o === 'string' ? o.toLowerCase().includes(val) : o.value.toLowerCase().includes(val));
                     if (matches.length > 0) {
-                        comboList.innerHTML = matches.map(m => `<div style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);" class="combo-item">${m}</div>`).join('');
+                        comboList.innerHTML = matches.map(m => {
+                            const valStr = typeof m === 'string' ? m : m.value;
+                            const labelStr = typeof m === 'string' ? m : m.label;
+                            return `<div style="padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);" class="combo-item" data-value="${valStr}">${labelStr}</div>`;
+                        }).join('');
                         comboList.style.display = 'block';
                         comboList.querySelectorAll('.combo-item').forEach(el => {
-                            el.onclick = () => { comboInput.value = el.innerText; comboList.style.display = 'none'; };
+                            el.onclick = () => { comboInput.value = el.dataset.value; comboList.style.display = 'none'; };
                             el.onmouseover = () => el.style.background = 'rgba(255,255,255,0.05)';
                             el.onmouseout = () => el.style.background = 'transparent';
                         });
