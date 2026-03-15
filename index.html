@@ -769,12 +769,22 @@
 
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
-    <div class="login-box frosted">
+    <div class="login-box frosted" id="login-overlay-default">
         <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CAB Marketing</h1>
-        <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace password to unlock</p>
+        <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace credentials to unlock</p>
+        <input type="email" id="loginEmail" class="modern-input" placeholder="Email (leave blank for Admin)" style="margin-bottom: 10px; text-align: center;" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
         <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
         <button class="btn-action" style="width:100%;" onclick="checkLogin()">Unlock</button>
+    </div>
+    <div class="login-box frosted" id="login-overlay-setup" style="display: none;">
+        <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome!</h1>
+        <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
+        <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
+        <input type="password" id="newPassword1" class="modern-input" placeholder="New Password" style="margin-bottom: 10px; text-align: center;">
+        <input type="password" id="newPassword2" class="modern-input" placeholder="Confirm Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') createNewPassword()">
+        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">Save &amp; Enter</button>
+        <button class="btn-outline" style="width:100%; border: none;" onclick="cancelSetup()">Cancel</button>
     </div>
 </div>
 
@@ -833,13 +843,23 @@
         <div class="settings-wrapper">
             <h2 style="margin-top:0; font-weight:800;">Master Settings</h2>
             
-            <div class="settings-card">
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Security</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Change the master password required to access this application.</p>
                 <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF;" onclick="changePassword()">Change Workspace Password</button>
             </div>
 
-            <div class="settings-card">
+            <div class="settings-card admin-only" id="adminUserManagement">
+                <h3 class="section-title">User Management</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Manage who can access this workspace via email.</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="email" id="newUserEmail" class="modern-input" placeholder="user@email.com">
+                    <button class="btn-action" onclick="addUser()">Add User</button>
+                </div>
+                <div id="userListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Workspace Branding</h3>
                 <label class="stat-label">Custom Logo (Max 2MB)</label>
                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
@@ -853,7 +873,7 @@
                 <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveLogoSettings()">Save Logo</button>
             </div>
 
-            <div class="settings-card">
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Board Configuration</h3>
                 <label class="stat-label">Board Background Image (Max 5MB)</label>
                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
@@ -867,7 +887,7 @@
                 <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveBoardSettings()">Save Background</button>
             </div>
 
-            <div class="settings-card">
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
                 <div style="display: flex; gap: 15px; margin-bottom: 20px;">
@@ -880,6 +900,13 @@
                 <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
                 <h3 class="section-title" style="color: #FF3B30;">Danger Zone</h3>
                 <button class="btn-action" style="background: var(--gradient-danger); width: 100%; margin-bottom: 10px;" onclick="deleteCurrentBoard()">Delete Current Workspace</button>
+            </div>
+
+            <div class="settings-card">
+                <h3 class="section-title">My Account</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Update your personal password or sign out.</p>
+                <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF; margin-bottom: 10px;" onclick="changeMyPassword()">Change My Password</button>
+                <button class="btn-outline" style="width: 100%; border-color: #FF3B30; color: #FF3B30;" onclick="logout()">Sign Out</button>
             </div>
         </div>
     </div>
@@ -1188,6 +1215,8 @@
     const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbysZ3ONcyd5Ky68U412uV8TZZokTDSKzF0-aBAkCicnV64aMye1GDkXQI-z8XGfcs5G/exec'; 
 
     let isAuthenticated = false;
+    let currentUserRole = null; 
+    let currentUserEmail = null;
 
     // Add inline script to dynamically add manifest blob for PWA installation
     const pwaManifest = {
@@ -1322,6 +1351,7 @@
                 if (!appData.tasks)      appData.tasks = [];
                 if (!appData.automations) appData.automations = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
+                if (!appData.settings.users) appData.settings.users = [];
                 
                 appData.boards.forEach(b => {
                     if (b.backgroundImage === undefined) b.backgroundImage = '';
@@ -1381,7 +1411,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!' },
+            settings: { password: 'Marketing49!', users: [] },
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
             columns: [
                 { id: colBacklog, boardId: defaultBoardId, title: 'Backlog', order: 0, assignedTo: '' },
@@ -1430,17 +1460,89 @@
     }
 
     function checkLogin() {
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
         const pass = document.getElementById('loginPassword').value;
         const storedPass = appData.settings?.password || 'Marketing49!';
-        if (pass === storedPass) {
+
+        // Admin login
+        if ((email === 'admin' || email === '') && pass === storedPass) {
             isAuthenticated = true;
-            document.getElementById('login-overlay').style.opacity = '0';
-            setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
-            renderApp();
+            currentUserRole = 'admin';
+            currentUserEmail = 'admin';
+            closeLoginOverlay();
+            return;
+        }
+
+        if (!appData.settings.users) appData.settings.users = [];
+        const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
+        
+        if (!user) {
+            showToast("Invalid email or password.");
+            document.getElementById('loginPassword').value = '';
+            return;
+        }
+
+        if (!user.password) {
+            document.getElementById('login-overlay-default').style.display = 'none';
+            document.getElementById('login-overlay-setup').style.display = 'block';
+            document.getElementById('setupEmailDisplay').innerText = email;
+            return;
+        }
+
+        if (user.password === pass) {
+            isAuthenticated = true;
+            currentUserRole = 'user';
+            currentUserEmail = email;
+            closeLoginOverlay();
         } else {
             showToast("Incorrect Password");
             document.getElementById('loginPassword').value = '';
         }
+    }
+
+    function closeLoginOverlay() {
+        document.getElementById('login-overlay').style.opacity = '0';
+        setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
+        renderApp();
+    }
+
+    function createNewPassword() {
+        const pass1 = document.getElementById('newPassword1').value;
+        const pass2 = document.getElementById('newPassword2').value;
+        if (pass1 !== pass2) { showToast("Passwords do not match!"); return; }
+        if (pass1.length < 6) { showToast("Password must be at least 6 characters."); return; }
+        
+        const email = document.getElementById('setupEmailDisplay').innerText;
+        const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
+        if (user) {
+            user.password = pass1;
+            saveData();
+            isAuthenticated = true;
+            currentUserRole = 'user';
+            currentUserEmail = email;
+            closeLoginOverlay();
+            showToast("Account ready!");
+        }
+    }
+
+    function cancelSetup() {
+        document.getElementById('login-overlay-setup').style.display = 'none';
+        document.getElementById('login-overlay-default').style.display = 'block';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('newPassword1').value = '';
+        document.getElementById('newPassword2').value = '';
+    }
+
+    function logout() {
+        isAuthenticated = false;
+        currentUserRole = null;
+        currentUserEmail = null;
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('login-overlay-setup').style.display = 'none';
+        document.getElementById('login-overlay-default').style.display = 'block';
+        document.getElementById('login-overlay').style.display = 'flex';
+        setTimeout(() => { document.getElementById('login-overlay').style.opacity = '1'; }, 10);
     }
 
     async function changePassword() {
@@ -1457,6 +1559,31 @@
             appData.settings.password = newPass.trim();
             saveData();
             showToast('Password updated successfully.');
+        }
+    }
+
+    async function changeMyPassword() {
+        if (currentUserRole === 'admin') {
+            changePassword(); 
+            return;
+        }
+        
+        const current = await showPrompt('Change Password', 'Enter current password:');
+        if (!current) return;
+        
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        if (!user || user.password !== current) {
+            showToast('Incorrect current password.');
+            return;
+        }
+        
+        const newPass = await showPrompt('New Password', 'Enter your new password:');
+        if (newPass && newPass.trim().length >= 6) {
+            user.password = newPass.trim();
+            saveData();
+            showToast('Password updated successfully.');
+        } else if (newPass) {
+            showToast('Password must be at least 6 characters.');
         }
     }
 
@@ -2131,19 +2258,88 @@
     }
 
     function renderSettings() {
-        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
-        const fileInput = document.getElementById('settingsBoardBgFile');
-        const previewText = document.getElementById('bgUploadPreviewText');
-        if (activeBoard) {
-            if (fileInput) fileInput.value = '';
-            if (previewText) previewText.innerText = activeBoard.backgroundImage ? 'Current background active. Select a new file to replace it.' : 'No new file selected';
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = currentUserRole === 'admin' ? 'block' : 'none';
+        });
+
+        if (currentUserRole === 'admin') {
+            const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+            const fileInput = document.getElementById('settingsBoardBgFile');
+            const previewText = document.getElementById('bgUploadPreviewText');
+            if (activeBoard) {
+                if (fileInput) fileInput.value = '';
+                if (previewText) previewText.innerText = activeBoard.backgroundImage ? 'Current background active. Select a new file to replace it.' : 'No new file selected';
+            }
+            
+            const logoInput = document.getElementById('settingsLogoFile');
+            const logoPreviewText = document.getElementById('logoUploadPreviewText');
+            if (logoInput) logoInput.value = '';
+            if (logoPreviewText) {
+                logoPreviewText.innerText = (appData.settings && appData.settings.logoUrl) ? 'Current logo active. Select a new file to replace it.' : 'No new file selected';
+            }
+            renderUserList();
+        }
+    }
+
+    function renderUserList() {
+        const container = document.getElementById('userListContainer');
+        if (!container) return;
+        if (!appData.settings.users || appData.settings.users.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No additional users added.</div>';
+            return;
+        }
+        container.innerHTML = appData.settings.users.map(u => `
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${u.email}</div>
+                    <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'};">${u.password ? 'Active' : 'Awaiting Setup'}</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    ${u.password ? `<button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" onclick="resetUserPassword('${u.email}')">Reset Pass</button>` : ''}
+                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeUser('${u.email}')">Remove</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function addUser() {
+        const input = document.getElementById('newUserEmail');
+        const email = input.value.trim().toLowerCase();
+        if (!email) return;
+        
+        if (!appData.settings.users) appData.settings.users = [];
+        if (appData.settings.users.find(u => u.email === email)) {
+            showToast("User already exists!");
+            return;
         }
         
-        const logoInput = document.getElementById('settingsLogoFile');
-        const logoPreviewText = document.getElementById('logoUploadPreviewText');
-        if (logoInput) logoInput.value = '';
-        if (logoPreviewText) {
-            logoPreviewText.innerText = (appData.settings && appData.settings.logoUrl) ? 'Current logo active. Select a new file to replace it.' : 'No new file selected';
+        appData.settings.users.push({ email: email, password: null });
+        saveData();
+        renderUserList();
+        input.value = '';
+        showToast("User added!");
+    }
+
+    async function removeUser(email) {
+        const ok = await showConfirm('Remove User', `Are you sure you want to remove ${email}?`, 'Remove', true);
+        if (ok) {
+            appData.settings.users = appData.settings.users.filter(u => u.email !== email);
+            saveData();
+            renderUserList();
+            showToast("User removed.");
+        }
+    }
+
+    async function resetUserPassword(email) {
+        const ok = await showConfirm('Reset Password', `Force ${email} to set a new password on their next login?`, 'Reset', true);
+        if (ok) {
+            const user = appData.settings.users.find(u => u.email === email);
+            if (user) {
+                user.password = null;
+                saveData();
+                renderUserList();
+                showToast("Password reset.");
+            }
         }
     }
 
