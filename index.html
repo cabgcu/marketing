@@ -53,7 +53,7 @@
             margin: 0;
             font-family: var(--font-stack);
             color: var(--text-main);
-            background-color: #050505;
+            background-color: transparent;
             min-height: 100vh;
             padding-bottom: 40px;
             -webkit-font-smoothing: antialiased;
@@ -670,11 +670,7 @@
         @media (max-width: 900px) {
             .app-container { padding: 0; }
             .topbar { 
-                flex-direction: column; gap: 16px; text-align: center; 
-                padding: calc(15px + env(safe-area-inset-top, 0px)) 20px 15px 20px; 
-                border-radius: 0 0 20px 20px; 
-                margin-top: 0; 
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                display: none !important;
             }
             .controls { 
                 display: flex; 
@@ -717,7 +713,10 @@
                 justify-content: center;
             }
 
-            .app-view { padding-bottom: calc(90px + env(safe-area-inset-bottom)); } 
+            .app-view { 
+                padding-top: calc(15px + env(safe-area-inset-top, 0px));
+                padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
+            } 
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
@@ -732,7 +731,7 @@
                 scroll-snap-align: start;
             }
             .task-card { padding: 14px; }
-            .complete-btn { width: 44px; height: 44px; font-size: 1.2rem; } 
+            .complete-btn { width: 32px; height: 32px; font-size: 1rem; } 
 
             /* Bottom-Sheet Modals */
             .modal-overlay { align-items: flex-end; padding: 0; }
@@ -741,6 +740,9 @@
                 padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
                 max-height: 92vh;
                 margin-top: auto;
+                width: 100vw;
+                max-width: 100vw;
+                overflow-x: hidden;
             }
             .modal-cover {
                 margin: -24px -20px 20px -20px;
@@ -970,7 +972,7 @@
             <div class="modal-grid">
                 <div class="modal-main">
                     <div id="modalTabDetails">
-                        <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                             <div>
                                 <div class="stat-label" style="margin-top: 0;">Members</div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskMembersList">
@@ -992,14 +994,14 @@
                                     <option value="low">🟢 Low</option>
                                 </select>
                             </div>
-                            <div>
+                            <div style="flex-grow: 1;">
                                 <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 220px; font-size: 16px;">
+                                    <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
                                     <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
                                 </div>
                             </div>
-                            <div>
+                            <div style="flex-grow: 1;">
                                 <div class="stat-label" style="margin-top: 0;">Event Location</div>
                                 <input type="text" id="taskEventLocation" oninput="scheduleAutoSave()" class="modern-input" placeholder="e.g. The Quad" style="padding: 6px 12px; font-size: 16px;">
                             </div>
@@ -1027,7 +1029,7 @@
                         </div>
                         <div style="margin-top: 20px;">
                             <h3 class="section-title">Posting Schedule</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
                                 <div>
                                     <label class="stat-label" style="margin-top:0; color: #BF5AF2;">IG Story</label>
                                     <input type="text" id="postStory" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
@@ -2047,7 +2049,7 @@
                     </div>
                 `;
 
-                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 28px;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
+                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
                 taskEl.onclick = (e) => {
                     if (e.target.classList.contains('complete-btn')) return;
                     if (e.shiftKey || selectedCards.size > 0) {
