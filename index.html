@@ -635,15 +635,15 @@
 
         .complete-btn {
             position: absolute; top: 10px; right: 10px;
-            width: 28px; height: 28px; border-radius: 50%;
+            width: 24px; height: 24px; border-radius: 50%;
             background: rgba(255,255,255,0.1);
             border: 1.5px solid rgba(255,255,255,0.3);
-            color: #fff; font-size: 0.85rem; font-weight: 700;
+            color: #fff; font-size: 0.75rem; font-weight: 700;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: 0.2s; z-index: 2; flex-shrink: 0; line-height: 1;
         }
         .complete-btn:hover { background: rgba(52,199,89,0.3); border-color: #34C759; color: #34C759; }
-        .task-card.is-complete .complete-btn { background: #34C759; border-color: #34C759; color: #000; font-size: 1rem; }
+        .task-card.is-complete .complete-btn { background: #34C759; border-color: #34C759; color: #000; font-size: 0.9rem; }
 
         /* BULK SELECT */
         .bulk-bar {
@@ -724,7 +724,7 @@
             }
             .kanban-column, .add-col-btn { min-width: 85vw; width: 85vw; scroll-snap-align: start; }
             .task-card { padding: 14px; }
-            .complete-btn { width: 32px; height: 32px; font-size: 1rem; } 
+            .complete-btn { width: 28px; height: 28px; font-size: 0.9rem; } 
 
             /* Bottom-Sheet Modals */
             .modal-overlay { align-items: flex-end; padding: 0; }
@@ -769,7 +769,7 @@
 <div id="login-overlay">
     <div class="login-box frosted" id="login-overlay-email">
         <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
-        <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CAB Marketing</h1>
+        <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Marketing</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace email to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkEmailStep()">
         <button class="btn-action" style="width:100%;" onclick="checkEmailStep()">Next</button>
@@ -1519,7 +1519,7 @@
         document.getElementById('loginPassword').value = '';
     }
 
-    function checkLogin() {
+    function checkLogin(isAuto = false) {
         const email = pendingLoginEmail;
         const pass = document.getElementById('loginPassword').value;
         const storedPass = appData.settings?.password || 'Marketing49!';
@@ -1529,6 +1529,8 @@
             currentUserRole = 'admin';
             currentUserEmail = 'admin';
             currentUserName = 'Admin';
+            localStorage.setItem('cab_auth_email', email);
+            localStorage.setItem('cab_auth_pass', pass);
             closeLoginOverlay();
             return;
         }
@@ -1539,10 +1541,16 @@
             currentUserRole = 'user';
             currentUserEmail = email;
             currentUserName = user.name || email.split('@')[0];
+            localStorage.setItem('cab_auth_email', email);
+            localStorage.setItem('cab_auth_pass', pass);
             closeLoginOverlay();
         } else {
-            showToast("Incorrect Password");
+            if (!isAuto) showToast("Incorrect Password");
             document.getElementById('loginPassword').value = '';
+            if (isAuto) {
+                localStorage.removeItem('cab_auth_email');
+                localStorage.removeItem('cab_auth_pass');
+            }
         }
     }
 
@@ -1571,6 +1579,8 @@
             currentUserRole = 'user';
             currentUserEmail = email;
             currentUserName = name;
+            localStorage.setItem('cab_auth_email', email);
+            localStorage.setItem('cab_auth_pass', pass1);
             closeLoginOverlay();
             showToast("Account ready!");
         }
@@ -1591,6 +1601,8 @@
         currentUserEmail = null;
         currentUserName = null;
         pendingLoginEmail = '';
+        localStorage.removeItem('cab_auth_email');
+        localStorage.removeItem('cab_auth_pass');
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
         document.getElementById('setupName').value = '';
@@ -3834,9 +3846,39 @@
         }
     });
 
+    function tryAutoLogin() {
+        const savedEmail = localStorage.getItem('cab_auth_email');
+        const savedPass = localStorage.getItem('cab_auth_pass');
+        if (savedEmail !== null && savedPass !== null) {
+            pendingLoginEmail = savedEmail;
+            document.getElementById('loginPassword').value = savedPass;
+            checkLogin(true);
+        }
+    }
+
     window.onload = async () => {
         _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         await initData();
+        tryAutoLogin();
+
+        // Enable horizontal auto-scroll when dragging cards near the edges of the board
+        const boardContainer = document.getElementById('view-board');
+        if (boardContainer) {
+            boardContainer.addEventListener('dragover', (e) => {
+                const threshold = 100; // Distance from edge in pixels to trigger scrolling
+                const speed = 20; // Scroll speed
+                const rect = boardContainer.getBoundingClientRect();
+                
+                // Scroll right
+                if (e.clientX > rect.right - threshold) {
+                    boardContainer.scrollLeft += speed;
+                } 
+                // Scroll left
+                else if (e.clientX < rect.left + threshold) {
+                    boardContainer.scrollLeft -= speed;
+                }
+            });
+        }
     };
 </script>
 
