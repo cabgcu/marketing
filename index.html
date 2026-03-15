@@ -739,7 +739,8 @@
             .modal-content {
                 border-radius: 28px 28px 0 0;
                 padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
-                max-height: 85dvh !important; /* Strict bound so it never cuts off the bottom of the screen */
+                max-height: 96dvh !important; /* Increased height so it's not too low */
+                min-height: 85dvh;
                 height: auto;
                 margin-top: auto; width: 100%; max-width: 100%; 
                 overflow-x: hidden; 
@@ -751,16 +752,26 @@
             .modal-overlay.show .modal-content {
                 transform: translateY(0) !important; /* Slide up cleanly */
             }
-            .modal-content * { max-width: 100%; } /* Prevent any internal element from causing horizontal scroll */
-            .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 100px; }
+            
+            /* Targeted width constraints to prevent cut-off without breaking the cover image */
+            .modern-input, .rich-text-editor, .checklist-text { max-width: 100%; box-sizing: border-box; }
+            #modalTabDetails > div > div { max-width: 100%; } 
+            #taskDueDate { min-width: 0 !important; width: 100%; } 
+
+            .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
+
+            /* Fix Attachment Options Extending Off Screen */
+            .attachment-item { flex-wrap: wrap; gap: 8px; }
+            .attachment-details { flex-basis: calc(100% - 60px); }
+            .attachment-actions { width: 100%; justify-content: flex-end; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
 
             /* Compact inner layout so more fits in view without scrolling */
             .modal-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 5px; min-width: 0; }
             .form-row { grid-template-columns: 1fr; gap: 8px; min-width: 0; }
             .stat-label { margin-top: 8px !important; margin-bottom: 4px; }
             .section-title { margin-top: 15px !important; margin-bottom: 8px; font-size: 1.05rem; }
-            #taskContentInput { min-height: 60px !important; }
+            #taskContentInput { min-height: 60px !important; overflow-wrap: break-word; }
             .activity-item > div { min-width: 0; }
             
             /* Compact Sidebar in Modal */
