@@ -7,11 +7,11 @@
     <!-- PWA / Native App Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="CAB Manager">
+    <meta name="apple-mobile-web-app-title" content="CAB Marketing">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#050505">
 
-    <title>CAB Marketing Project Manager</title>
+    <title>CAB Marketing</title>
     
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -903,6 +903,19 @@
                     <button class="btn-outline" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30; flex-shrink: 0;" onclick="clearBrandLogo()">Remove Current</button>
                 </div>
                 <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveLogoSettings()">Save Logo</button>
+
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 25px 0;">
+
+                <label class="stat-label">App Icon / Home Screen (Square, Max 2MB)</label>
+                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <label class="btn-outline" style="margin: 0; cursor: pointer; flex-shrink: 0;">
+                        Upload Icon
+                        <input type="file" id="settingsAppIconFile" accept="image/*" style="display: none;" onchange="previewAppIconUpload(event)">
+                    </label>
+                    <span id="appIconUploadPreviewText" style="color: var(--text-muted); font-size: 0.85rem; flex-grow: 1;">No new file selected</span>
+                    <button class="btn-outline" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30; flex-shrink: 0;" onclick="clearAppIcon()">Remove Current</button>
+                </div>
+                <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveAppIconSettings()">Save App Icon</button>
             </div>
 
             <div class="settings-card admin-only">
@@ -1252,34 +1265,46 @@
     let currentUserName = null;
     let pendingLoginEmail = '';
 
-    // Add inline script to dynamically add manifest blob for PWA installation
-    const pwaManifest = {
-        "name": "CAB Marketing Manager",
-        "short_name": "CAB Manager",
-        "description": "CAB Marketing Project Management",
-        "start_url": "./",
-        "display": "standalone",
-        "background_color": "#050505",
-        "theme_color": "#050505",
-        "icons": [
-            {
-                "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A84FF' width='100' height='100' rx='20'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='white' font-family='sans-serif'>CAB</text></svg>",
-                "sizes": "192x192",
-                "type": "image/svg+xml"
-            },
-            {
-                "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A84FF' width='100' height='100' rx='20'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='white' font-family='sans-serif'>CAB</text></svg>",
-                "sizes": "512x512",
-                "type": "image/svg+xml"
-            }
-        ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: 'application/json' });
-    const manifestUrl = URL.createObjectURL(manifestBlob);
-    const linkManifest = document.createElement('link');
-    linkManifest.rel = 'manifest';
-    linkManifest.href = manifestUrl;
-    document.head.appendChild(linkManifest);
+    function updatePWAManifest() {
+        const iconUrl = (appData.settings && appData.settings.appIconUrl) 
+            ? appData.settings.appIconUrl 
+            : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230A84FF' width='100' height='100' rx='20'/><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='white' font-family='sans-serif'>CAB</text></svg>";
+        
+        const pwaManifest = {
+            "name": "CAB Marketing",
+            "short_name": "CAB Marketing",
+            "description": "CAB Marketing Project Management",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#050505",
+            "theme_color": "#050505",
+            "icons": [
+                { "src": iconUrl, "sizes": "192x192", "type": "image/png" },
+                { "src": iconUrl, "sizes": "512x512", "type": "image/png" }
+            ]
+        };
+        
+        const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: 'application/json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        
+        let linkManifest = document.getElementById('dynamic-manifest');
+        if (!linkManifest) {
+            linkManifest = document.createElement('link');
+            linkManifest.id = 'dynamic-manifest';
+            linkManifest.rel = 'manifest';
+            document.head.appendChild(linkManifest);
+        }
+        linkManifest.href = manifestUrl;
+
+        let appleIcon = document.getElementById('dynamic-apple-icon');
+        if (!appleIcon) {
+            appleIcon = document.createElement('link');
+            appleIcon.id = 'dynamic-apple-icon';
+            appleIcon.rel = 'apple-touch-icon';
+            document.head.appendChild(appleIcon);
+        }
+        appleIcon.href = iconUrl;
+    }
 
     // Dummy Service Worker to satisfy Chrome's PWA install requirement
     if ('serviceWorker' in navigator) {
@@ -1445,6 +1470,7 @@
         }
         applyBranding();
         applyBoardBackground();
+        updatePWAManifest();
     }
 
     function setupDefaults() {
@@ -2382,6 +2408,14 @@
             if (logoPreviewText) {
                 logoPreviewText.innerText = (appData.settings && appData.settings.logoUrl) ? 'Current logo active. Select a new file to replace it.' : 'No new file selected';
             }
+
+            const appIconInput = document.getElementById('settingsAppIconFile');
+            const appIconPreviewText = document.getElementById('appIconUploadPreviewText');
+            if (appIconInput) appIconInput.value = '';
+            if (appIconPreviewText) {
+                appIconPreviewText.innerText = (appData.settings && appData.settings.appIconUrl) ? 'Current App Icon active. Select a new file to replace it.' : 'No new file selected';
+            }
+
             renderUserList();
         }
     }
@@ -2495,6 +2529,59 @@
             await saveData();
             showToast("Logo saved!");
             applyBranding();
+            renderSettings();
+        } else {
+            showToast("No new file selected.");
+        }
+    }
+
+    function previewAppIconUpload(event) {
+        const file = event.target.files[0];
+        const previewText = document.getElementById('appIconUploadPreviewText');
+        if (file && previewText) { previewText.innerText = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`; }
+    }
+
+    async function clearAppIcon() {
+        const ok = await showConfirm('Remove App Icon', 'Remove the custom Home Screen app icon?', 'Remove', true);
+        if (ok) {
+            if (!appData.settings) appData.settings = {};
+            appData.settings.appIconUrl = '';
+            await saveData();
+            showToast('App Icon removed!');
+            updatePWAManifest();
+            renderSettings();
+        }
+    }
+
+    async function saveAppIconSettings() {
+        const fileInput = document.getElementById('settingsAppIconFile');
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            if (file.size > 2 * 1024 * 1024) { showToast("File is too large! Please select an image under 2MB."); return; }
+            showToast("Uploading App Icon...");
+            const uploadResult = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const base64Data = e.target.result.split(',')[1];
+                    try {
+                        const response = await fetch(GAS_UPLOAD_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ filename: 'appicon-' + generateId() + '.' + file.name.split('.').pop(), mimeType: file.type, base64: base64Data })
+                        });
+                        const result = await response.json();
+                        resolve(result);
+                    } catch(err) { resolve({ success: false, error: err.message }); }
+                };
+                reader.readAsDataURL(file);
+            });
+            if (!uploadResult.success) { showToast("Upload failed: " + uploadResult.error); return; }
+            if(!appData.settings) appData.settings = {};
+            appData.settings.appIconUrl = toDirectDriveUrl(uploadResult.url);
+            fileInput.value = '';
+            await saveData();
+            showToast("App Icon saved!");
+            updatePWAManifest();
             renderSettings();
         } else {
             showToast("No new file selected.");
