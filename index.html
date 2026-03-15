@@ -691,6 +691,24 @@
                 justify-content: center;
             }
 
+            /* Fix squished add circles */
+            #taskMembersList .sidebar-btn, #taskLabelsList .sidebar-btn {
+                min-height: 32px !important;
+                min-width: 32px !important;
+                width: 32px !important;
+                height: 32px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            /* Fix post button layout */
+            .post-btn {
+                min-height: 36px !important;
+                padding: 0 20px !important;
+                width: auto !important;
+                flex-grow: 0 !important;
+            }
+
             /* Bottom Bar Navigation */
             .nav-tabs { 
                 bottom: 0; left: 0; width: 100%; transform: none; 
@@ -714,13 +732,13 @@
             }
 
             .app-view { 
-                padding-top: calc(15px + env(safe-area-inset-top, 0px));
-                padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
+                padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
+                padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important; 
             } 
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
-                padding: 10px 16px 20px 16px;
+                padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 20px 16px !important;
                 scroll-snap-type: x mandatory;
                 scroll-padding: 16px;
                 gap: 16px;
@@ -1073,7 +1091,7 @@
                                 <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
                                     <textarea id="commentInput" class="modern-input" rows="2" placeholder="Write a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);"></textarea>
                                     <div style="display:flex; justify-content:flex-end;">
-                                        <button type="button" class="btn-action" style="padding:7px 18px; font-size:0.85rem;" onclick="submitComment()">Post</button>
+                                        <button type="button" class="btn-action post-btn" style="padding:7px 18px; font-size:0.85rem;" onclick="submitComment()">Post</button>
                                     </div>
                                 </div>
                             </div>
