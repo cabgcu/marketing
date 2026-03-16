@@ -217,6 +217,7 @@
             font-size: 16px !important; 
             transition: all 0.2s; 
             font-family: inherit;
+            box-sizing: border-box;
         }
         
         select.modern-input {
@@ -457,6 +458,7 @@
             transition: 0.2s;
             min-width: 0;
             overflow: hidden;
+            flex-wrap: wrap;
         }
         .attachment-item:hover { background: rgba(255,255,255,0.05); }
         .attachment-thumb { 
@@ -466,7 +468,7 @@
             flex-shrink: 0; 
             border: 1px solid rgba(255,255,255,0.1);
         }
-        .attachment-details { flex: 1 1 0; min-width: 0; max-width: 180px; overflow: hidden; }
+        .attachment-details { flex: 1 1 0; min-width: 0; max-width: 180px; overflow: hidden; flex-basis: calc(100% - 60px); }
         .attachment-name { 
             font-weight: 700; font-size: 0.88rem; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
@@ -475,6 +477,7 @@
         .attachment-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
         .attachment-actions { 
             display: flex; gap: 5px; align-items: center; flex-shrink: 0;
+            width: 100%; justify-content: flex-end; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;
         }
         .attachment-btn { 
             background: rgba(255,255,255,0.07); 
@@ -616,9 +619,9 @@
         .priority-med   { background: #FF9500; box-shadow: 0 0 6px rgba(255,149,0,0.6); }
         .priority-low   { background: #34C759; box-shadow: 0 0 6px rgba(52,199,89,0.6); }
 
-        .task-card.is-complete {
-            border-color: rgba(52,199,89,0.35) !important;
-        }
+        .task-card.is-complete { border-color: rgba(52,199,89,0.35) !important; }
+        .task-card.is-overdue { border-color: rgba(255,59,48,0.4) !important; }
+        .task-card.is-overdue .card-title { color: #FF3B30 !important; }
 
         /* COLLAB GLOW */
         .task-card.is-collab {
@@ -696,9 +699,6 @@
                 padding: 0 !important; flex-shrink: 0;
             }
 
-            /* Fix post button layout */
-            .post-btn { min-height: 36px !important; padding: 0 20px !important; width: auto !important; flex-grow: 0 !important; }
-
             /* Bottom Bar Navigation */
             .nav-tabs { 
                 bottom: 0; left: 0; width: 100%; transform: none; 
@@ -739,7 +739,7 @@
             .modal-content {
                 border-radius: 28px 28px 0 0;
                 padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
-                max-height: 96dvh !important; /* Increased height so it's not too low */
+                max-height: 96dvh !important;
                 min-height: 85dvh;
                 height: auto;
                 margin-top: auto; width: 100%; max-width: 100%; 
@@ -747,13 +747,10 @@
                 overflow-y: auto !important; 
                 box-sizing: border-box;
                 -webkit-overflow-scrolling: touch;
-                transform: translateY(100%) !important; /* Start completely off-screen at the bottom */
+                transform: translateY(100%) !important;
             }
-            .modal-overlay.show .modal-content {
-                transform: translateY(0) !important; /* Slide up cleanly */
-            }
+            .modal-overlay.show .modal-content { transform: translateY(0) !important; }
             
-            /* Targeted width constraints to prevent cut-off without breaking the cover image */
             .modern-input, .rich-text-editor, .checklist-text { max-width: 100%; box-sizing: border-box; }
             #modalTabDetails > div > div { max-width: 100%; } 
             #taskDueDate { min-width: 0 !important; width: 100%; } 
@@ -761,12 +758,10 @@
             .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
 
-            /* Fix Attachment Options Extending Off Screen */
             .attachment-item { flex-wrap: wrap; gap: 8px; }
             .attachment-details { flex-basis: calc(100% - 60px); }
             .attachment-actions { width: 100%; justify-content: flex-end; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
 
-            /* Compact inner layout so more fits in view without scrolling */
             .modal-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 5px; min-width: 0; }
             .form-row { grid-template-columns: 1fr; gap: 8px; min-width: 0; }
             .stat-label { margin-top: 8px !important; margin-bottom: 4px; }
@@ -774,13 +769,11 @@
             #taskContentInput { min-height: 60px !important; overflow-wrap: break-word; }
             .activity-item > div { min-width: 0; }
             
-            /* Compact Sidebar in Modal */
             .modal-sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
             .modal-sidebar h4 { grid-column: span 2; margin-top: 10px; margin-bottom: 4px; }
             .modal-sidebar button { font-size: 0.85rem; padding: 8px 12px; }
             #autoSaveIndicator { grid-column: span 2; }
 
-            /* Scrollable Calendar */
             .calendar-header { flex-direction: column; gap: 15px; }
             .calendar-wrapper { padding: 15px; overflow-x: auto; }
             .calendar-grid { min-width: 700px; grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); height: auto; min-height: 100%; }
@@ -788,7 +781,6 @@
             
             .bulk-bar { bottom: calc(90px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
             
-            /* Checklists on mobile */
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
         }
@@ -1101,10 +1093,7 @@
                             <div class="activity-item" style="margin-top: 15px;">
                                 <div class="avatar" id="currentUserAvatar">Me</div>
                                 <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
-                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Write a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);"></textarea>
-                                    <div style="display:flex; justify-content:flex-end;">
-                                        <button type="button" class="btn-action post-btn" style="padding:7px 18px; font-size:0.85rem;" onclick="submitComment()">Post</button>
-                                    </div>
+                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitComment(); }"></textarea>
                                 </div>
                             </div>
                             <div id="activityLog" style="margin-top: 20px;"></div>
@@ -2070,8 +2059,45 @@
             }
             colTasks.forEach(task => {
                 const taskEl = document.createElement('div');
+                let isOverdue = false;
+                let postingHtml = '';
+                
+                if (task.dueDate) {
+                    const evDate = new Date(task.dueDate);
+                    const now = new Date();
+                    const diffMs = evDate - now;
+                    const isPast = diffMs < 0;
+                    isOverdue = isPast && !task.completed;
+                    
+                    const absDiff = Math.abs(diffMs);
+                    const totalMins = Math.floor(absDiff / 60000);
+                    const days = Math.floor(totalMins / 1440);
+                    const hrs = Math.floor((totalMins % 1440) / 60);
+                    const mins = totalMins % 60;
+                    let countdownStr = '';
+                    let countdownColor = '';
+                    
+                    if (isPast) { 
+                        countdownStr = task.completed ? 'Event passed' : '⚠️ Overdue'; 
+                        countdownColor = task.completed ? 'color: #a1a1aa;' : 'color: #FF3B30;'; 
+                    }
+                    else if (days > 0) { countdownStr = days + 'd ' + hrs + 'h away'; countdownColor = days <= 3 ? 'color: #FF9500;' : 'color: #34C759;'; }
+                    else if (hrs > 0) { countdownStr = hrs + 'h ' + mins + 'm away'; countdownColor = 'color: #FF3B30;'; }
+                    else { countdownStr = mins + 'm away'; countdownColor = 'color: #FF3B30;'; }
+                    
+                    const dateStr = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(evDate);
+                    const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(evDate);
+                    postingHtml = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.78rem; color: #fff; font-weight: 700;">📅 ${dateStr} @ ${timeStr}</span>
+                            <span style="font-size: 0.72rem; font-weight: 800; ${countdownColor}">${countdownStr}</span>
+                        </div>
+                        ${task.eventLocation ? `<div style="font-size: 0.75rem; color: #a1a1aa; font-weight: 600;">📍 ${task.eventLocation}</div>` : ''}
+                    </div>`;
+                }
+
                 if (task._mirrored) taskEl.classList.add('is-mirrored');
-                taskEl.className = 'task-card' + (task.completed ? ' is-complete' : '') + (selectedCards.has(task.id) ? ' selected' : '') + (task._mirrored ? ' is-mirrored' : '');
+                taskEl.className = 'task-card' + (task.completed ? ' is-complete' : '') + (selectedCards.has(task.id) ? ' selected' : '') + (task._mirrored ? ' is-mirrored' : '') + (isOverdue ? ' is-overdue' : '');
                 taskEl.style.position = 'relative';
                 taskEl.draggable = !selectedCards.size;
                 taskEl.id = task.id;
@@ -2117,33 +2143,7 @@
                 if(task.coverImage) { coverHtml = `<div class="card-cover" style="background-image: url('${task.coverImage}')"></div>`; }
                 let attachmentBadge = '';
                 if(task.attachments && task.attachments.length > 0) { attachmentBadge = `<span style="font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; margin-left: 10px;">🔗 ${task.attachments.length}</span>`; }
-                let postingHtml = '';
-                if (task.dueDate) {
-                    const evDate = new Date(task.dueDate);
-                    const now = new Date();
-                    const diffMs = evDate - now;
-                    const isPast = diffMs < 0;
-                    const absDiff = Math.abs(diffMs);
-                    const totalMins = Math.floor(absDiff / 60000);
-                    const days = Math.floor(totalMins / 1440);
-                    const hrs = Math.floor((totalMins % 1440) / 60);
-                    const mins = totalMins % 60;
-                    let countdownStr = '';
-                    let countdownColor = '';
-                    if (isPast) { countdownStr = 'Event passed'; countdownColor = 'color: #a1a1aa;'; }
-                    else if (days > 0) { countdownStr = days + 'd ' + hrs + 'h away'; countdownColor = days <= 3 ? 'color: #FF9500;' : 'color: #34C759;'; }
-                    else if (hrs > 0) { countdownStr = hrs + 'h ' + mins + 'm away'; countdownColor = 'color: #FF3B30;'; }
-                    else { countdownStr = mins + 'm away'; countdownColor = 'color: #FF3B30;'; }
-                    const dateStr = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(evDate);
-                    const timeStr = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(evDate);
-                    postingHtml = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.78rem; color: #fff; font-weight: 700;">📅 ${dateStr} @ ${timeStr}</span>
-                            <span style="font-size: 0.72rem; font-weight: 800; ${countdownColor}">${countdownStr}</span>
-                        </div>
-                        ${task.eventLocation ? `<div style="font-size: 0.75rem; color: #a1a1aa; font-weight: 600;">📍 ${task.eventLocation}</div>` : ''}
-                    </div>`;
-                }
+
                 const priorityDotHtml = task.priority ? `<span class="priority-dot priority-${task.priority}" style="margin-right:6px; vertical-align:middle;"></span>` : '';
                 const completeBtnHtml = `<button class="complete-btn" onclick="toggleComplete('${task.id}', event)" title="${task.completed ? 'Mark incomplete' : 'Mark complete'}">${task.completed ? '✓' : '○'}</button>`;
                 
@@ -2256,7 +2256,7 @@
                 const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
                 if(isToday) cell.classList.add('today');
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                cell.innerHTML = `<div class="calendar-date"><span>${i}</span><button class="add-post-btn-cal" onclick="openQuickPostModal('${dateStr}')">+ Add Post</button></div>`;
+                cell.innerHTML = `<div class="calendar-date"><span>${i}</span></div>`;
                 const dayTasks = activeTasks.filter(t => t.dueDate.startsWith(dateStr));
                 dayTasks.forEach(t => { const pill = document.createElement('div'); pill.className = 'calendar-task-pill'; if(t.labels && t.labels.length > 0) { pill.style.borderLeft = `3px solid ${t.labels[0].color === 'blue' ? '#0A84FF' : '#BF5AF2'}`; } pill.innerText = t.title; pill.onclick = () => openTaskModal(t.columnId, t.id); cell.appendChild(pill); });
                 grid.appendChild(cell);
@@ -3224,35 +3224,21 @@
         }).join('');
     }
 
-    async function downloadAttachment(id) {
+    function downloadAttachment(id) {
         const att = currentEditingTask.attachments.find(a => a.id === id);
         if (!att) return;
         
-        let dlUrl = att.viewerUrl || att.url;
-        if (dlUrl.includes('drive.google.com') || dlUrl.includes('lh3.googleusercontent.com')) {
-            const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
-            if (fid) dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}&confirm=t`;
-        }
-
         showToast("Starting download...");
         
-        try {
-            // PWA workaround: Try fetching direct URL as a Blob to force local download without navigating away
-            const directUrl = toDirectDriveUrl(att.url);
-            const res = await fetch(directUrl, { mode: 'cors' });
-            if (!res.ok) throw new Error("CORS fetch failed");
-            const blob = await res.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = blobUrl;
-            a.download = att.name;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(blobUrl);
-            a.remove();
-        } catch (e) {
-            // Fallback for non-images or files that block CORS
+        let dlUrl = att.viewerUrl || att.url;
+        const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        
+        if (fid) {
+            // Force Google Drive links to use the export endpoint and navigate directly.
+            // Navigating the top-level window bypasses PWA popup blockers and triggers the OS native download UI.
+            window.location.href = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+        } else {
+            // Fallback for standard direct links
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = dlUrl;
@@ -3432,9 +3418,12 @@
                 <div style="flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:10px 14px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <span style="font-weight:700; font-size:0.85rem;">${c.user || 'Me'}</span>
-                        <span style="color:var(--text-muted); font-size:0.75rem;">${c.time}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="color:var(--text-muted); font-size:0.75rem;">${c.time}</span>
+                            <button type="button" onclick="deleteComment('${c.id}')" style="background:none; border:none; color:#FF3B30; font-size:1.2rem; cursor:pointer; padding:0; line-height:0.8; transition:0.2s;" title="Delete Comment" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&times;</button>
+                        </div>
                     </div>
-                    <div style="font-size:0.9rem; line-height:1.5; color:#e0e0e0;">${c.text}</div>
+                    <div style="font-size:0.9rem; line-height:1.5; color:#e0e0e0; white-space: pre-wrap;">${c.text}</div>
                 </div>
             </div>`;
         }).join('');
@@ -3458,7 +3447,20 @@
             if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
         }
         renderComments();
-        showToast('Comment posted!');
+    }
+
+    async function deleteComment(id) {
+        const ok = await showConfirm('Delete Comment', 'Are you sure you want to delete this comment?', 'Delete', true);
+        if (ok) {
+            currentEditingTask.comments = currentEditingTask.comments.filter(c => c.id !== id);
+            const taskId = document.getElementById('taskModalTaskId').value;
+            if (taskId) {
+                const idx = appData.tasks.findIndex(t => t.id === taskId);
+                if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
+            }
+            renderComments();
+            showToast('Comment deleted.');
+        }
     }
 
     function copyTask() { showToast("Task copied to clipboard!"); }
