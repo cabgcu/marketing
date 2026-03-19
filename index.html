@@ -3341,53 +3341,13 @@
                 </div>
                 <div class="attachment-actions">
                     <a href="${viewUrl}" target="_blank" class="attachment-btn view" onclick="event.stopPropagation()">${viewLabel}</a>
-                    ${!isLink ? `<button type="button" class="attachment-btn dl" onclick="event.preventDefault(); event.stopPropagation(); downloadAttachment('${att.id}')">Download</button>` : ''}
+                    ${!isLink ? `<a href="${dlUrl}" target="_blank" class="attachment-btn dl" onclick="event.stopPropagation(); setTimeout(() => showToast('Opening download...'), 500);">Download</a>` : ''}
                     <button type="button" class="attachment-btn rename-btn" onclick="event.preventDefault(); event.stopPropagation(); renameAttachment('${att.id}')" title="Rename">✏️</button>
                     <button type="button" class="attachment-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteAttachment('${att.id}')" title="Delete">✕</button>
                 </div>
             </div>
             `;
         }).join('');
-    }
-
-    async function downloadAttachment(id) {
-        const att = currentEditingTask.attachments.find(a => a.id === id);
-        if (!att) return;
-        
-        showToast("Preparing download...");
-        
-        try {
-            // Attempt 1: Fetch the file directly and force a local save.
-            // This works perfectly for images as our direct URL has generous CORS headers.
-            const response = await fetch(att.url);
-            if (!response.ok) throw new Error("CORS or network error");
-            
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = blobUrl;
-            a.download = att.name || 'download';
-            document.body.appendChild(a);
-            a.click();
-            
-            setTimeout(() => {
-                window.URL.revokeObjectURL(blobUrl);
-                a.remove();
-            }, 1000);
-            
-            showToast("Download started!");
-        } catch (error) {
-            console.warn("Direct fetch failed, falling back to safe viewer.", error);
-            // Attempt 2: Large files (like videos) or strict Google Docs get blocked by CORS.
-            // If we try to force a file stream in iOS, the PWA freezes on a white screen.
-            // Safe fallback: Open the interactive Google Drive page so the user can use the native download button.
-            showToast("Opening securely in browser...");
-            setTimeout(() => {
-                window.open(att.viewerUrl || att.url, '_blank');
-            }, 800);
-        }
     }
 
     async function deleteAttachment(id) {
