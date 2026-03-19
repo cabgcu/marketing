@@ -3350,30 +3350,44 @@
         }).join('');
     }
 
-    function downloadAttachment(id) {
+    async function downloadAttachment(id) {
         const att = currentEditingTask.attachments.find(a => a.id === id);
         if (!att) return;
         
-        showToast("Fetching file...");
+        showToast("Preparing download...");
         
-        let dlUrl = att.viewerUrl || att.url;
-        const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        if (fid) {
-            dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+        try {
+            // Attempt 1: Fetch the file directly and force a local save.
+            // This works perfectly for images as our direct URL has generous CORS headers.
+            const response = await fetch(att.url);
+            if (!response.ok) throw new Error("CORS or network error");
+            
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.download = att.name || 'download';
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                window.URL.revokeObjectURL(blobUrl);
+                a.remove();
+            }, 1000);
+            
+            showToast("Download started!");
+        } catch (error) {
+            console.warn("Direct fetch failed, falling back to safe viewer.", error);
+            // Attempt 2: Large files (like videos) or strict Google Docs get blocked by CORS.
+            // If we try to force a file stream in iOS, the PWA freezes on a white screen.
+            // Safe fallback: Open the interactive Google Drive page so the user can use the native download button.
+            showToast("Opening securely in browser...");
+            setTimeout(() => {
+                window.open(att.viewerUrl || att.url, '_blank');
+            }, 800);
         }
-
-        // The Hidden iFrame Trick for iOS PWAs
-        // This processes the Google Drive redirect silently in the background.
-        // Once the file stream starts, iOS will show the native download prompt over the app!
-        let iframe = document.getElementById('hiddenDownloader');
-        if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.id = 'hiddenDownloader';
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-        }
-        
-        iframe.src = dlUrl;
     }
 
     async function deleteAttachment(id) {
