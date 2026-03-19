@@ -2698,6 +2698,55 @@
         reader.readAsText(file);
     }
 
+    async function createCloudBackup(silent = false) {
+        if (!isDatabaseLoaded || appData.boards.length === 0) {
+            if (!silent) showToast("Cannot backup an empty workspace.");
+            return;
+        }
+        if (!silent) showToast("Saving backup to cloud...");
+        try {
+            const backupData = JSON.parse(JSON.stringify(appData));
+            backupData._backupTimestamp = new Date().toLocaleString();
+            
+            // Upsert the backup into ID: 2 so it doesn't overwrite live data (ID: 1)
+            const { error } = await _supabase.from('app_state').upsert({ id: 2, data: backupData });
+            if (error) throw error;
+            if (!silent) showToast("☁️ Cloud backup saved successfully!");
+        } catch (err) {
+            console.error("Backup failed:", err);
+            if (!silent) showToast("Cloud backup failed. Check connection.");
+        }
+    }
+
+    async function restoreCloudBackup() {
+        const ok = await showConfirm('Restore Backup', 'Are you sure? This will completely overwrite your current workspace with the last saved cloud backup.', 'Fetch Backup', true);
+        if (!ok) return;
+        
+        showToast("Fetching backup from cloud...");
+        try {
+            const { data, error } = await _supabase.from('app_state').select('data').eq('id', 2).single();
+            if (error || !data || !data.data) {
+                showToast("No cloud backup found!");
+                return;
+            }
+            
+            const backupData = data.data;
+            const timestamp = backupData._backupTimestamp || 'Unknown time';
+            
+            const confirmRestore = await showConfirm('Confirm Restore', `Found backup saved on:\n${timestamp}\n\nProceed with restore?`, 'Yes, Restore', true);
+            if (confirmRestore) {
+                appData = backupData;
+                await saveData(); // Overwrite id:1 with the backup data
+                showToast("Backup restored successfully! 🎉");
+                renderTopbar();
+                renderApp();
+            }
+        } catch (err) {
+            console.error("Restore failed:", err);
+            showToast("Failed to restore backup.");
+        }
+    }
+
     let draggedTaskId = null;
 
     function clearDragStyles() {
