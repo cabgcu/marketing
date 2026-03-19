@@ -3323,13 +3323,6 @@
                 if (att.viewerUrl) viewUrl = att.viewerUrl;
             }
             
-            // Formulate the direct export link for PWA-safe downloads
-            let dlUrl = att.viewerUrl || att.url;
-            const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
-            if (fid) {
-                dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
-            }
-
             const isLink = !isNativeUpload;
             const viewLabel = isLink ? 'Open' : 'View';
             return `
@@ -3341,13 +3334,93 @@
                 </div>
                 <div class="attachment-actions">
                     <a href="${viewUrl}" target="_blank" class="attachment-btn view" onclick="event.stopPropagation()">${viewLabel}</a>
-                    ${!isLink ? `<a href="${dlUrl}" target="_blank" class="attachment-btn dl" onclick="event.stopPropagation(); setTimeout(() => showToast('Opening download...'), 500);">Download</a>` : ''}
+                    ${!isLink ? `<button type="button" class="attachment-btn dl" onclick="event.preventDefault(); event.stopPropagation(); downloadAttachment('${att.id}')">Download</button>` : ''}
                     <button type="button" class="attachment-btn rename-btn" onclick="event.preventDefault(); event.stopPropagation(); renameAttachment('${att.id}')" title="Rename">✏️</button>
                     <button type="button" class="attachment-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteAttachment('${att.id}')" title="Delete">✕</button>
                 </div>
             </div>
             `;
         }).join('');
+    }
+
+    async function downloadAttachment(id) {
+        const att = currentEditingTask.attachments.find(a => a.id === id);
+        if (!att) return;
+        
+        showToast("Preparing download...");
+        
+        let directUrl = att.url;
+        let isNativeUpload = !att.isLink || att.size === 'Google Drive';
+
+        // 1. Try invisible fetch for images (lh3 links support CORS)
+        if (isNativeUpload && directUrl.includes('lh3.googleusercontent.com')) {
+            try {
+                const res = await fetch(directUrl);
+                if (!res.ok) throw new Error("Fetch failed");
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = att.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { window.URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+                showToast("Download started!");
+                return;
+            } catch (e) {
+                console.warn("Fetch fallback triggered", e);
+            }
+        }
+
+        // 2. Video / Large File Fallback Logic
+        let dlUrl = att.viewerUrl || att.url;
+        const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        if (fid) {
+            dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+        }
+
+        // Check if user is inside an iOS PWA (Home Screen App)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (isIOS && isPWA) {
+            // iOS PWAs white-screen on Drive redirect loops. 
+            // We copy the safe viewer link to the clipboard instead to prevent crashing.
+            let safeUrl = att.viewerUrl || att.url;
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(safeUrl);
+                } else {
+                    throw new Error("Clipboard API fallback");
+                }
+            } catch(err) {
+                const fallbackInput = document.createElement('input');
+                fallbackInput.value = safeUrl;
+                document.body.appendChild(fallbackInput);
+                fallbackInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(fallbackInput);
+            }
+
+            showDialog({
+                title: 'Video / Large File',
+                message: 'Apple prevents large files and videos from downloading directly inside Home Screen apps.\n\n✅ The secure link has been copied to your clipboard!\n\nPlease open your Safari browser app and paste the link to download the file.',
+                type: 'alert',
+                confirmText: 'Got it'
+            });
+        } else {
+            // Desktop or standard browser (Safari/Chrome) handles redirects perfectly
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = dlUrl;
+            a.target = '_blank';
+            a.download = att.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast("Download started!");
+        }
     }
 
     async function deleteAttachment(id) {
