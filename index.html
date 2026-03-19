@@ -516,7 +516,7 @@
 
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        #toast { visibility: hidden; min-width: 250px; background: var(--gradient-accent); color: #fff; text-align: center; border-radius: var(--radius-button); padding: 12px 20px; position: fixed; z-index: 20000; left: 50%; bottom: 80px; transform: translateX(-50%); font-weight: 600; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; pointer-events: none;}
+        #toast { visibility: hidden; min-width: 250px; background: var(--gradient-accent); color: #fff; text-align: center; border-radius: var(--radius-button); padding: 12px 20px; position: fixed; z-index: 9999999; left: 50%; bottom: 80px; transform: translateX(-50%); font-weight: 600; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; pointer-events: none;}
         #toast.show { visibility: visible; opacity: 1; bottom: 100px; }
         
         .label-tag { background: rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: #fff; border: 1px solid rgba(255,255,255,0.2); display: inline-flex; align-items: center; gap: 5px;}
@@ -1404,12 +1404,21 @@
         }
     }
 
+    let isDatabaseLoaded = false;
+
     async function initData() {
         try {
             const { data, error } = await _supabase.from('app_state').select('data').eq('id', 1).single();
             if (error) {
-                if (error.code === 'PGRST116') { setupDefaults(); }
-                else { console.error("Supabase load error:", error); setupDefaults(); }
+                if (error.code === 'PGRST116') { 
+                    // Truly empty database. Safe to setup defaults and save to cloud.
+                    setupDefaults(true); 
+                    isDatabaseLoaded = true;
+                } else { 
+                    console.error("Supabase load error:", error); 
+                    showToast("Database connection error. Please refresh the page.");
+                    return; // CRITICAL: Stop execution, do NOT overwrite data
+                }
             } else if (data && data.data) {
                 appData = data.data;
                 if (!appData.boards)     appData.boards = [];
@@ -1457,14 +1466,18 @@
                         });
                     }
                 });
-                if (appData.boards.length === 0) setupDefaults();
+                if (appData.boards.length === 0) setupDefaults(false);
+                isDatabaseLoaded = true;
             } else {
-                setupDefaults();
+                setupDefaults(true);
+                isDatabaseLoaded = true;
             }
         } catch (err) {
             console.error("Supabase request failed:", err);
-            if (appData.boards.length === 0) setupDefaults();
+            showToast("Network error. Failed to load database. Please refresh.");
+            return; // CRITICAL: Stop execution, do NOT overwrite data
         }
+        
         if (!appData.activeBoardId && appData.boards.length > 0) {
             appData.activeBoardId = appData.boards[0].id;
         }
@@ -1473,7 +1486,7 @@
         updatePWAManifest();
     }
 
-    function setupDefaults() {
+    function setupDefaults(shouldSave = false) {
         const defaultBoardId = generateId();
         const colBacklog = generateId();
         const colInProgress = generateId();
@@ -1524,10 +1537,17 @@
             }],
             activeBoardId: defaultBoardId
         };
-        saveData();
+        
+        // Only save to cloud if we explicitly confirmed the DB is empty
+        if (shouldSave) saveData();
     }
 
     function checkEmailStep() {
+        if (!isDatabaseLoaded) { 
+            showToast("Database is still loading or failed. Please refresh."); 
+            return; 
+        }
+        
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
         
         if (email === 'admin' || email === '') {
@@ -3204,6 +3224,14 @@
                 metaText = `${att.date}${sizeStr ? ' \u2022 ' + sizeStr : ''}`;
                 if (att.viewerUrl) viewUrl = att.viewerUrl;
             }
+            
+            // Formulate the direct export link for PWA-safe downloads
+            let dlUrl = att.viewerUrl || att.url;
+            const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
+            if (fid) {
+                dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+            }
+
             const isLink = !isNativeUpload;
             const viewLabel = isLink ? 'Open' : 'View';
             return `
@@ -3215,39 +3243,13 @@
                 </div>
                 <div class="attachment-actions">
                     <a href="${viewUrl}" target="_blank" class="attachment-btn view" onclick="event.stopPropagation()">${viewLabel}</a>
-                    ${!isLink ? `<button type="button" class="attachment-btn dl" onclick="event.preventDefault(); event.stopPropagation(); downloadAttachment('${att.id}')">Download</button>` : ''}
+                    ${!isLink ? `<a href="${dlUrl}" target="_blank" class="attachment-btn dl" onclick="event.stopPropagation(); setTimeout(() => showToast('Opening download...'), 500);">Download</a>` : ''}
                     <button type="button" class="attachment-btn rename-btn" onclick="event.preventDefault(); event.stopPropagation(); renameAttachment('${att.id}')" title="Rename">✏️</button>
                     <button type="button" class="attachment-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteAttachment('${att.id}')" title="Delete">✕</button>
                 </div>
             </div>
             `;
         }).join('');
-    }
-
-    function downloadAttachment(id) {
-        const att = currentEditingTask.attachments.find(a => a.id === id);
-        if (!att) return;
-        
-        showToast("Starting download...");
-        
-        let dlUrl = att.viewerUrl || att.url;
-        const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        
-        if (fid) {
-            // Force Google Drive links to use the export endpoint and navigate directly.
-            // Navigating the top-level window bypasses PWA popup blockers and triggers the OS native download UI.
-            window.location.href = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
-        } else {
-            // Fallback for standard direct links
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = dlUrl;
-            a.download = att.name;
-            a.target = '_blank';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        }
     }
 
     async function deleteAttachment(id) {
@@ -4011,6 +4013,7 @@
     });
 
     function tryAutoLogin() {
+        if (!isDatabaseLoaded) return;
         const savedEmail = localStorage.getItem('cab_auth_email');
         const savedPass = localStorage.getItem('cab_auth_pass');
         if (savedEmail !== null && savedPass !== null) {
@@ -4024,6 +4027,16 @@
         _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         await initData();
         tryAutoLogin();
+
+        // Anti-Tamper: Prevent users from deleting the login overlay in DevTools
+        setInterval(() => {
+            if (!isAuthenticated) {
+                const overlay = document.getElementById('login-overlay');
+                if (!overlay || window.getComputedStyle(overlay).display === 'none' || window.getComputedStyle(overlay).opacity === '0') {
+                    document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; color:#FF3B30; font-weight:800; font-family:sans-serif; background:#050505; font-size:1.2rem;">Security Error: Authentication overlay tampered. Access Denied.</div>';
+                }
+            }
+        }, 1000);
 
         // Enable horizontal auto-scroll when dragging cards near the edges of the board
         const boardContainer = document.getElementById('view-board');
