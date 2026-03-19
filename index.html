@@ -2427,6 +2427,32 @@
         }
     }
 
+    function addToGCal() {
+        if (!currentEditingTask || !currentEditingTask.dueDate) {
+            showToast("Please set an Event Date & Time first!");
+            return;
+        }
+
+        const title = encodeURIComponent(currentEditingTask.title || 'CAB Event');
+        
+        // Strip HTML tags and convert line breaks for the calendar description
+        let cleanDesc = (currentEditingTask.description || '').replace(/<br\s*[\/]?>/gi, '\n').replace(/<[^>]*>?/gm, '');
+        const details = encodeURIComponent(cleanDesc);
+        const location = encodeURIComponent(currentEditingTask.eventLocation || '');
+
+        const d = new Date(currentEditingTask.dueDate);
+        
+        // Google Calendar requires UTC format: YYYYMMDDTHHMMSSZ
+        const startStr = d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        
+        // Default the event duration to 1 hour
+        const endD = new Date(d.getTime() + 60 * 60 * 1000); 
+        const endStr = endD.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+        const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&location=${location}`;
+        window.open(url, '_blank');
+    }
+
     function applyBranding() {
         const logoEl = document.getElementById('brand-logo');
         const loginLogoEl = document.getElementById('login-brand-logo');
@@ -3315,13 +3341,39 @@
                 </div>
                 <div class="attachment-actions">
                     <a href="${viewUrl}" target="_blank" class="attachment-btn view" onclick="event.stopPropagation()">${viewLabel}</a>
-                    ${!isLink ? `<a href="${dlUrl}" target="_blank" class="attachment-btn dl" onclick="event.stopPropagation(); setTimeout(() => showToast('Opening download...'), 500);">Download</a>` : ''}
+                    ${!isLink ? `<button type="button" class="attachment-btn dl" onclick="event.preventDefault(); event.stopPropagation(); downloadAttachment('${att.id}')">Download</button>` : ''}
                     <button type="button" class="attachment-btn rename-btn" onclick="event.preventDefault(); event.stopPropagation(); renameAttachment('${att.id}')" title="Rename">✏️</button>
                     <button type="button" class="attachment-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteAttachment('${att.id}')" title="Delete">✕</button>
                 </div>
             </div>
             `;
         }).join('');
+    }
+
+    function downloadAttachment(id) {
+        const att = currentEditingTask.attachments.find(a => a.id === id);
+        if (!att) return;
+        
+        showToast("Fetching file...");
+        
+        let dlUrl = att.viewerUrl || att.url;
+        const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
+        if (fid) {
+            dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+        }
+
+        // The Hidden iFrame Trick for iOS PWAs
+        // This processes the Google Drive redirect silently in the background.
+        // Once the file stream starts, iOS will show the native download prompt over the app!
+        let iframe = document.getElementById('hiddenDownloader');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'hiddenDownloader';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+        
+        iframe.src = dlUrl;
     }
 
     async function deleteAttachment(id) {
