@@ -3825,6 +3825,24 @@
                         }
                         break;
                     }
+                    case 'add_checklist_template': {
+                        const tpl = (appData.settings.checklistTemplates||[]).find(t => t.id === act.value);
+                        if (tpl && tpl.items) {
+                            if (!task.checklist) task.checklist = [];
+                            let added = false;
+                            tpl.items.forEach(item => {
+                                if (!task.checklist.find(c => c.text.toLowerCase() === item.toLowerCase())) { 
+                                    task.checklist.push({ id: generateId(), text: item, done: false, dueDate: '' }); 
+                                    added = true; 
+                                }
+                            });
+                            if (added) { 
+                                modified = true; showToast(`🤖 Applied template "${tpl.name}"`); 
+                                if (isCurrentEditing) renderChecklist();
+                            }
+                        }
+                        break;
+                    }
                     case 'set_priority': {
                         if (task.priority !== act.value) { 
                             task.priority = act.value; 
