@@ -788,7 +788,41 @@
             
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
+            
+            /* CABBIE AI CHATBOT MOBILE Adjustments */
+            #cabbie-window { bottom: calc(90px + env(safe-area-inset-bottom)) !important; right: 10px !important; width: calc(100vw - 20px) !important; }
+            #cabbie-fab { bottom: calc(100px + env(safe-area-inset-bottom)) !important; right: 15px !important; width: 50px !important; height: 50px !important; font-size: 1.4rem !important; }
         }
+
+        /* CABBIE AI CHATBOT CSS */
+        #cabbie-fab {
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+            background: var(--gradient-accent); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+            cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 9999;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #cabbie-fab:hover { transform: scale(1.1); }
+        #cabbie-window {
+            position: fixed; bottom: 100px; right: 30px; width: 360px; max-width: calc(100vw - 40px);
+            height: 500px; max-height: calc(100vh - 120px); background: rgba(20,20,20,0.85);
+            backdrop-filter: blur(40px) saturate(150%); -webkit-backdrop-filter: blur(40px) saturate(150%);
+            border: 1px solid var(--glass-border); border-radius: 24px; display: none;
+            flex-direction: column; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            overflow: hidden; opacity: 0; transform: translateY(20px); transition: all 0.3s ease;
+        }
+        #cabbie-window.show { display: flex; opacity: 1; transform: translateY(0); }
+        .cabbie-header { padding: 15px 20px; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+        .cabbie-messages { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .cabbie-msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.4; word-break: break-word;}
+        .cabbie-msg.user { background: #0A84FF; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .cabbie-msg.ai { background: rgba(255,255,255,0.1); color: white; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        .cabbie-input-area { padding: 15px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 10px; background: rgba(0,0,0,0.2); }
+        .cabbie-input { flex-grow: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 10px 15px; color: white; outline: none; font-size: 0.9rem; transition: 0.2s;}
+        .cabbie-input:focus { border-color: #0A84FF; background: rgba(255,255,255,0.08); }
+        .cabbie-send { background: var(--gradient-accent); border: none; border-radius: 50%; width: 40px; height: 40px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;}
+        .cabbie-send:hover { transform: scale(1.05); }
+        .cabbie-typing { font-style: italic; color: var(--text-muted); font-size: 0.8rem; padding: 0 10px; }
     </style>
 </head>
 <body>
@@ -850,6 +884,7 @@
                 <span class="search-icon">🔍</span>
                 <input type="text" class="search-input" id="globalSearch" placeholder="Search cards..." oninput="handleSearch(this.value)" autocomplete="off">
             </div>
+            <button onclick="smartAddTask()" class="btn-outline" style="border-color: #0A84FF; color: #0A84FF; font-weight: 800;">✨ Smart Add</button>
             <button onclick="openModal('automationsModal')" class="btn-outline" style="border-color: #BF5AF2; color: #BF5AF2; font-weight: 800;">✨ Automations</button>
             <button onclick="switchView('settings')" class="btn-outline">Settings</button>
         </div>
@@ -897,6 +932,29 @@
                     <button class="btn-action" onclick="addUser()" style="flex-shrink: 0;">Add User</button>
                 </div>
                 <div id="userListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+
+            <div class="settings-card admin-only">
+                <h3 class="section-title">Checklist Templates</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Create reusable checklist templates to automatically apply using Automations or manually in cards.</p>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="newTemplateName" class="modern-input" placeholder="Template Name (e.g. Standard Event)">
+                    <textarea id="newTemplateItems" class="modern-input" rows="4" placeholder="Item 1&#10;Item 2&#10;Item 3 (one per line)" style="resize: vertical;"></textarea>
+                    <button class="btn-action" onclick="addChecklistTemplate()">Save Template</button>
+                </div>
+                <div id="checklistTemplatesListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+
+            <div class="settings-card admin-only">
+                <h3 class="section-title">✨ AI Integration</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Your OpenRouter API Key is stored securely in Supabase. This powers the AI features using free models.</p>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="password" id="aiApiKeyInput" class="modern-input" placeholder="sk-or-v1-..." style="flex-grow: 1;">
+                    <button class="btn-action" onclick="saveAIKey()">Save Key</button>
+                </div>
+                <label class="stat-label">Cabbie AI Training Data</label>
+                <textarea id="aiTrainingDataInput" class="modern-input" rows="4" placeholder="Enter CAB mission, typical due dates, past captions, or rules for Cabbie AI here..." style="resize: vertical;"></textarea>
+                <button class="btn-outline" style="width: 100%; margin-top: 10px; border-color: #BF5AF2; color: #BF5AF2;" onclick="saveAITraining()">Save Training Data</button>
             </div>
 
             <div class="settings-card admin-only">
@@ -973,145 +1031,172 @@
     </div>
 </div>
 
-<!-- MODALS -->
-<div id="newBoardModal" class="modal-overlay" onclick="closeModal(event, 'newBoardModal')">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="close-modal" onclick="closeModal(null, 'newBoardModal')">&times;</button>
-        <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Create New Board</h2>
-        <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">Organize a new project or create a workspace for a specific academic year.</div>
-        <form onsubmit="handleNewBoard(event)">
-            <label class="stat-label">Board Name</label>
-            <input type="text" id="boardNameInput" class="modern-input" placeholder="e.g. Website Redesign" required style="margin-bottom: 20px;">
-            <label class="stat-label">Board Owner / Assigned To</label>
-            <input type="text" id="boardAssignedInput" class="modern-input" placeholder="e.g. Jane Doe" style="margin-bottom: 20px;">
-            <label class="stat-label">Academic Year / Category</label>
-            <input type="text" id="boardYearInput" class="modern-input" placeholder="e.g. 2026-2027" required>
-            <button type="submit" class="btn-action" style="width: 100%; margin-top: 25px; padding: 15px;">Create Workspace</button>
-        </form>
+<!-- CABBIE AI CHATBOT -->
+<div id="cabbie-fab" style="display: none;" onclick="toggleCabbie()">
+    <img id="cabbie-fab-logo" src="" style="width: 100%; height: 100%; border-radius: 50%; display: none; object-fit: cover;" alt="CAB">
+    <span id="cabbie-fab-emoji" style="font-size: 28px; line-height: 1;">🤖</span>
+</div>
+<div id="cabbie-window">
+    <div class="cabbie-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; background: var(--gradient-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(191,90,242,0.4); overflow: hidden;">
+                <img id="cabbie-header-logo" src="" style="width: 100%; height: 100%; display: none; object-fit: cover;" alt="CAB">
+                <span id="cabbie-header-emoji">🤖</span>
+            </div>
+            <div>
+                <div style="font-size: 1.1rem; line-height: 1; color: #fff;">Cabbie AI</div>
+                <div style="font-size: 0.75rem; color: #34C759; font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 4px;"><span style="display: inline-block; width: 6px; height: 6px; background: #34C759; border-radius: 50%; box-shadow: 0 0 6px #34C759;"></span> Online</div>
+            </div>
+        </div>
+        <button onclick="toggleCabbie()" style="background: rgba(255,255,255,0.05); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: 0.2s;">&times;</button>
+    </div>
+    <div class="cabbie-messages" id="cabbieMessages"></div>
+    <div class="cabbie-input-area">
+        <input type="text" id="cabbieInput" class="cabbie-input" placeholder="Ask Cabbie to create a task..." onkeypress="if(event.key==='Enter') sendCabbieMessage()" autocomplete="off">
+        <button class="cabbie-send" onclick="sendCabbieMessage()">➤</button>
     </div>
 </div>
 
+<!-- MODALS -->
 <div id="taskModal" class="modal-overlay" onclick="closeModal(event, 'taskModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'taskModal')">&times;</button>
-        <form id="taskForm" onsubmit="handleSaveTask(event)">
-            <div id="taskModalCover" class="modal-cover">
-                <button type="button" class="remove-cover-btn" onclick="removeCover()">Remove Cover</button>
-            </div>
+        <div id="taskModalCover" class="modal-cover">
+            <button class="remove-cover-btn" onclick="removeCover()">Remove Cover</button>
+        </div>
+        <form onsubmit="handleSaveTask(event)">
             <input type="hidden" id="taskModalColId">
             <input type="hidden" id="taskModalTaskId">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 5px;">
-                <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modern-input" style="font-size: 1.6rem !important; font-weight: 800; padding: 8px 0; background: transparent; border-color: transparent; border-bottom: 1px solid transparent; border-radius: 0; transition: 0.2s;" placeholder="Task Name" required onfocus="this.style.borderBottomColor='var(--glass-border)'" onblur="this.style.borderBottomColor='transparent'">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <div class="badge" id="taskModalListName">List Name</div>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 25px;">in list <span id="taskModalListName" style="text-decoration: underline; color: #fff;">List Name</span></p>
+            
             <div class="modal-grid">
-                <div class="modal-main">
-                    <div id="modalTabDetails">
-                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Members</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskMembersList">
-                                    <button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" onclick="addMember()">+</button>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Labels</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskLabelsList">
-                                    <button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" onclick="addLabel()">+</button>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Priority</div>
-                                <select id="taskPriority" onchange="scheduleAutoSave()" class="modern-input" style="height:40px; padding:0 36px 0 14px; font-size:16px;">
-                                    <option value="">None</option>
-                                    <option value="high">🔴 High</option>
-                                    <option value="med">🟡 Medium</option>
-                                    <option value="low">🟢 Low</option>
-                                </select>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
-                                    <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
-                                </div>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div class="stat-label" style="margin-top: 0;">Event Location</div>
-                                <input type="text" id="taskEventLocation" oninput="scheduleAutoSave()" class="modern-input" placeholder="e.g. The Quad" style="padding: 6px 12px; font-size: 16px;">
-                            </div>
+                <div class="modal-main" id="modalTabDetails">
+                    <input type="text" id="taskTitleInput" class="modern-input" style="font-size: 1.6rem !important; font-weight: 800; border: none; padding: 0; background: transparent; margin-bottom: 10px;" placeholder="Task Title" onchange="scheduleAutoSave()">
+                    
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div>
+                            <div class="stat-label" style="margin-top: 0;">Members</div>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskMembersList"></div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <h3 class="section-title">Description</h3>
-                            <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); overflow: hidden;">
-                                <div style="display: flex; gap: 5px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); flex-wrap: wrap;">
-                                    <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold" style="min-height:44px;min-width:44px;"><b>B</b></button>
-                                    <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic" style="min-height:44px;min-width:44px;"><i>I</i></button>
-                                    <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 4px 5px;"></div>
-                                    <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link" style="min-height:44px;">🔗 Link</button>
-                                    <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link" style="min-height:44px;">🚫 Unlink</button>
-                                </div>
-                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto; word-break: break-word;" onclick="handleRichTextClick(event)"></div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div class="stat-label" style="margin: 0;">Labels</div>
+                                <button type="button" onclick="aiAutoTag()" style="border: 1px solid rgba(10,132,255,0.4); background: rgba(10,132,255,0.1); color: #0A84FF; border-radius: 6px; padding: 2px 8px; font-size: 0.65rem; font-weight: 800; cursor: pointer; margin-left: 10px;">✨ Auto-Tag</button>
                             </div>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskLabelsList"></div>
                         </div>
-                        <div id="customFieldsSection" style="margin-top: 20px;">
-                            <h3 class="section-title">Custom Fields</h3>
-                            <div class="form-row" id="customFieldsContainer" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);"></div>
-                        </div>
-                        <div id="attachmentsSection" style="margin-top: 20px;">
-                            <h3 class="section-title">File Links &amp; Attachments</h3>
-                            <div id="attachmentsContainer"></div>
-                        </div>
-                        <div style="margin-top: 20px;">
-                            <h3 class="section-title">Posting Schedule</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
-                                <div>
-                                    <label class="stat-label" style="margin-top:0; color: #BF5AF2;">IG Story</label>
-                                    <input type="text" id="postStory" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
-                                </div>
-                                <div>
-                                    <label class="stat-label" style="margin-top:0; color: #0A84FF;">IG Photo</label>
-                                    <input type="text" id="postPhoto" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
-                                </div>
-                                <div>
-                                    <label class="stat-label" style="margin-top:0; color: #FF2D55;">IG Reel</label>
-                                    <input type="text" id="postReel" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
-                                </div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3 class="section-title">Marketing Checklist</h3>
-                                <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.8rem; border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                                <span style="font-size: 0.85rem; font-weight: bold; width: 35px; color: var(--text-muted);" id="checklistPercent">0%</span>
-                                <div class="progress-container" style="margin-bottom: 0;">
-                                    <div class="progress-bar" id="checklistProgress"></div>
-                                </div>
-                            </div>
-                            <div id="checklistContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                            <div id="checklistAddContainer" style="margin-top: 15px; display: none; gap: 10px; flex-wrap: wrap; align-items: center;">
-                                <input type="text" id="newChecklistInput" class="modern-input" placeholder="Add an item..." style="flex-grow: 1; padding: 8px 12px; font-size: 16px; min-width: 120px;">
-                                <input type="date" id="newChecklistDate" class="modern-input" style="width: auto; padding: 8px 12px; font-size: 16px; color: var(--text-muted); flex-shrink: 0;">
-                                <button type="button" class="btn-action" style="padding: 8px 15px; flex-shrink: 0; min-height: 44px;" onclick="confirmAddChecklistItem()">Add</button>
-                                <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0; min-height: 44px;" onclick="hideChecklistInput()">Cancel</button>
-                            </div>
-                            <button type="button" class="sidebar-btn" id="showChecklistInputBtn" style="margin-top: 10px; width: fit-content;" onclick="showChecklistInput()">+ Add an item</button>
-                        </div>
-                        <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3 class="section-title">Activity</h3>
-                            </div>
-                            <div class="activity-item" style="margin-top: 15px;">
-                                <div class="avatar" id="currentUserAvatar">Me</div>
-                                <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
-                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitComment(); }"></textarea>
-                                </div>
-                            </div>
-                            <div id="activityLog" style="margin-top: 20px;"></div>
+                        <div>
+                            <div class="stat-label" style="margin-top: 0;">Priority</div>
+                            <select id="taskPriority" class="modern-input" style="padding: 4px 10px; font-size: 0.85rem !important; height: auto;" onchange="scheduleAutoSave()">
+                                <option value="">None</option><option value="high">🔴 High</option><option value="med">🟡 Medium</option><option value="low">🟢 Low</option>
+                            </select>
                         </div>
                     </div>
+
+                    <div id="customFieldsSection" style="margin-top: 15px; display: none;">
+                        <h3 class="section-title">Custom Fields</h3>
+                        <div id="customFieldsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border);"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+                        <div style="flex-grow: 1;">
+                            <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
+                            <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; font-size: 16px;">
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <div class="stat-label" style="margin-top: 0;">Event Location</div>
+                            <input type="text" id="taskEventLocation" oninput="scheduleAutoSave()" class="modern-input" placeholder="e.g. The Quad" style="padding: 6px 12px; font-size: 16px;">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3 class="section-title" style="margin: 0;">Description</h3>
+                            <button type="button" onclick="generateAICaption()" style="border: 1px solid rgba(191,90,242,0.4); background: rgba(191,90,242,0.1); color: #BF5AF2; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer;">✨ AI Caption</button>
+                        </div>
+                        <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); overflow: hidden;">
+                            <div style="display: flex; gap: 5px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); flex-wrap: wrap;">
+                                <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold" style="min-height:44px;min-width:44px;"><b>B</b></button>
+                                <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic" style="min-height:44px;min-width:44px;"><i>I</i></button>
+                                <button type="button" class="rt-btn" onclick="formatText('underline')" title="Underline" style="min-height:44px;min-width:44px;"><u>U</u></button>
+                                <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 5px;"></div>
+                                <button type="button" class="rt-btn" onclick="formatText('insertUnorderedList')" title="Bullet List" style="min-height:44px;min-width:44px;">•</button>
+                                <button type="button" class="rt-btn" onclick="formatText('insertOrderedList')" title="Number List" style="min-height:44px;min-width:44px;">1.</button>
+                                <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 0 5px;"></div>
+                                <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link" style="min-height:44px;min-width:44px;">🔗</button>
+                                <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link" style="min-height:44px;min-width:44px;">🚫</button>
+                            </div>
+                            <div id="taskContentInput" class="rich-text-editor" contenteditable="true" placeholder="Add event details, links, or marketing brief..." style="padding: 15px; min-height: 120px; outline: none; font-size: 0.95rem; line-height: 1.5; color: #e0e0e0;" oninput="scheduleAutoSave()" onclick="handleRichTextClick(event)"></div>
+                        </div>
+                    </div>
+
+                    <div id="attachmentsSection" style="margin-top: 20px;">
+                        <h3 class="section-title">File Links &amp; Attachments</h3>
+                        <div id="attachmentsContainer"></div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h3 class="section-title" style="margin: 0;">Posting Schedule</h3>
+                            <button type="button" onclick="aiAutoSchedule()" style="border: 1px solid rgba(191,90,242,0.4); background: rgba(191,90,242,0.1); color: #BF5AF2; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer;">✨ Auto-Schedule</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                            <div>
+                                <label class="stat-label" style="margin-top:0; color: #BF5AF2;">IG Story</label>
+                                <input type="text" id="postStory" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                            </div>
+                            <div>
+                                <label class="stat-label" style="margin-top:0; color: #0A84FF;">IG Photo</label>
+                                <input type="text" id="postPhoto" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                            </div>
+                            <div>
+                                <label class="stat-label" style="margin-top:0; color: #FF2D55;">IG Reel</label>
+                                <input type="text" id="postReel" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
+                                <button type="button" onclick="promptApplyTemplate()" style="border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer;">📋 Templates</button>
+                                <button type="button" onclick="generateAIChecklist()" style="border: 1px solid rgba(10,132,255,0.4); background: rgba(10,132,255,0.1); color: #0A84FF; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer;">✨ AI Generate</button>
+                            </div>
+                            <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.8rem; border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px; margin-top: 15px;">
+                            <span style="font-size: 0.85rem; font-weight: bold; width: 35px; color: var(--text-muted);" id="checklistPercent">0%</span>
+                            <div class="progress-container" style="margin-bottom: 0;">
+                                <div class="progress-bar" id="checklistProgress"></div>
+                            </div>
+                        </div>
+                        <div id="checklistContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        <div id="checklistAddContainer" style="margin-top: 15px; display: none; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <input type="text" id="newChecklistInput" class="modern-input" placeholder="Add an item..." style="flex-grow: 1; padding: 8px 12px; font-size: 16px; min-width: 120px;">
+                            <input type="date" id="newChecklistDate" class="modern-input" style="width: auto; padding: 8px 12px; font-size: 16px; color: var(--text-muted); flex-shrink: 0;">
+                            <button type="button" class="btn-action" style="padding: 8px 15px; flex-shrink: 0; min-height: 44px;" onclick="confirmAddChecklistItem()">Add</button>
+                            <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0; min-height: 44px;" onclick="hideChecklistInput()">Cancel</button>
+                        </div>
+                        <button type="button" class="sidebar-btn" id="showChecklistInputBtn" style="margin-top: 10px; width: fit-content;" onclick="showChecklistInput()">+ Add an item</button>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 class="section-title" style="margin: 0;">Activity</h3>
+                            <button type="button" onclick="aiSummarizeActivity()" style="border: 1px solid rgba(52,199,89,0.4); background: rgba(52,199,89,0.1); color: #34C759; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer;">✨ Summarize</button>
+                        </div>
+                        <div class="activity-item" style="margin-top: 15px;">
+                            <div class="avatar" id="currentUserAvatar">Me</div>
+                            <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
+                                <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitComment(); }"></textarea>
+                            </div>
+                        </div>
+                        <div id="activityLog" style="margin-top: 20px;"></div>
+                    </div>
+                    
                     <div id="modalTabSettings" style="display: none;">
                         <h3 class="section-title">Card Settings</h3>
                         <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); margin-top: 20px;">
@@ -1127,27 +1212,28 @@
                         </div>
                     </div>
                 </div>
+            
                 <div class="modal-sidebar">
                     <h4 class="stat-label" style="margin-top: 0;">Views</h4>
                     <button type="button" class="sidebar-btn" id="btnTabDetails" onclick="switchTaskTab('details')">Details</button>
-                    <button type="button" class="sidebar-btn" id="btnTabSettings" onclick="switchTaskTab('settings')">Settings</button>
-                    <h4 class="stat-label">Add to card</h4>
-                    <button type="button" class="sidebar-btn" onclick="addMember()">Members</button>
-                    <button type="button" class="sidebar-btn" onclick="addLabel()">Labels</button>
-                    <button type="button" class="sidebar-btn" onclick="showChecklistInput()">Checklist</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('taskDueDate').focus()">Dates</button>
-                    <button type="button" class="sidebar-btn" onclick="addCustomField()">Custom Fields</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
-                    <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
-                    <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
-                    <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
-                    <h4 class="stat-label">Actions</h4>
-                    <button type="button" class="sidebar-btn" onclick="copyTask()">Copy</button>
-                    <button type="button" class="sidebar-btn" onclick="showToast('Share link copied to clipboard!')">Share</button>
-                    <button type="submit" class="btn-action" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;">Save Task</button>
-                    <div id="autoSaveIndicator" style="text-align:center; font-size:0.78rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
-                </div>
+                <button type="button" class="sidebar-btn" id="btnTabDetails" onclick="switchTaskTab('details')">Details</button>
+                <button type="button" class="sidebar-btn" id="btnTabSettings" onclick="switchTaskTab('settings')">Settings</button>
+                <h4 class="stat-label">Add to card</h4>
+                <button type="button" class="sidebar-btn" onclick="addMember()">Members</button>
+                <button type="button" class="sidebar-btn" onclick="addLabel()">Labels</button>
+                <button type="button" class="sidebar-btn" onclick="showChecklistInput()">Checklist</button>
+                <button type="button" class="sidebar-btn" onclick="document.getElementById('taskDueDate').focus()">Dates</button>
+                <button type="button" class="sidebar-btn" onclick="addCustomField()">Custom Fields</button>
+                <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
+                <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
+                <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
+                <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
+                <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
+                <h4 class="stat-label">Actions</h4>
+                <button type="button" class="sidebar-btn" onclick="copyTask()">Copy</button>
+                <button type="button" class="sidebar-btn" onclick="showToast('Share link copied to clipboard!')">Share</button>
+                <button type="submit" class="btn-action" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;">Save Task</button>
+                <div id="autoSaveIndicator" style="text-align:center; font-size:0.78rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
             </div>
         </form>
     </div>
@@ -1703,6 +1789,14 @@
         document.getElementById('login-overlay-password').style.display = 'none';
         document.getElementById('login-overlay-email').style.display = 'block';
         document.getElementById('login-overlay').style.display = 'flex';
+        
+        const cabbieFab = document.getElementById('cabbie-fab');
+        if (cabbieFab) cabbieFab.style.display = 'none';
+        const cabbieWin = document.getElementById('cabbie-window');
+        if (cabbieWin) cabbieWin.classList.remove('show');
+        isCabbieOpen = false;
+        cabbieChatHistory = [];
+        
         setTimeout(() => { document.getElementById('login-overlay').style.opacity = '1'; }, 10);
     }
 
@@ -1874,6 +1968,9 @@
 
     function renderApp() {
         if(!isAuthenticated) return;
+        const cabbieFab = document.getElementById('cabbie-fab');
+        if (cabbieFab) cabbieFab.style.display = 'flex';
+        
         checkDueSoonAutomations();
         applyBoardBackground();
         renderTopbar();
@@ -2457,6 +2554,27 @@
         const logoEl = document.getElementById('brand-logo');
         const loginLogoEl = document.getElementById('login-brand-logo');
         const pwdLogoEl = document.getElementById('login-brand-logo-pwd');
+        
+        const cabbieFabLogo = document.getElementById('cabbie-fab-logo');
+        const cabbieFabEmoji = document.getElementById('cabbie-fab-emoji');
+        const cabbieHeaderLogo = document.getElementById('cabbie-header-logo');
+        const cabbieHeaderEmoji = document.getElementById('cabbie-header-emoji');
+        
+        // Prioritize App Icon for Cabbie, fallback to Workspace Logo
+        const cabIconUrl = (appData.settings && appData.settings.appIconUrl) ? appData.settings.appIconUrl : ((appData.settings && appData.settings.logoUrl) ? appData.settings.logoUrl : '');
+
+        if (cabIconUrl) {
+            if(cabbieFabLogo) { cabbieFabLogo.src = cabIconUrl; cabbieFabLogo.style.display = 'block'; }
+            if(cabbieFabEmoji) cabbieFabEmoji.style.display = 'none';
+            if(cabbieHeaderLogo) { cabbieHeaderLogo.src = cabIconUrl; cabbieHeaderLogo.style.display = 'block'; }
+            if(cabbieHeaderEmoji) cabbieHeaderEmoji.style.display = 'none';
+        } else {
+            if(cabbieFabLogo) { cabbieFabLogo.style.display = 'none'; cabbieFabLogo.src = ''; }
+            if(cabbieFabEmoji) cabbieFabEmoji.style.display = 'block';
+            if(cabbieHeaderLogo) { cabbieHeaderLogo.style.display = 'none'; cabbieHeaderLogo.src = ''; }
+            if(cabbieHeaderEmoji) cabbieHeaderEmoji.style.display = 'block';
+        }
+
         if (appData.settings && appData.settings.logoUrl) {
             if(logoEl) { logoEl.src = appData.settings.logoUrl; logoEl.style.display = 'block'; }
             if(loginLogoEl) { loginLogoEl.src = appData.settings.logoUrl; loginLogoEl.style.display = 'block'; }
@@ -2469,62 +2587,54 @@
     }
 
     function renderSettings() {
-        document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = currentUserRole === 'admin' ? 'block' : 'none';
-        });
-
         if (currentUserRole === 'admin') {
-            const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
-            const fileInput = document.getElementById('settingsBoardBgFile');
-            const previewText = document.getElementById('bgUploadPreviewText');
-            if (activeBoard) {
-                if (fileInput) fileInput.value = '';
-                if (previewText) previewText.innerText = activeBoard.backgroundImage ? 'Current background active. Select a new file to replace it.' : 'No new file selected';
-            }
-            
-            const logoInput = document.getElementById('settingsLogoFile');
-            const logoPreviewText = document.getElementById('logoUploadPreviewText');
-            if (logoInput) logoInput.value = '';
-            if (logoPreviewText) {
-                logoPreviewText.innerText = (appData.settings && appData.settings.logoUrl) ? 'Current logo active. Select a new file to replace it.' : 'No new file selected';
-            }
-
-            const appIconInput = document.getElementById('settingsAppIconFile');
+            document.getElementById('newTemplateName').value = '';
+            document.getElementById('newTemplateItems').value = '';
+            const appIconInput = document.getElementById('appIconUpload');
             const appIconPreviewText = document.getElementById('appIconUploadPreviewText');
             if (appIconInput) appIconInput.value = '';
             if (appIconPreviewText) {
                 appIconPreviewText.innerText = (appData.settings && appData.settings.appIconUrl) ? 'Current App Icon active. Select a new file to replace it.' : 'No new file selected';
             }
+            
+            // Populate AI Key if it exists in Supabase, otherwise auto-fill the one you provided for first-time setup
+            if (!appData.settings.aiKey) {
+                appData.settings.aiKey = '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';
+                saveData(); // Save it to Supabase immediately
+            }
+            document.getElementById('aiApiKeyInput').value = appData.settings.aiKey || '';
+            const aiTrainingInput = document.getElementById('aiTrainingDataInput');
+            if(aiTrainingInput) aiTrainingInput.value = appData.settings.cabbieTrainingData || '';
 
             renderUserList();
+            renderChecklistTemplatesList();
         }
     }
 
     function renderUserList() {
         const container = document.getElementById('userListContainer');
         if (!container) return;
-        if (!appData.settings.users || appData.settings.users.length === 0) {
-            container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No additional users added.</div>';
+        const users = appData.settings.users || [];
+        if (users.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No users added yet.</div>';
             return;
         }
-        container.innerHTML = appData.settings.users.map(u => `
+        container.innerHTML = users.map(u => `
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email}</div>
-                    <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'};">${u.password ? 'Active' : 'Awaiting Setup'}</div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${u.name || 'Pending Setup'}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">${u.email}</div>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    ${u.password ? `<button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" onclick="resetUserPassword('${u.email}')">Reset Pass</button>` : ''}
-                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeUser('${u.email}')">Remove</button>
-                </div>
+                <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeUser('${u.email}')">Remove</button>
             </div>
         `).join('');
     }
 
     function addUser() {
-        const input = document.getElementById('newUserEmail');
-        const email = input.value.trim().toLowerCase();
-        if (!email) return;
+        const emailInput = document.getElementById('newUserEmail');
+        if (!emailInput) return;
+        const email = emailInput.value.trim().toLowerCase();
+        if (!email) { showToast("Enter a valid email."); return; }
         
         if (!appData.settings.users) appData.settings.users = [];
         if (appData.settings.users.find(u => u.email === email)) {
@@ -2532,32 +2642,553 @@
             return;
         }
         
-        appData.settings.users.push({ email: email, password: null });
-        saveData();
+        // Push the new user to the frontend state and immediately sync to Supabase backend
+        appData.settings.users.push({ email: email, name: '', password: '' });
+        saveData(); 
+        
         renderUserList();
-        input.value = '';
-        showToast("User added!");
+        emailInput.value = '';
+        showToast("User invited! They can set up their account on login.");
     }
 
     async function removeUser(email) {
-        const ok = await showConfirm('Remove User', `Are you sure you want to remove ${email}?`, 'Remove', true);
+        const ok = await showConfirm('Remove User', 'Revoke access for ' + email + '?', 'Remove', true);
         if (ok) {
+            // Remove user from frontend state and immediately sync the deletion to Supabase
             appData.settings.users = appData.settings.users.filter(u => u.email !== email);
-            saveData();
+            saveData(); 
+            
             renderUserList();
             showToast("User removed.");
         }
     }
 
-    async function resetUserPassword(email) {
-        const ok = await showConfirm('Reset Password', `Force ${email} to set a new password on their next login?`, 'Reset', true);
-        if (ok) {
-            const user = appData.settings.users.find(u => u.email === email);
-            if (user) {
-                user.password = null;
+    function saveAIKey() {
+        const key = document.getElementById('aiApiKeyInput').value.trim();
+        appData.settings.aiKey = key;
+        saveData();
+        showToast("✨ AI Key securely saved to Supabase!");
+    }
+
+    function saveAITraining() {
+        if (!appData.settings) appData.settings = {};
+        appData.settings.cabbieMission = document.getElementById('aiMissionInput').value.trim();
+        appData.settings.cabbieStyle = document.getElementById('aiStyleInput').value.trim();
+        appData.settings.cabbieCaptions = document.getElementById('aiCaptionsInput').value.trim();
+        saveData();
+        showToast("✨ Cabbie AI Training Data saved!");
+    }
+
+    let isCabbieOpen = false;
+
+    // Route chat history dynamically to the currently logged-in user
+    function getChatHistory() {
+        if (!currentUserEmail) return [];
+        if (!appData.chatLogs) appData.chatLogs = {};
+        if (!appData.chatLogs[currentUserEmail]) appData.chatLogs[currentUserEmail] = [];
+        return appData.chatLogs[currentUserEmail];
+    }
+
+    function toggleCabbie() {
+        const win = document.getElementById('cabbie-window');
+        isCabbieOpen = !isCabbieOpen;
+        if (isCabbieOpen) {
+            win.classList.add('show');
+            setTimeout(() => {
+                const inputEl = document.getElementById('cabbieInput');
+                if (inputEl) inputEl.focus();
+            }, 100);
+            
+            const history = getChatHistory();
+            if (history.length === 0) {
+                const userName = currentUserName || 'there';
+                history.push({ role: 'assistant', content: `Lopes Up, ${userName}! 🤘 I'm Cabbie AI. How can I help you and the CAB team today?` });
+                saveData(); // Persist initial greeting
+            }
+            renderCabbieMessages();
+        } else {
+            win.classList.remove('show');
+        }
+    }
+
+    function renderCabbieMessages() {
+        const container = document.getElementById('cabbieMessages');
+        const history = getChatHistory();
+        container.innerHTML = history.map(m => {
+            if (m.role === 'system') return '';
+            if (m.id === 'typing') return `<div class="cabbie-typing">Cabbie AI is typing...</div>`;
+            let cleanContent = m.content.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+            return `<div class="cabbie-msg ${m.role === 'user' ? 'user' : 'ai'}">${cleanContent}</div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendCabbieMessage() {
+        const inputEl = document.getElementById('cabbieInput');
+        const text = inputEl.value.trim();
+        if (!text) return;
+        
+        inputEl.value = '';
+        const history = getChatHistory();
+        history.push({ role: 'user', content: text });
+        saveData(); // Save user message immediately
+        renderCabbieMessages();
+        
+        const apiKey = appData.settings?.aiKey;
+        if (!apiKey) {
+            history.push({ role: 'assistant', content: "⚠️ Please ask an Admin to save the AI API Key in Settings first." });
+            saveData();
+            renderCabbieMessages();
+            return;
+        }
+
+        history.push({ role: 'assistant', content: '...', id: 'typing' });
+        renderCabbieMessages();
+
+        const userName = currentUserName || 'Student Leader';
+        const mission = appData.settings?.cabbieMission || 'Build community through engaging events.';
+        const style = appData.settings?.cabbieStyle || 'Professional, enthusiastic, college-appropriate. Use GCU lingo like Lopes Up!';
+        const pastCaptions = appData.settings?.cabbieCaptions || 'None provided yet.';
+        
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId);
+        const colsInfo = boardCols.map(c => `- "${c.title}" (ID: ${c.id})`).join('\n');
+        
+        const boardTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId && !t.completed);
+        const tasksInfo = boardTasks.map(t => `- ID: ${t.id} | Title: "${t.title}" | List: ${(boardCols.find(c => c.id === t.columnId)?.title || 'Unknown')}`).join('\n');
+        
+        const adminTrainingAbility = currentUserRole === 'admin' ? `
+ADMIN TRAINING ABILITY (ACTIVE):
+You are currently talking to the ADMIN. If they instruct you on how to behave, teach you new styles, or give you past captions, you MUST update your global training settings using the 'update_training' JSON action. Merge their new instructions with your existing knowledge to improve yourself.
+
+To UPDATE YOUR GLOBAL TRAINING:
+\`\`\`json
+{ "cab_action": "update_training", "mission": "updated mission goals", "style": "updated style rules", "captions": "updated caption examples" }
+\`\`\`
+` : '';
+
+        const systemPrompt = `You are Cabbie AI, a highly capable, clean, and professional assistant built exclusively for the Canyon Activities Board (CAB) student leaders at Grand Canyon University (GCU). 
+Your creator is Chris Hinojosa. 
+CRITICAL RULES: 
+1. NEVER mention OpenRouter, DeepSeek, OpenAI, LLMs, or any underlying AI models. You are simply "Cabbie AI created by Chris Hinojosa".
+2. Keep your tone enthusiastic, organized, and tailored for college student leaders. Use GCU lingo like "Lopes Up!" when appropriate.
+3. You are talking directly to: ${userName}. Personalize your responses to them based on your past chat history with them.
+4. Keep responses concise and highly formatted (bullet points, short paragraphs).
+
+ADMIN TRAINING DATA / CONTEXT:
+- CAB Mission/Goals: ${mission}
+- Brand Voice/Style: ${style}
+- Past Captions & Examples: ${pastCaptions}
+
+BOARD CONTROL ABILITY:
+You have the power to CREATE, EDIT, and DELETE tasks on the current board. 
+Always ask for necessary details (Title, Date, Description, List) if they are missing before taking action. 
+When editing or deleting, strictly use the provided Task IDs.
+Once you have confirmed the action with the user, you MUST output a JSON code block at the VERY END of your message to execute it.
+
+${adminTrainingAbility}
+Available Lists on this board:
+${colsInfo}
+
+Active Tasks on this board (ID | Title | List):
+${tasksInfo || 'No active tasks.'}
+
+JSON FORMATS (ONLY output ONE when ready to execute):
+To CREATE a task:
+\`\`\`json
+{ "cab_action": "create_task", "title": "...", "columnId": "LIST_ID", "dueDate": "YYYY-MM-DDTHH:mm", "description": "..." }
+\`\`\`
+To EDIT a task (include only the fields you want to change):
+\`\`\`json
+{ "cab_action": "edit_task", "taskId": "TASK_ID", "title": "...", "columnId": "LIST_ID", "dueDate": "YYYY-MM-DDTHH:mm", "description": "..." }
+\`\`\`
+To DELETE a task:
+\`\`\`json
+{ "cab_action": "delete_task", "taskId": "TASK_ID" }
+\`\`\``;
+
+        const messagesPayload = [
+            { role: "system", content: systemPrompt },
+            ...history.filter(m => m.role !== 'system' && m.id !== 'typing').slice(-15) // Feed Cabbie their personalized history!
+        ];
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": window.location.href,
+                    "X-Title": "CAB Marketing App"
+                },
+                body: JSON.stringify({
+                    model: "deepseek/deepseek-chat",
+                    messages: messagesPayload
+                })
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            
+            let responseText = data.choices[0].message.content;
+            
+            const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
+            if (jsonMatch) {
+                try {
+                    const actionData = JSON.parse(jsonMatch[1]);
+                    if (actionData.cab_action === 'create_task') {
+                        let targetColId = actionData.columnId;
+                        if (!boardCols.find(c => c.id === targetColId)) targetColId = boardCols.length > 0 ? boardCols[0].id : null;
+                        if (targetColId) {
+                            const newTask = {
+                                id: generateId(), boardId: appData.activeBoardId, columnId: targetColId,
+                                title: actionData.title || 'New Event', description: actionData.description || '',
+                                text: actionData.description || '', dueDate: actionData.dueDate || '',
+                                eventLocation: '', priority: '', postingSchedule: { story: '', photo: '', reel: '' },
+                                customFields: [], attachments: [], coverImage: '', checklist: [], members: [],
+                                labels: [{ text: "🤖 Cabbie AI", color: "purple" }], comments: []
+                            };
+                            appData.tasks.push(newTask);
+                            if (currentView === 'board') renderBoard();
+                            showToast("✨ Cabbie AI created a task!");
+                        }
+                    } else if (actionData.cab_action === 'edit_task') {
+                        const taskIndex = appData.tasks.findIndex(t => t.id === actionData.taskId);
+                        if (taskIndex > -1) {
+                            const t = appData.tasks[taskIndex];
+                            if (actionData.title !== undefined) t.title = actionData.title;
+                            if (actionData.description !== undefined) { t.description = actionData.description; t.text = actionData.description; }
+                            if (actionData.dueDate !== undefined) t.dueDate = actionData.dueDate;
+                            if (actionData.columnId !== undefined && boardCols.find(c => c.id === actionData.columnId)) t.columnId = actionData.columnId;
+                            if (currentView === 'board') renderBoard();
+                            showToast("✨ Cabbie AI updated the task!");
+                        }
+                    } else if (actionData.cab_action === 'delete_task') {
+                        const taskIndex = appData.tasks.findIndex(t => t.id === actionData.taskId);
+                        if (taskIndex > -1) {
+                            appData.tasks.splice(taskIndex, 1);
+                            if (currentView === 'board') renderBoard();
+                            showToast("✨ Cabbie AI deleted the task!");
+                        }
+                    } else if (actionData.cab_action === 'update_training') {
+                        if (!appData.settings) appData.settings = {};
+                        if (actionData.mission) appData.settings.cabbieMission = actionData.mission;
+                        if (actionData.style) appData.settings.cabbieStyle = actionData.style;
+                        if (actionData.captions) appData.settings.cabbieCaptions = actionData.captions;
+                        
+                        // Sync the new rules to the UI if the settings page happens to be open
+                        const mInput = document.getElementById('aiMissionInput');
+                        const sInput = document.getElementById('aiStyleInput');
+                        const cInput = document.getElementById('aiCaptionsInput');
+                        if (mInput) mInput.value = appData.settings.cabbieMission || '';
+                        if (sInput) sInput.value = appData.settings.cabbieStyle || '';
+                        if (cInput) cInput.value = appData.settings.cabbieCaptions || '';
+                        
+                        showToast("✨ Cabbie AI learned your new rules!");
+                    }
+                    responseText = responseText.replace(/```json\n[\s\S]*?\n```/, '').trim();
+                } catch (e) {
+                    console.error("Action parse failed", e);
+                }
+            }
+            
+            // Remove typing indicator and save AI response
+            const typeIdx = history.findIndex(m => m.id === 'typing');
+            if(typeIdx > -1) history.splice(typeIdx, 1);
+            
+            history.push({ role: 'assistant', content: responseText });
+            saveData(); // Persist changes and new message to Supabase
+            renderCabbieMessages();
+        } catch (error) {
+            console.error(error);
+            const typeIdx = history.findIndex(m => m.id === 'typing');
+            if(typeIdx > -1) history.splice(typeIdx, 1);
+            
+            history.push({ role: 'assistant', content: "⚠️ Sorry, I'm having trouble connecting right now." });
+            saveData();
+            renderCabbieMessages();
+        }
+    }
+
+    async function callOpenRouterAI(promptText) {
+        const apiKey = appData.settings?.aiKey;
+        if (!apiKey) { showToast("AI Error: Please save your API Key in Settings."); return null; }
+        showToast("✨ AI is thinking...");
+        
+        const mission = appData.settings?.cabbieMission || '';
+        const style = appData.settings?.cabbieStyle || '';
+        const pastCaptions = appData.settings?.cabbieCaptions || '';
+        
+        const systemPrompt = `You are a professional marketing AI for the Canyon Activities Board (CAB) at Grand Canyon University. Creator: Chris Hinojosa. NEVER mention OpenRouter, DeepSeek, OpenAI, or LLMs. 
+        Apply these rules/context to your formatting and answers:
+        MISSION: ${mission}
+        STYLE/TONE: ${style}
+        PAST CAPTION EXAMPLES: ${pastCaptions}`;
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": window.location.href,
+                    "X-Title": "CAB Marketing App"
+                },
+                body: JSON.stringify({
+                    model: "deepseek/deepseek-chat",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: promptText }
+                    ]
+                })
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            return data.choices[0].message.content;
+        } catch (error) {
+            console.error(error);
+            showToast("AI Failed: " + error.message);
+            return null;
+        }
+    }
+
+    async function generateAICaption() {
+        if (!currentEditingTask) return;
+        const prompt = `Write a catchy, engaging, and professional Instagram caption for a marketing event/task called: "${currentEditingTask.title}". Include 3-4 highly relevant hashtags and 2-3 emojis. Do not wrap the response in quotes.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const formattedResult = result.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+            const newDesc = (currentEditingTask.description ? currentEditingTask.description + "<br><br>" : "") + "📸 <b>AI Generated Caption:</b><br>" + formattedResult;
+            currentEditingTask.description = newDesc; currentEditingTask.text = newDesc;
+            const descEl = document.getElementById('taskContentInput');
+            if (descEl) descEl.innerHTML = newDesc;
+            scheduleAutoSave(); showToast("✨ Caption generated & saved!");
+        }
+    }
+
+    async function generateAIChecklist() {
+        if (!currentEditingTask) return;
+        const prompt = `Create a short, actionable, 5-step marketing to-do list for an event/task called: "${currentEditingTask.title}". Return ONLY the tasks separated by commas. Do not use numbers, bullet points, or newlines. Just a single comma-separated string.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const items = result.split(',').map(i => i.trim()).filter(i => i);
+            if (!currentEditingTask.checklist) currentEditingTask.checklist = [];
+            items.forEach(item => {
+                let cleanItem = item.replace(/^[*-]\s*/, '').replace(/["']/g, '');
+                if (cleanItem) currentEditingTask.checklist.push({ id: generateId(), text: cleanItem, done: false });
+            });
+            saveData(); renderChecklist(); showToast("✨ AI Checklist generated!");
+        }
+    }
+
+    async function callOpenRouterAI_JSON(promptText) {
+        const text = await callOpenRouterAI(promptText + " Return ONLY valid JSON format. No markdown blocks, no backticks, no explanations.");
+        if (!text) return null;
+        try {
+            return JSON.parse(text.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim());
+        } catch(e) { console.error("JSON parse error:", e, text); showToast("AI returned invalid data format."); return null; }
+    }
+
+    async function smartAddTask() {
+        if (!appData.activeBoardId) { showToast("Please create a workspace first."); return; }
+        const input = await showPrompt('✨ Smart Add Task', 'Describe the event or task naturally (e.g., "Volleyball game next Friday at 6pm in the Arena"):');
+        if (!input || !input.trim()) return;
+
+        showToast("✨ AI is creating your task...");
+        const prompt = `Extract details from this text: "${input}". 
+        Return ONLY a JSON object with these exact keys:
+        - "title": A short catchy title.
+        - "description": A slightly longer description of the brief.
+        - "eventLocation": The location (if any, else "").
+        - "dueDate": The date/time in "YYYY-MM-DDTHH:mm" format (Assume the current year if not stated. Leave empty if no date is implied).`;
+
+        const data = await callOpenRouterAI_JSON(prompt);
+        if (data) {
+            const firstCol = appData.columns.find(c => c.boardId === appData.activeBoardId)?.id;
+            if (!firstCol) return;
+            const newTask = { 
+                id: generateId(), boardId: appData.activeBoardId, columnId: firstCol, 
+                title: data.title || "New AI Task", description: data.description || input, text: data.description || input, 
+                dueDate: data.dueDate || "", eventLocation: data.eventLocation || "", priority: "", 
+                postingSchedule: { story: '', photo: '', reel: '' }, customFields: [], attachments: [], coverImage: '', checklist: [], members: [], 
+                labels: [{ text: "✨ AI Created", color: "purple" }], comments: [] 
+            };
+            appData.tasks.push(newTask);
+            saveData(); renderBoard(); showToast("✨ Task created magically!");
+            openTaskModal(firstCol, newTask.id);
+        }
+    }
+
+    async function aiAutoTag() {
+        if (!currentEditingTask) return;
+        const prompt = `Based on this task title: "${currentEditingTask.title}" and description: "${currentEditingTask.description}". Suggest 2 short category labels (like 'Sports', 'High Priority', 'Video'). Return ONLY a comma-separated list of the labels. No quotes, no intro text.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const labels = result.split(',').map(l => l.trim().replace(/["']/g, '')).filter(l => l);
+            if (!currentEditingTask.labels) currentEditingTask.labels = [];
+            labels.forEach((l, i) => {
+                if (!currentEditingTask.labels.find(existing => existing.text.toLowerCase() === l.toLowerCase())) {
+                    const color = i % 2 === 0 ? 'pink' : 'lime';
+                    currentEditingTask.labels.push({ text: l, color });
+                }
+            });
+            renderLabels(); scheduleAutoSave(); showToast("✨ Auto-Tags added!");
+        }
+    }
+
+    async function aiAutoSchedule() {
+        if (!currentEditingTask || !currentEditingTask.dueDate) { showToast("Please set an Event Date & Time first!"); return; }
+        const prompt = `The marketing event "${currentEditingTask.title}" is scheduled for ${currentEditingTask.dueDate}. 
+        Suggest optimal posting dates/times for promotional social media leading up to it. 
+        Return ONLY a JSON object with exactly these keys: "story", "photo", "reel". 
+        The values MUST be in strict "YYYY-MM-DDTHH:mm" format.`;
+        
+        const data = await callOpenRouterAI_JSON(prompt);
+        if (data) {
+            if (!currentEditingTask.postingSchedule) currentEditingTask.postingSchedule = {};
+            currentEditingTask.postingSchedule.story = data.story || '';
+            currentEditingTask.postingSchedule.photo = data.photo || '';
+            currentEditingTask.postingSchedule.reel = data.reel || '';
+            document.getElementById('postStory').value = data.story || '';
+            document.getElementById('postStory').type = data.story ? 'datetime-local' : 'text';
+            document.getElementById('postPhoto').value = data.photo || '';
+            document.getElementById('postPhoto').type = data.photo ? 'datetime-local' : 'text';
+            document.getElementById('postReel').value = data.reel || '';
+            document.getElementById('postReel').type = data.reel ? 'datetime-local' : 'text';
+            scheduleAutoSave(); showToast("✨ Optimal schedule generated!");
+        }
+    }
+
+    async function aiSummarizeActivity() {
+        if (!currentEditingTask || !currentEditingTask.comments || currentEditingTask.comments.length === 0) { showToast("No activity to summarize yet."); return; }
+        const logText = currentEditingTask.comments.map(c => `${c.user} (${c.time}): ${c.text}`).join('\n');
+        const prompt = `Summarize this comment thread in 1 or 2 extremely short bullet points, highlighting the current status, latest updates, or blockers: \n\n${logText}`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) { showDialog({ title: '✨ Thread Summary', message: result, type: 'alert', confirmText: 'Done' }); }
+    }
+
+    async function backgroundAIAutoTag(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task || !appData.settings.aiKey) return;
+        const prompt = `Based on this task title: "${task.title}" and description: "${task.description}". Suggest 2 short category labels (like 'Sports', 'High Priority', 'Video'). Return ONLY a comma-separated list of the labels. No quotes, no intro text.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const labels = result.split(',').map(l => l.trim().replace(/["']/g, '')).filter(l => l);
+            if (!task.labels) task.labels = [];
+            let added = false;
+            labels.forEach((l, i) => {
+                if (!task.labels.find(existing => existing.text.toLowerCase() === l.toLowerCase())) {
+                    task.labels.push({ text: l, color: (i % 2 === 0 ? 'pink' : 'lime') }); added = true;
+                }
+            });
+            if (added) {
                 saveData();
-                renderUserList();
-                showToast("Password reset.");
+                if (currentEditingTask && currentEditingTask.id === taskId) { currentEditingTask.labels = task.labels; renderLabels(); }
+                if (currentView === 'board') renderBoard();
+                showToast(`🤖✨ AI Auto-Tagged: ${task.title}`);
+            }
+        }
+    }
+
+    async function backgroundAIGenChecklist(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task || !appData.settings.aiKey) return;
+        const prompt = `Create a short, actionable, 5-step marketing to-do list for an event/task called: "${task.title}". Return ONLY the tasks separated by commas. Do not use numbers, bullet points, or newlines. Just a single comma-separated string.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const items = result.split(',').map(i => i.trim()).filter(i => i);
+            if (!task.checklist) task.checklist = [];
+            let added = false;
+            items.forEach(item => {
+                let cleanItem = item.replace(/^[*-]\s*/, '').replace(/["']/g, '');
+                if (cleanItem && !task.checklist.find(c => c.text.toLowerCase() === cleanItem.toLowerCase())) {
+                    task.checklist.push({ id: generateId(), text: cleanItem, done: false }); added = true;
+                }
+            });
+            if (added) {
+                saveData();
+                if (currentEditingTask && currentEditingTask.id === taskId) { currentEditingTask.checklist = task.checklist; renderChecklist(); }
+                showToast(`🤖✨ AI Checklist added to: ${task.title}`);
+            }
+        }
+    }
+
+    async function backgroundAIWriteCaption(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task || !appData.settings.aiKey) return;
+        const prompt = `Write a catchy, engaging, and professional Instagram caption for a marketing event/task called: "${task.title}". Include 3-4 highly relevant hashtags and 2-3 emojis. Do not wrap the response in quotes.`;
+        const result = await callOpenRouterAI(prompt);
+        if (result) {
+            const newDesc = (task.description ? task.description + "<br><br>" : "") + "📸 <b>AI Generated Caption:</b><br>" + result.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+            task.description = newDesc; task.text = newDesc;
+            saveData();
+            if (currentEditingTask && currentEditingTask.id === taskId) { 
+                currentEditingTask.description = newDesc; 
+                const inputEl = document.getElementById('taskContentInput');
+                if (inputEl) inputEl.innerHTML = newDesc;
+            }
+            showToast(`🤖✨ AI Caption written for: ${task.title}`);
+        }
+    }
+
+    function renderChecklistTemplatesList() {
+        const container = document.getElementById('checklistTemplatesListContainer');
+        if (!container) return;
+        if (!appData.settings.checklistTemplates || appData.settings.checklistTemplates.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No templates created yet.</div>';
+            return;
+        }
+        container.innerHTML = appData.settings.checklistTemplates.map(t => `
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${t.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${t.items.length} items</div>
+                </div>
+                <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeChecklistTemplate('${t.id}')">Remove</button>
+            </div>
+        `).join('');
+    }
+
+    function addChecklistTemplate() {
+        const nameInput = document.getElementById('newTemplateName');
+        const itemsInput = document.getElementById('newTemplateItems');
+        if (!nameInput || !itemsInput) return;
+        const name = nameInput.value.trim();
+        const items = itemsInput.value.split('\n').map(i => i.trim()).filter(i => i);
+        if (!name || items.length === 0) { showToast("Provide a name and at least one item."); return; }
+        if (!appData.settings.checklistTemplates) appData.settings.checklistTemplates = [];
+        appData.settings.checklistTemplates.push({ id: generateId(), name, items });
+        saveData(); renderChecklistTemplatesList();
+        nameInput.value = ''; itemsInput.value = ''; showToast("Template saved!");
+    }
+
+    async function removeChecklistTemplate(id) {
+        const ok = await showConfirm('Remove Template', 'Remove this checklist template?', 'Remove', true);
+        if (ok) {
+            appData.settings.checklistTemplates = appData.settings.checklistTemplates.filter(t => t.id !== id);
+            saveData(); renderChecklistTemplatesList(); showToast("Template removed.");
+        }
+    }
+
+    async function promptApplyTemplate() {
+        if (!appData.settings.checklistTemplates || appData.settings.checklistTemplates.length === 0) {
+            showToast("No templates found. Create one in Master Settings.");
+            return;
+        }
+        const options = appData.settings.checklistTemplates.map(t => ({ value: t.id, label: t.name }));
+        const selectedId = await showSelect('Apply Template', 'Select a template to append to this checklist:', options);
+        if (selectedId) {
+            const tpl = appData.settings.checklistTemplates.find(t => t.id === selectedId);
+            if (tpl && tpl.items) {
+                if (!currentEditingTask.checklist) currentEditingTask.checklist = [];
+                let added = false;
+                tpl.items.forEach(item => {
+                    if (!currentEditingTask.checklist.find(c => c.text.toLowerCase() === item.toLowerCase())) {
+                        currentEditingTask.checklist.push({ id: generateId(), text: item, done: false, dueDate: '' });
+                        added = true;
+                    }
+                });
+                if (added) {
+                    scheduleAutoSave(); renderChecklist(); showToast(`Template "${tpl.name}" applied!`);
+                } else { showToast("All items from template already exist."); }
             }
         }
     }
@@ -3900,6 +4531,18 @@
                         showToast('🔔 ' + act.value);
                         break;
                     }
+                    case 'ai_auto_tag': {
+                        backgroundAIAutoTag(task.id);
+                        break;
+                    }
+                    case 'ai_gen_checklist': {
+                        backgroundAIGenChecklist(task.id);
+                        break;
+                    }
+                    case 'ai_write_caption': {
+                        backgroundAIWriteCaption(task.id);
+                        break;
+                    }
                 }
             });
         });
@@ -4028,11 +4671,17 @@
                     </optgroup>
                     <optgroup label="Content">
                         <option value="add_checklist">☑️ Add checklist items</option>
+                        <option value="add_checklist_template">📋 Apply Checklist Template</option>
                         <option value="add_member">👤 Assign member</option>
                         <option value="set_due_offset">📅 Set due date (days from now)</option>
                     </optgroup>
                     <optgroup label="Other">
                         <option value="notify">🔔 Show notification</option>
+                    </optgroup>
+                    <optgroup label="✨ AI Magic">
+                        <option value="ai_auto_tag">✨ AI: Auto-Tag Card</option>
+                        <option value="ai_gen_checklist">✨ AI: Generate Checklist</option>
+                        <option value="ai_write_caption">✨ AI: Write IG Caption</option>
                     </optgroup>
                 </select>
                 <button type="button" onclick="document.getElementById('actRow_${rowId}').remove()" style="background:none; border:none; color:#FF3B30; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
@@ -4074,12 +4723,27 @@
                 area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">Card will be marked as complete.</div>`; break;
             case 'add_checklist':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Item 1, Item 2, Item 3 (comma separated)">`; break;
+            case 'add_checklist_template':
+                const tpls = appData.settings.checklistTemplates || [];
+                const tplOptions = tpls.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                if (tplOptions) {
+                    area.innerHTML = `<select class="modern-input act-val-template">${tplOptions}</select>`;
+                } else {
+                    area.innerHTML = `<div style="font-size:0.85rem; color:#FF3B30; padding:4px 0;">No templates found. Create one in Settings.</div>`;
+                }
+                break;
             case 'add_member':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Member Name (e.g. Jane Doe)">`; break;
             case 'set_due_offset':
                 area.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><input type="number" class="modern-input act-val-text" placeholder="7" min="1" max="365" style="width:100px;"><span style="color:var(--text-muted); font-size:0.85rem;">days from now</span></div>`; break;
             case 'notify':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Notification message...">`; break;
+            case 'ai_auto_tag':
+                area.innerHTML = `<div style="font-size:0.85rem; color:#BF5AF2; padding:4px 0;">✨ AI will read the card and automatically add category labels.</div>`; break;
+            case 'ai_gen_checklist':
+                area.innerHTML = `<div style="font-size:0.85rem; color:#BF5AF2; padding:4px 0;">✨ AI will generate a step-by-step marketing checklist.</div>`; break;
+            case 'ai_write_caption':
+                area.innerHTML = `<div style="font-size:0.85rem; color:#BF5AF2; padding:4px 0;">✨ AI will write an Instagram caption and append it to the description.</div>`; break;
             default:
                 area.innerHTML = '';
         }
@@ -4152,11 +4816,14 @@
                 value = row.querySelector('.act-val-list')?.value || '';
             } else if (type === 'set_priority') {
                 value = row.querySelector('.act-val-priority')?.value || 'med';
-            } else if (type === 'mark_complete') {
+            } else if (['mark_complete', 'ai_auto_tag', 'ai_gen_checklist', 'ai_write_caption'].includes(type)) {
                 value = 'true';
+            } else if (type === 'add_checklist_template') {
+                value = row.querySelector('.act-val-template')?.value || '';
+                if (!value) { showToast('Select a template.'); valid = false; return; }
             } else {
                 value = row.querySelector('.act-val-text')?.value.trim() || '';
-                if (!value && type !== 'mark_complete') { showToast('Fill in all action values.'); valid = false; return; }
+                if (!value && !['mark_complete', 'ai_auto_tag', 'ai_gen_checklist', 'ai_write_caption'].includes(type)) { showToast('Fill in all action values.'); valid = false; return; }
             }
             actions.push({ type, value });
         });
