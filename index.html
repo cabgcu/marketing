@@ -369,13 +369,13 @@
         }
         .add-col-btn:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: #0A84FF; }
 
-        .calendar-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; background: rgba(15, 15, 15, 0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-card); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); padding: 20px; overflow-y: auto; overflow-x: hidden; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
+        .calendar-wrapper { width: 100%; flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(15, 15, 15, 0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-card); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); padding: 15px 20px; overflow: hidden; margin-top: 15px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
         
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); gap: 10px; flex-grow: 1; height: auto; min-height: 100%; }
-        .calendar-day-header { text-align: center; font-weight: 800; color: var(--text-muted); padding: 10px 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: max-content repeat(6, minmax(0, 1fr)); gap: 8px; flex: 1; min-height: 0; }
+        .calendar-day-header { text-align: center; font-weight: 800; color: var(--text-muted); padding: 4px 0 8px 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
         
-        .calendar-cell { background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 5px; backdrop-filter: blur(20px) saturate(200%); -webkit-backdrop-filter: blur(20px) saturate(200%); box-shadow: inset 0 1px 2px rgba(255,255,255,0.05); overflow-y: auto; height: 100%; min-height: 0; }
+        .calendar-cell { background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 5px; backdrop-filter: blur(20px) saturate(200%); -webkit-backdrop-filter: blur(20px) saturate(200%); box-shadow: inset 0 1px 2px rgba(255,255,255,0.05); overflow-y: auto; min-height: 0; }
         .calendar-cell::-webkit-scrollbar { width: 4px; }
         .calendar-cell::-webkit-scrollbar-track { background: transparent; }
         .calendar-cell::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
@@ -780,8 +780,8 @@
 
             /* Scrollable Calendar */
             .calendar-header { flex-direction: column; gap: 15px; }
-            .calendar-wrapper { padding: 15px; overflow-x: auto; }
-            .calendar-grid { min-width: 800px; grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); height: auto; min-height: 100%; padding-bottom: 15px; }
+            .calendar-wrapper { padding: 15px; overflow-x: auto; overflow-y: auto; margin-top: 10px; flex: none; height: auto; }
+            .calendar-grid { min-width: 800px; grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); height: auto; min-height: 100%; padding-bottom: 15px; flex: none; }
             .calendar-day-header { font-size: 0.75rem; }
             
             .bulk-bar { bottom: calc(90px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
@@ -859,13 +859,11 @@
     <div class="nav-tabs">
         <button class="nav-tab active" id="tab-board" onclick="switchView('board')">Home</button>
         <button class="nav-tab" id="tab-calendar" onclick="switchView('calendar')">🗓 Calendar</button>
-        <button class="nav-tab" id="tab-planner" onclick="switchView('planner')">📝 Planner</button>
         <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')">⚡ Due</button>
     </div>
 
     <div class="app-view active board-container" id="view-board"></div>
     <div class="app-view" id="view-calendar"><div class="calendar-wrapper" id="calendar-main-wrapper"></div></div>
-    <div class="app-view" id="view-planner"><div class="calendar-wrapper" id="planner-main-wrapper"></div></div>
     <div class="app-view" id="view-duesoon" style="padding: 0 4px;">
         <div class="due-soon-wrapper" id="due-soon-content"></div>
     </div>
@@ -1349,9 +1347,8 @@
     let appData = { boards: [], columns: [], tasks: [], automations: [], settings: {}, activeBoardId: null };
     let currentView = 'board';
     let calDate = new Date();
-    let plannerDate = new Date();
     let calendarMode = 'grid';
-    let plannerMode = 'grid';
+    let calendarType = 'events';
 
     function generateId() { return Math.random().toString(36).substr(2, 9); }
     
@@ -1769,9 +1766,14 @@
         document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
         const viewEl = document.getElementById('view-' + viewName);
         if (viewEl) viewEl.classList.add('active');
+        
+        const topbar = document.querySelector('.topbar');
+        if (topbar) {
+            topbar.style.display = viewName === 'calendar' ? 'none' : 'flex';
+        }
+
         if (viewName === 'board') renderBoard();
         if (viewName === 'calendar') renderCalendar();
-        if (viewName === 'planner') renderPlanner();
         if (viewName === 'settings') renderSettings();
         if (viewName === 'duesoon') renderDueSoon();
     }
@@ -1822,8 +1824,8 @@
             const diff = date - now;
             const days = Math.floor(diff / 86400000);
             const hrs  = Math.floor((diff % 86400000) / 3600000);
-            if (days > 7)  return { label: days + 'd away',       bg: 'rgba(52,199,89,0.15)',   color: '#34C759' };
-            if (days > 3)  return { label: days + 'd away',       bg: 'rgba(255,149,0,0.15)',   color: '#FF9500' };
+            if (days > 7)  return { label: days + 'd away',      bg: 'rgba(52,199,89,0.15)',   color: '#34C759' };
+            if (days > 3)  return { label: days + 'd away',      bg: 'rgba(255,149,0,0.15)',   color: '#FF9500' };
             if (days > 0)  return { label: days + 'd ' + hrs + 'h', bg: 'rgba(255,59,48,0.15)', color: '#FF3B30' };
             return             { label: hrs + 'h away',            bg: 'rgba(255,59,48,0.2)',    color: '#FF3B30' };
         }
@@ -2229,6 +2231,7 @@
     }
 
     function setCalendarMode(mode) { calendarMode = mode; renderCalendar(); }
+    function setCalendarType(type) { calendarType = type; renderCalendar(); }
     function changeMonth(offset) { calDate.setMonth(calDate.getMonth() + offset); renderCalendar(); }
 
     function renderCalendar() {
@@ -2242,13 +2245,22 @@
         const year = calDate.getFullYear();
         const month = calDate.getMonth();
         const monthYearStr = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calDate);
+        
+        const typeToggleHtml = `
+            <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px; flex-shrink: 0;">
+                <button class="col-action-btn ${calendarType === 'events' ? 'active' : ''}" style="${calendarType === 'events' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarType('events')">Events</button>
+                <button class="col-action-btn ${calendarType === 'planner' ? 'active' : ''}" style="${calendarType === 'planner' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarType('planner')">Content Calendar</button>
+            </div>
+        `;
+
         wrapper.innerHTML = `
             <div class="calendar-header">
-                <div style="display: flex; gap: 10px; flex: 1;">
+                <div style="display: flex; gap: 10px; flex: 1; align-items: center; flex-wrap: wrap;">
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(-1)">Prev</button>
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(1)">Next</button>
+                    ${typeToggleHtml}
                 </div>
-                <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: #0A84FF;">${monthYearStr}</h2>
+                <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: ${calendarType === 'events' ? '#0A84FF' : '#BF5AF2'};">${monthYearStr}</h2>
                 <div class="view-toggle-wrap" style="display: flex; flex: 1; justify-content: flex-end;">
                     <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
                         <button class="col-action-btn ${calendarMode === 'grid' ? 'active' : ''}" style="${calendarMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('grid')">Grid</button>
@@ -2256,116 +2268,54 @@
                     </div>
                 </div>
             </div>`;
-        const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId && t.dueDate);
-        if (activeMode === 'list') {
-            const listContainer = document.createElement('div');
-            listContainer.className = 'list-view-container';
-            const monthTasks = activeTasks.filter(t => { const d = new Date(t.dueDate); return d.getMonth() === month && d.getFullYear() === year; });
-            monthTasks.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
-            if (monthTasks.length === 0) { listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); margin-top: 40px;">No events scheduled for this month.</div>`; }
-            else {
-                const grouped = {};
-                monthTasks.forEach(t => { const d = new Date(t.dueDate); const dateStr = new Intl.DateTimeFormat('en-US', { weekday:'long', month: 'short', day: 'numeric' }).format(d); if(!grouped[dateStr]) grouped[dateStr] = []; grouped[dateStr].push(t); });
-                for (const [date, items] of Object.entries(grouped)) {
-                    const groupEl = document.createElement('div');
-                    groupEl.className = 'planner-date-group';
-                    groupEl.innerHTML = `<div class="planner-date-header" style="color: #0A84FF;">${date}</div>`;
-                    items.forEach(t => {
-                        const row = document.createElement('div');
-                        row.className = 'planner-task-row';
-                        row.onclick = () => openTaskModal(t.columnId, t.id);
-                        const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute:'2-digit' }).format(new Date(t.dueDate));
-                        let labelsHtml = t.labels && t.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 8px;">(${t.labels[0].text})</span>` : '';
-                        row.innerHTML = `<div style="display: flex; align-items: center; gap: 15px;"><span style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap;">${time}</span><div style="font-weight: bold; font-size: 1.05rem; display: flex; align-items: center;">${t.title} ${labelsHtml}</div></div>`;
-                        groupEl.appendChild(row);
-                    });
-                    listContainer.appendChild(groupEl);
-                }
-            }
-            wrapper.appendChild(listContainer);
+            
+        let items = [];
+        if (calendarType === 'events') {
+            appData.tasks.filter(t => t.boardId === appData.activeBoardId && t.dueDate).forEach(t => {
+                items.push({ date: t.dueDate, type: 'Event', task: t });
+            });
         } else {
-            const grid = document.createElement('div');
-            grid.className = 'calendar-grid';
-            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-            days.forEach(d => { const dh = document.createElement('div'); dh.className = 'calendar-day-header'; dh.innerText = d; grid.appendChild(dh); });
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const today = new Date();
-            const prevMonthDays = new Date(year, month, 0).getDate();
-            for (let i = firstDay - 1; i >= 0; i--) { const cell = document.createElement('div'); cell.className = 'calendar-cell other-month'; cell.innerHTML = `<div class="calendar-date"><span>${prevMonthDays - i}</span></div>`; grid.appendChild(cell); }
-            for (let i = 1; i <= daysInMonth; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'calendar-cell';
-                const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-                if(isToday) cell.classList.add('today');
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                cell.innerHTML = `<div class="calendar-date"><span>${i}</span></div>`;
-                const dayTasks = activeTasks.filter(t => t.dueDate.startsWith(dateStr));
-                dayTasks.forEach(t => { const pill = document.createElement('div'); pill.className = 'calendar-task-pill'; if(t.labels && t.labels.length > 0) { pill.style.borderLeft = `3px solid ${t.labels[0].color === 'blue' ? '#0A84FF' : '#BF5AF2'}`; } pill.innerText = t.title; pill.onclick = () => openTaskModal(t.columnId, t.id); cell.appendChild(pill); });
-                grid.appendChild(cell);
-            }
-            const totalCells = firstDay + daysInMonth;
-            const nextDays = 42 - totalCells;
-            for(let i=1; i<=nextDays; i++) { const cell = document.createElement('div'); cell.className = 'calendar-cell other-month'; cell.innerHTML = `<div class="calendar-date"><span>${i}</span></div>`; grid.appendChild(cell); }
-            wrapper.appendChild(grid);
+            appData.tasks.filter(t => t.boardId === appData.activeBoardId).forEach(t => {
+                if (t.postingSchedule?.story) items.push({ date: t.postingSchedule.story, type: 'Story', hex: '#BF5AF2', task: t });
+                if (t.postingSchedule?.photo) items.push({ date: t.postingSchedule.photo, type: 'Photo', hex: '#0A84FF', task: t });
+                if (t.postingSchedule?.reel)  items.push({ date: t.postingSchedule.reel,  type: 'Reel',  hex: '#FF2D55', task: t });
+            });
         }
-    }
 
-    function setPlannerMode(mode) { plannerMode = mode; renderPlanner(); }
-    function changePlannerMonth(offset) { plannerDate.setMonth(plannerDate.getMonth() + offset); renderPlanner(); }
-
-    function renderPlanner() {
-        const wrapper = document.getElementById('planner-main-wrapper');
-        if (!wrapper) return;
-        wrapper.innerHTML = '';
-        
-        const isMobile = window.innerWidth <= 900;
-        const activeMode = isMobile ? 'list' : plannerMode;
-        
-        const year = plannerDate.getFullYear();
-        const month = plannerDate.getMonth();
-        const monthYearStr = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(plannerDate);
-        wrapper.innerHTML = `
-            <div class="calendar-header">
-                <div style="display: flex; gap: 10px; flex: 1;">
-                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changePlannerMonth(-1)">Prev</button>
-                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changePlannerMonth(1)">Next</button>
-                </div>
-                <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: #BF5AF2;">${monthYearStr}</h2>
-                <div class="view-toggle-wrap" style="display: flex; flex: 1; justify-content: flex-end;">
-                    <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
-                        <button class="col-action-btn ${plannerMode === 'grid' ? 'active' : ''}" style="${plannerMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setPlannerMode('grid')">Grid</button>
-                        <button class="col-action-btn ${plannerMode === 'list' ? 'active' : ''}" style="${plannerMode === 'list' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setPlannerMode('list')">List</button>
-                    </div>
-                </div>
-            </div>`;
-        let plannerItems = [];
-        appData.tasks.filter(t => t.boardId === appData.activeBoardId).forEach(t => {
-            if (t.postingSchedule?.story) plannerItems.push({ date: t.postingSchedule.story, type: 'Story', hex: '#BF5AF2', task: t });
-            if (t.postingSchedule?.photo) plannerItems.push({ date: t.postingSchedule.photo, type: 'Photo', hex: '#0A84FF', task: t });
-            if (t.postingSchedule?.reel)  plannerItems.push({ date: t.postingSchedule.reel,  type: 'Reel',  hex: '#FF2D55', task: t });
-        });
         if (activeMode === 'list') {
             const listContainer = document.createElement('div');
             listContainer.className = 'list-view-container';
-            const monthItems = plannerItems.filter(item => { const d = new Date(item.date); return d.getMonth() === month && d.getFullYear() === year; });
+            const monthItems = items.filter(item => { const d = new Date(item.date); return d.getMonth() === month && d.getFullYear() === year; });
             monthItems.sort((a,b) => new Date(a.date) - new Date(b.date));
-            if(monthItems.length === 0) { listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); margin-top: 40px;">No posts scheduled for this month.</div>`; }
-            else {
+            
+            if (monthItems.length === 0) { 
+                listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); margin-top: 40px;">No ${calendarType === 'events' ? 'events' : 'posts'} scheduled for this month.</div>`; 
+            } else {
                 const grouped = {};
-                monthItems.forEach(item => { const d = new Date(item.date); const dateStr = new Intl.DateTimeFormat('en-US', { weekday:'long', month: 'short', day: 'numeric' }).format(d); if(!grouped[dateStr]) grouped[dateStr] = []; grouped[dateStr].push(item); });
-                for (const [date, items] of Object.entries(grouped)) {
+                monthItems.forEach(item => { 
+                    const d = new Date(item.date); 
+                    const dateStr = new Intl.DateTimeFormat('en-US', { weekday:'long', month: 'short', day: 'numeric' }).format(d); 
+                    if(!grouped[dateStr]) grouped[dateStr] = []; 
+                    grouped[dateStr].push(item); 
+                });
+                for (const [date, dayItems] of Object.entries(grouped)) {
                     const groupEl = document.createElement('div');
                     groupEl.className = 'planner-date-group';
-                    groupEl.innerHTML = `<div class="planner-date-header" style="color: #BF5AF2;">${date}</div>`;
-                    items.forEach(item => {
+                    groupEl.innerHTML = `<div class="planner-date-header" style="color: ${calendarType === 'events' ? '#0A84FF' : '#BF5AF2'};">${date}</div>`;
+                    dayItems.forEach(item => {
                         const row = document.createElement('div');
                         row.className = 'planner-task-row';
                         row.onclick = () => openTaskModal(item.task.columnId, item.task.id);
                         const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute:'2-digit' }).format(new Date(item.date));
-                        let typeBadge = `<span class="label-tag" style="background: rgba(255,255,255,0.1); color: ${item.hex}; border-color: ${item.hex}; margin-right: 10px;">${item.type}</span>`;
-                        let campaignHtml = item.task.labels && item.task.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 8px;">(${item.task.labels[0].text})</span>` : '';
-                        row.innerHTML = `<div style="display: flex; align-items: center; gap: 15px;"><span style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap;">${time}</span><div style="font-weight: bold; font-size: 1.05rem; display: flex; align-items: center;">${typeBadge} ${item.task.title} ${campaignHtml}</div></div>`;
+                        
+                        let badgeHtml = '';
+                        if (calendarType === 'planner') {
+                            badgeHtml = `<span class="label-tag" style="background: rgba(255,255,255,0.1); color: ${item.hex}; border-color: ${item.hex}; margin-right: 10px;">${item.type}</span>`;
+                        }
+                        
+                        let extraHtml = item.task.labels && item.task.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 8px;">(${item.task.labels[0].text})</span>` : '';
+                        
+                        row.innerHTML = `<div style="display: flex; align-items: center; gap: 15px;"><span style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap;">${time}</span><div style="font-weight: bold; font-size: 1.05rem; display: flex; align-items: center;">${badgeHtml} ${item.task.title} ${extraHtml}</div></div>`;
                         groupEl.appendChild(row);
                     });
                     listContainer.appendChild(groupEl);
@@ -2381,17 +2331,38 @@
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const today = new Date();
             const prevMonthDays = new Date(year, month, 0).getDate();
+            
             for (let i = firstDay - 1; i >= 0; i--) { const cell = document.createElement('div'); cell.className = 'calendar-cell other-month'; cell.innerHTML = `<div class="calendar-date"><span>${prevMonthDays - i}</span></div>`; grid.appendChild(cell); }
+            
             for (let i = 1; i <= daysInMonth; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'calendar-cell';
                 const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
                 if(isToday) cell.classList.add('today');
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                cell.innerHTML = `<div class="calendar-date"><span>${i}</span><button class="add-post-btn-cal" onclick="openQuickPostModal('${dateStr}')">+ Add Post</button></div>`;
-                const dayItems = plannerItems.filter(item => item.date.startsWith(dateStr));
+                
+                let addBtnHtml = calendarType === 'planner' ? `<button class="add-post-btn-cal" onclick="openQuickPostModal('${dateStr}')">+ Add Post</button>` : '';
+                cell.innerHTML = `<div class="calendar-date"><span>${i}</span>${addBtnHtml}</div>`;
+                
+                const dayItems = items.filter(item => item.date.startsWith(dateStr));
                 dayItems.sort((a,b) => new Date(a.date) - new Date(b.date));
-                dayItems.forEach(item => { const pill = document.createElement('div'); pill.className = 'calendar-task-pill'; pill.style.borderLeft = `3px solid ${item.hex}`; pill.innerText = `${item.type}: ${item.task.title}`; pill.onclick = () => openTaskModal(item.task.columnId, item.task.id); cell.appendChild(pill); });
+                dayItems.forEach(item => { 
+                    const pill = document.createElement('div'); 
+                    pill.className = 'calendar-task-pill'; 
+                    
+                    if (calendarType === 'planner') {
+                        pill.style.borderLeft = `3px solid ${item.hex}`; 
+                        pill.innerText = `${item.type}: ${item.task.title}`; 
+                    } else {
+                        if(item.task.labels && item.task.labels.length > 0) { 
+                            pill.style.borderLeft = `3px solid ${item.task.labels[0].color === 'blue' ? '#0A84FF' : '#BF5AF2'}`; 
+                        } 
+                        pill.innerText = item.task.title; 
+                    }
+                    
+                    pill.onclick = () => openTaskModal(item.task.columnId, item.task.id); 
+                    cell.appendChild(pill); 
+                });
                 grid.appendChild(cell);
             }
             const totalCells = firstDay + daysInMonth;
@@ -2423,7 +2394,7 @@
         if (taskIndex > -1) {
             if (!appData.tasks[taskIndex].postingSchedule) appData.tasks[taskIndex].postingSchedule = { story: '', photo: '', reel: '' };
             appData.tasks[taskIndex].postingSchedule[type] = dateTimeStr;
-            saveData(); closeModal(null, 'quickPostModal'); renderPlanner(); showToast("Post scheduled!");
+            saveData(); closeModal(null, 'quickPostModal'); renderCalendar(); showToast("Post scheduled!");
         }
     }
 
@@ -4410,6 +4381,5 @@
         return showDialog({ type: 'combo', title, message, options, confirmText: 'Save' });
     }
 </script>
-
 </body>
 </html>
