@@ -4249,6 +4249,58 @@
     };
 </script>
 
+<!-- EVENT FORM MODAL -->
+<div id="eventFormModal" style="
+    position: fixed; inset: 0; z-index: 99998;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; transition: opacity 0.2s ease;
+">
+    <div style="
+        background: #161616;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 24px;
+        padding: 28px;
+        width: 100%; max-width: 480px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        transform: translateY(16px); transition: transform 0.2s ease;
+        max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    " id="eventFormBox">
+        <div id="eventFormTitle" style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 16px;"></div>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">Event Name</label>
+                <input id="eventFormName" type="text" class="modern-input" style="font-size: 1rem; width: 100%;" placeholder="Enter event name" autocomplete="off">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">Date</label>
+                <input id="eventFormDate" type="date" class="modern-input" style="font-size: 1rem; width: 100%;">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">Time</label>
+                <input id="eventFormTime" type="time" class="modern-input" style="font-size: 1rem; width: 100%;">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">Location</label>
+                <input id="eventFormLocation" type="text" class="modern-input" style="font-size: 1rem; width: 100%;" placeholder="Enter location" autocomplete="off">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; display: block;">Assign to Board Members</label>
+                <div id="eventFormMembersList" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
+                <select id="eventFormMemberSelect" class="modern-input" style="font-size: 0.9rem; width: 100%;" onchange="addEventFormMember()">
+                    <option value="">+ Select member to assign...</option>
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+            <button class="btn-outline" style="border: none; padding: 10px 16px;" onclick="closeEventForm()">Cancel</button>
+            <button class="btn-action" style="padding: 10px 20px;" onclick="saveEventForm()">Save Event</button>
+        </div>
+    </div>
+</div>
+
 <!-- CUSTOM DIALOG SYSTEM -->
 <div id="customDialog" style="
     position: fixed; inset: 0; z-index: 99999;
@@ -4467,107 +4519,119 @@
         return div.innerHTML;
     }
 
-    async function openAddEventForm() {
-        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password);
-        const name = await showPrompt('Add Event', 'Event Name:');
-        if (name === null || !name.trim()) return;
+    let editingEventId = null;
+    let eventFormMembers = [];
 
-        const date = await showPrompt('Event Date', 'Date (YYYY-MM-DD):');
-        if (date === null) return;
-
-        const time = await showPrompt('Event Time', 'Time (HH:MM, 24hr format, e.g. 14:00):');
-        if (time === null) return;
-
-        const location = await showPrompt('Event Location', 'Location:');
-        if (location === null) return;
-
-        let assignedMembers = [];
-        if (registeredUsers.length > 0) {
-            const memberOptions = registeredUsers.map(u => ({ value: u.name, label: u.name }));
-            let addingMembers = true;
-            while (addingMembers && memberOptions.length > 0) {
-                const available = memberOptions.filter(m => !assignedMembers.includes(m.value));
-                if (available.length === 0) break;
-                const member = await showSelect(
-                    'Assign Board Members',
-                    `Currently assigned: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nSelect a member to assign (or Cancel to finish):`,
-                    available
-                );
-                if (member === null) {
-                    addingMembers = false;
-                } else {
-                    assignedMembers.push(member);
-                    const more = await showConfirm('Add Another?', 'Assign another board member?', 'Yes');
-                    if (!more) addingMembers = false;
-                }
-            }
-        }
-
-        if (!appData.events) appData.events = [];
-        appData.events.push({
-            id: generateId(),
-            name: name.trim(),
-            date: date.trim(),
-            time: time.trim(),
-            location: location.trim(),
-            assignedMembers: assignedMembers
-        });
-        saveData();
-        renderEvents();
-        showToast('Event added!');
+    function openAddEventForm() {
+        editingEventId = null;
+        eventFormMembers = [];
+        document.getElementById('eventFormTitle').innerText = 'Add Event';
+        document.getElementById('eventFormName').value = '';
+        document.getElementById('eventFormDate').value = '';
+        document.getElementById('eventFormTime').value = '';
+        document.getElementById('eventFormLocation').value = '';
+        populateEventFormMemberSelect();
+        renderEventFormMembers();
+        openEventFormModal();
     }
 
-    async function editEvent(eventId) {
+    function editEvent(eventId) {
         const ev = (appData.events || []).find(e => e.id === eventId);
         if (!ev) return;
+        editingEventId = eventId;
+        eventFormMembers = [...(ev.assignedMembers || [])];
+        document.getElementById('eventFormTitle').innerText = 'Edit Event';
+        document.getElementById('eventFormName').value = ev.name || '';
+        document.getElementById('eventFormDate').value = ev.date || '';
+        document.getElementById('eventFormTime').value = ev.time || '';
+        document.getElementById('eventFormLocation').value = ev.location || '';
+        populateEventFormMemberSelect();
+        renderEventFormMembers();
+        openEventFormModal();
+    }
+
+    function openEventFormModal() {
+        const overlay = document.getElementById('eventFormModal');
+        const box = document.getElementById('eventFormBox');
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.opacity = '1'; box.style.transform = 'translateY(0)'; }, 10);
+    }
+
+    function closeEventForm() {
+        const overlay = document.getElementById('eventFormModal');
+        const box = document.getElementById('eventFormBox');
+        overlay.style.opacity = '0';
+        box.style.transform = 'translateY(16px)';
+        setTimeout(() => { overlay.style.display = 'none'; }, 200);
+    }
+
+    function populateEventFormMemberSelect() {
+        const select = document.getElementById('eventFormMemberSelect');
         const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password);
+        const available = registeredUsers.filter(u => !eventFormMembers.includes(u.name));
+        select.innerHTML = '<option value="">+ Select member to assign...</option>' +
+            available.map(u => `<option value="${escapeHtml(u.name)}">${escapeHtml(u.name)}</option>`).join('');
+    }
 
-        const name = await showPrompt('Edit Event', 'Event Name:', ev.name);
-        if (name === null) return;
+    function addEventFormMember() {
+        const select = document.getElementById('eventFormMemberSelect');
+        const val = select.value;
+        if (!val) return;
+        eventFormMembers.push(val);
+        select.value = '';
+        populateEventFormMemberSelect();
+        renderEventFormMembers();
+    }
 
-        const date = await showPrompt('Event Date', 'Date (YYYY-MM-DD):', ev.date);
-        if (date === null) return;
+    function removeEventFormMember(name) {
+        eventFormMembers = eventFormMembers.filter(m => m !== name);
+        populateEventFormMemberSelect();
+        renderEventFormMembers();
+    }
 
-        const time = await showPrompt('Event Time', 'Time (HH:MM, 24hr):', ev.time);
-        if (time === null) return;
+    function renderEventFormMembers() {
+        const container = document.getElementById('eventFormMembersList');
+        if (eventFormMembers.length === 0) {
+            container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">No members assigned</span>';
+            return;
+        }
+        container.innerHTML = eventFormMembers.map(m =>
+            `<span class="event-card-member" style="cursor:pointer; display:flex; align-items:center; gap:4px;" onclick="removeEventFormMember('${escapeHtml(m)}')">${escapeHtml(m)} ✕</span>`
+        ).join('');
+    }
 
-        const location = await showPrompt('Event Location', 'Location:', ev.location);
-        if (location === null) return;
+    function saveEventForm() {
+        const name = document.getElementById('eventFormName').value.trim();
+        const date = document.getElementById('eventFormDate').value.trim();
+        const time = document.getElementById('eventFormTime').value.trim();
+        const location = document.getElementById('eventFormLocation').value.trim();
 
-        let assignedMembers = [...(ev.assignedMembers || [])];
-        if (registeredUsers.length > 0) {
-            const editMembers = await showConfirm('Edit Members', `Current: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nWould you like to reassign members?`, 'Yes');
-            if (editMembers) {
-                assignedMembers = [];
-                const memberOptions = registeredUsers.map(u => ({ value: u.name, label: u.name }));
-                let addingMembers = true;
-                while (addingMembers) {
-                    const available = memberOptions.filter(m => !assignedMembers.includes(m.value));
-                    if (available.length === 0) break;
-                    const member = await showSelect(
-                        'Assign Board Members',
-                        `Currently assigned: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nSelect a member:`,
-                        available
-                    );
-                    if (member === null) {
-                        addingMembers = false;
-                    } else {
-                        assignedMembers.push(member);
-                        const more = await showConfirm('Add Another?', 'Assign another board member?', 'Yes');
-                        if (!more) addingMembers = false;
-                    }
-                }
+        if (!name) { showToast('Please enter an event name.'); return; }
+
+        if (!appData.events) appData.events = [];
+
+        if (editingEventId) {
+            const ev = appData.events.find(e => e.id === editingEventId);
+            if (ev) {
+                ev.name = name;
+                ev.date = date;
+                ev.time = time;
+                ev.location = location;
+                ev.assignedMembers = [...eventFormMembers];
             }
+            showToast('Event updated!');
+        } else {
+            appData.events.push({
+                id: generateId(),
+                name, date, time, location,
+                assignedMembers: [...eventFormMembers]
+            });
+            showToast('Event added!');
         }
 
-        ev.name = name.trim();
-        ev.date = date.trim();
-        ev.time = time.trim();
-        ev.location = location.trim();
-        ev.assignedMembers = assignedMembers;
         saveData();
+        closeEventForm();
         renderEvents();
-        showToast('Event updated!');
     }
 
     async function deleteEvent(eventId) {
