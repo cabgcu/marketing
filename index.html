@@ -1777,6 +1777,8 @@
         renderApp();
         // Re-subscribe to Web Push on each login (subscriptions can expire)
         ensurePushSubscription();
+        // Auto-prompt notification permission for first-time visitors
+        autoPromptNotifPermission();
     }
 
     function createNewPassword() {
@@ -3121,14 +3123,18 @@
 
     function getNotifPrefs() {
         ensureNotifStructures();
-        return appData.notifPrefs[currentUserName || ''] || {};
+        // Global prefs controlled by admin, shared by all users
+        return appData.notifPrefs._global || {};
     }
     function saveNotifPrefs(prefs) {
         ensureNotifStructures();
-        appData.notifPrefs[currentUserName || ''] = prefs;
+        appData.notifPrefs._global = prefs;
         saveData();
     }
-    function updateNotifPref(key, enabled) { const p = getNotifPrefs(); p[key] = enabled; saveNotifPrefs(p); }
+    function updateNotifPref(key, enabled) {
+        if (currentUserRole !== 'admin') return;
+        const p = getNotifPrefs(); p[key] = enabled; saveNotifPrefs(p);
+    }
     function isNotifEnabled(type) { const p = getNotifPrefs(); return p[type] !== false; }
 
     function getNotifications() {
@@ -3173,6 +3179,7 @@
             appData.notifications[userName] = notifs.slice(0, 100);
             // If this target is the currently logged-in user, update UI + push
             if (userName === currentUserName) {
+                _localNotifIds.add(notif.id);
                 updateNotifBadge();
                 renderNotifList();
                 sendPushNotification(notif);
@@ -3231,6 +3238,7 @@
             read: false,
             timestamp: new Date().toISOString()
         };
+        _localNotifIds.add(notif.id);
         const notifs = getNotifications();
         notifs.unshift(notif);
         saveNotifications(notifs);
@@ -3279,7 +3287,17 @@
         const area = document.getElementById('notifPermissionArea');
         const rows = document.querySelectorAll('.notif-pref-row input[type="checkbox"]');
         const types = ['assign', 'comment', 'due', 'move', 'checklist', 'label'];
-        rows.forEach((cb, i) => { if (types[i] !== undefined) cb.checked = prefs[types[i]] !== false; });
+        const isAdmin = currentUserRole === 'admin';
+        rows.forEach((cb, i) => {
+            if (types[i] !== undefined) cb.checked = prefs[types[i]] !== false;
+            cb.disabled = !isAdmin;
+            cb.style.opacity = isAdmin ? '1' : '0.4';
+            cb.style.cursor = isAdmin ? 'pointer' : 'not-allowed';
+        });
+        // Show admin-only label
+        document.querySelectorAll('.notif-pref-row').forEach(row => {
+            row.style.opacity = isAdmin ? '1' : '0.5';
+        });
 
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
@@ -3328,16 +3346,89 @@
                 // Subscribe to Web Push for real background notifications
                 await subscribeToPush();
                 // Send a test notification
-                sendPushNotification({ title: 'CAB Marketing', body: 'Notifications are working!', type: 'test', id: 'test' });
+                sendPushNotification({ title: 'Notifications Enabled', body: 'Notifications are working!', type: 'test', id: 'test' });
             } else if (result === 'denied') {
-                showToast('Permission denied. You can change this in browser/system settings.');
+                showNotifBlockOverlay();
             } else {
-                showToast('Permission dismissed. Try again when ready.');
+                showNotifBlockOverlay();
             }
         } catch (err) {
             showToast('Could not request permission: ' + err.message);
         }
         loadNotifPrefToggles();
+    }
+
+    function autoPromptNotifPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') return;
+        // Show the blocking overlay for both 'default' and 'denied'
+        setTimeout(() => { showNotifBlockOverlay(); }, 800);
+    }
+
+    function showNotifBlockOverlay() {
+        const overlay = document.getElementById('notifBlockOverlay');
+        const box = document.getElementById('notifBlockBox');
+        const btn = document.getElementById('notifBlockBtn');
+        const help = document.getElementById('notifBlockHelp');
+        const msg = document.getElementById('notifBlockMessage');
+        if (!overlay) return;
+
+        const isDenied = 'Notification' in window && Notification.permission === 'denied';
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isDenied) {
+            msg.textContent = 'Notifications are currently blocked. Please update your browser settings to allow notifications, then tap the button below.';
+            btn.textContent = 'I\'ve Enabled Notifications';
+            help.style.display = 'block';
+            if (isIOS) {
+                help.innerHTML = 'Go to <b>Settings → Notifications</b> → find this app → toggle <b>Allow Notifications</b> on.';
+            } else {
+                help.innerHTML = 'Click the 🔒 icon in your browser\'s address bar → set Notifications to <b>Allow</b> → reload the page.';
+            }
+        } else {
+            msg.textContent = 'Notifications are required to stay up to date with your team. Please enable them to continue.';
+            btn.textContent = 'Enable Notifications';
+            help.style.display = 'none';
+        }
+
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.opacity = '1'; box.style.transform = 'translateY(0)'; }, 10);
+    }
+
+    function hideNotifBlockOverlay() {
+        const overlay = document.getElementById('notifBlockOverlay');
+        const box = document.getElementById('notifBlockBox');
+        if (!overlay) return;
+        overlay.style.opacity = '0';
+        box.style.transform = 'translateY(16px)';
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+
+    async function handleNotifBlockEnable() {
+        const isDenied = 'Notification' in window && Notification.permission === 'denied';
+        if (isDenied) {
+            // User says they've updated settings — check if it's actually changed
+            // Browser won't update without a reload, so reload the page
+            location.reload();
+            return;
+        }
+        // Permission is 'default' — request it
+        try {
+            const result = await Notification.requestPermission();
+            if (result === 'granted') {
+                showToast('Push notifications enabled!');
+                await subscribeToPush();
+                sendPushNotification({ title: 'Notifications Enabled', body: 'Notifications are working!', type: 'test', id: 'test' });
+                hideNotifBlockOverlay();
+                loadNotifPrefToggles();
+            } else {
+                // Still not granted — update overlay to show denied state
+                showNotifBlockOverlay();
+            }
+        } catch (err) {
+            showToast('Could not request permission: ' + err.message);
+        }
     }
 
     // Subscribe to Web Push via PushManager and store subscription in Supabase
@@ -3505,9 +3596,10 @@
     async function clearAllNotifs() {
         const ok = await showConfirm('Clear Notifications', 'Delete all notifications?', 'Clear All', true);
         if (ok) {
-            // Track cleared IDs so polling doesn't bring them back
+            // Track cleared IDs so polling doesn't bring them back (persisted to localStorage)
             const notifs = getNotifications();
             notifs.forEach(n => _clearedNotifIds.add(n.id));
+            _persistClearedIds();
             saveNotifications([]);
             updateNotifBadge();
             renderNotifList();
@@ -3525,6 +3617,7 @@
     }
 
     // Due date reminder check — runs every 5 minutes
+    // Only: 24-hour reminder (due tomorrow) + "starting soon" for events with a time
     function checkDueDateReminders() {
         if (!currentUserName || !isNotifEnabled('due')) return;
         const now = new Date();
@@ -3537,28 +3630,59 @@
         let shown = {};
         try { shown = JSON.parse(localStorage.getItem(reminderKey)) || {}; } catch {}
 
-        appData.tasks.forEach(task => {
-            if (!task.dueDate || shown[task.id]) return;
-            const isMember = task.members && task.members.includes(currentUserName);
-            if (!isMember) return;
+        // "Starting soon" key tracks per-task so it only fires once per event time
+        const soonKey = 'cabStartingSoon_' + currentUserName;
+        let soonShown = {};
+        try { soonShown = JSON.parse(localStorage.getItem(soonKey)) || {}; } catch {}
 
-            if (task.dueDate === todayStr) {
-                addNotification('due', 'Due today: ' + (task.title || 'Untitled'), 'This card is due today!', task.id);
-                shown[task.id] = true;
-            } else if (task.dueDate === tomorrowStr) {
-                addNotification('due', 'Due tomorrow: ' + (task.title || 'Untitled'), 'This card is due tomorrow.', task.id);
-                shown[task.id] = true;
-            } else if (task.dueDate < todayStr) {
-                addNotification('due', 'Overdue: ' + (task.title || 'Untitled'), 'This card was due on ' + task.dueDate, task.id);
-                shown[task.id] = true;
+        const allUsers = (appData.settings && appData.settings.users) ? appData.settings.users.map(u => u.name) : [];
+
+        appData.tasks.forEach(task => {
+            if (!task.dueDate || task.completed) return;
+            const dueDateStr = task.dueDate.slice(0, 10);
+            const hasTime = task.dueDate.includes('T') && task.dueDate.length > 10 && task.dueDate.slice(11, 16) !== '00:00';
+
+            // 24-hour reminder: notify card members if due tomorrow
+            if (dueDateStr === tomorrowStr && !shown[task.id]) {
+                const isMember = task.members && task.members.includes(currentUserName);
+                if (isMember) {
+                    addNotification('due', 'Due tomorrow: ' + (task.title || 'Untitled'), 'This card is due tomorrow.', task.id);
+                    shown[task.id] = true;
+                }
+            }
+
+            // "Starting soon" reminder: notify ALL users if event has a time and starts within 30 min
+            if (hasTime && !soonShown[task.id]) {
+                const eventDate = new Date(task.dueDate);
+                const diffMs = eventDate.getTime() - now.getTime();
+                if (diffMs > 0 && diffMs <= 30 * 60 * 1000) {
+                    // Notify current user locally
+                    const timeStr = eventDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    addNotification('due', 'Starting soon: ' + (task.title || 'Untitled'), 'Event starts at ' + timeStr, task.id);
+                    soonShown[task.id] = true;
+                    // Send server push to all other users
+                    const otherUsers = allUsers.filter(u => u !== currentUserName);
+                    if (otherUsers.length > 0) {
+                        sendServerPush(otherUsers, {
+                            title: 'Starting soon: ' + (task.title || 'Untitled'),
+                            body: 'Event starts at ' + timeStr,
+                            type: 'due',
+                            taskId: task.id,
+                            id: generateId()
+                        });
+                        // Also add in-app notification for remote users
+                        addNotificationFor(allUsers, 'due', 'Starting soon: ' + (task.title || 'Untitled'), 'Event starts at ' + timeStr, task.id, currentUserName);
+                    }
+                }
             }
         });
         localStorage.setItem(reminderKey, JSON.stringify(shown));
+        localStorage.setItem(soonKey, JSON.stringify(soonShown));
     }
 
-    // Run due date check on load and every 5 min
+    // Run due date check on load and every 2 min (for starting-soon accuracy)
     setTimeout(checkDueDateReminders, 3000);
-    setInterval(checkDueDateReminders, 5 * 60 * 1000);
+    setInterval(checkDueDateReminders, 2 * 60 * 1000);
 
     // Initialize badge on load
     setTimeout(updateNotifBadge, 500);
@@ -3566,8 +3690,13 @@
     // Poll Supabase for new notifications from other users (every 30 seconds)
     // Track when this session started — only push-notify for notifications created after this time
     const _sessionStartTime = new Date().toISOString();
+    // Track IDs of notifications created locally so we don't double-notify from polling
+    const _localNotifIds = new Set();
     // Track IDs of notifications this client has cleared/dismissed so they never come back
-    const _clearedNotifIds = new Set();
+    // Persisted to localStorage so cleared notifs stay gone across page reloads
+    const _clearedStorageKey = 'cabClearedNotifIds_' + (currentUserName || '');
+    const _clearedNotifIds = new Set((() => { try { return JSON.parse(localStorage.getItem(_clearedStorageKey)) || []; } catch { return []; } })());
+    function _persistClearedIds() { try { localStorage.setItem(_clearedStorageKey, JSON.stringify([..._clearedNotifIds])); } catch {} }
 
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
@@ -3609,8 +3738,9 @@
             renderNotifList();
             // Only push-notify for notifications created AFTER this session started
             // This prevents old dismissed notifications from re-firing on app open
+            // Skip notifications we created locally (prevents double push)
             newNotifs.forEach(n => {
-                if (!n.read && n.timestamp > _sessionStartTime) {
+                if (!n.read && n.timestamp > _sessionStartTime && !_localNotifIds.has(n.id)) {
                     sendPushNotification(n);
                 }
             });
@@ -5043,6 +5173,39 @@
             <button id="customDialogCancel" class="btn-outline" style="border: none; padding: 10px 16px;">Cancel</button>
             <button id="customDialogConfirm" class="btn-action" style="padding: 10px 20px;"></button>
         </div>
+    </div>
+</div>
+
+<!-- Blocking notification permission overlay -->
+<div id="notifBlockOverlay" style="
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; transition: opacity 0.3s ease;
+">
+    <div id="notifBlockBox" style="
+        background: #161616;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 24px;
+        padding: 36px 28px;
+        width: 100%; max-width: 400px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        transform: translateY(16px); transition: transform 0.3s ease;
+        text-align: center;
+    ">
+        <div style="font-size: 2.5rem; margin-bottom: 16px;">🔔</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 10px;">Enable Notifications</div>
+        <div id="notifBlockMessage" style="font-size: 0.88rem; color: #a1a1aa; margin-bottom: 24px; line-height: 1.6;">
+            Notifications are required to stay up to date with your team. Please enable them to continue.
+        </div>
+        <button id="notifBlockBtn" onclick="handleNotifBlockEnable()" class="btn-action" style="
+            padding: 14px 28px; width: 100%; font-size: 0.95rem; font-weight: 700;
+            border-radius: 14px; border: none; cursor: pointer;
+            background: var(--gradient-accent); color: #fff;
+        ">Enable Notifications</button>
+        <div id="notifBlockHelp" style="display:none; margin-top: 16px; font-size: 0.8rem; color: #FF9500; line-height: 1.5;"></div>
     </div>
 </div>
 

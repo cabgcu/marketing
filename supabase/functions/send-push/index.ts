@@ -194,13 +194,13 @@ Deno.serve(async (req) => {
     // Build notification payload
     const notifPayload = notification
       ? JSON.stringify({
-          title: notification.title || "CAB Marketing",
+          title: notification.title || "New Notification",
           body: notification.body || "You have a new notification",
           icon: notification.icon || "",
           tag: notification.tag || "cab-notif",
           data: notification.data || {},
         })
-      : JSON.stringify({ title: "CAB Marketing", body: "You have a new notification" });
+      : JSON.stringify({ title: "New Notification", body: "You have a new notification" });
 
     const payloadBytes = new TextEncoder().encode(notifPayload);
 

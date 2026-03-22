@@ -41,43 +41,44 @@ self.addEventListener('push', (e) => {
         return;
     }
 
-    // Fallback: if somehow we got an empty push (e.g., a background sync trigger)
-    // Show a generic notification immediately, then try to fetch details.
-    const fallbackTag = 'cab-notif-fallback';
-    
-    const fallbackChain = self.registration.showNotification('CAB Marketing', {
-        body: 'Checking for new updates...',
-        tag: fallbackTag,
-        renotify: true
-    }).then(() => {
-        return fetch(`${SUPABASE_URL}/rest/v1/app_state?select=data&id=eq.1`, {
-            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-        })
-        .then(r => r.json())
-        .then(rows => {
-            if (!rows || !rows[0] || !rows[0].data) return;
-            const appData = rows[0].data;
-            const allNotifs = appData.notifications || {};
-            let latest = null;
-            
-            for (const user in allNotifs) {
-                const userNotifs = allNotifs[user] || [];
-                for (const n of userNotifs) {
-                    if (!n.read && (!latest || new Date(n.timestamp) > new Date(latest.timestamp))) {
-                        latest = n;
+    // Fallback: if somehow we got an empty push, show a generic notification immediately
+    // then try to fetch details (but don't block on it)
+    const fallbackTag = 'cab-notif-' + Date.now();
+    e.waitUntil(
+        // Show generic notification FIRST (iOS will kill SW if we don't show quickly)
+        self.registration.showNotification('New Notification', {
+            body: 'You have a new notification',
+            tag: fallbackTag,
+            renotify: true
+        }).then(() => {
+            // Then try to fetch and update with real content
+            return fetch(SUPABASE_URL + '/rest/v1/app_state?select=data&id=eq.1', {
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+            })
+            .then(r => r.json())
+            .then(rows => {
+                if (!rows || !rows[0] || !rows[0].data) return;
+                const appData = rows[0].data;
+                const allNotifs = appData.notifications || {};
+                let latest = null;
+                for (const user in allNotifs) {
+                    const userNotifs = allNotifs[user] || [];
+                    for (const n of userNotifs) {
+                        if (!n.read && (!latest || new Date(n.timestamp) > new Date(latest.timestamp))) {
+                            latest = n;
+                        }
                     }
                 }
-            }
-            
-            if (latest) {
-                // Overwrite the generic notification with the real one using the same tag
-                return self.registration.showNotification(latest.title || 'CAB Marketing', {
-                    body: latest.body || 'You have a new notification',
-                    tag: fallbackTag,
-                    data: { taskId: latest.taskId, type: latest.type },
-                    renotify: true
-                });
-            }
+                if (latest) {
+                    return self.registration.showNotification(latest.title || 'New Notification', {
+                        body: latest.body || 'You have a new notification',
+                        tag: fallbackTag, // Replace the generic one
+                        data: { taskId: latest.taskId, type: latest.type },
+                        renotify: true
+                    });
+                }
+            })
+            .catch(() => {}); // Generic notification already shown, so failing here is OK
         })
         .catch(err => console.error('Fallback fetch failed:', err));
     });
