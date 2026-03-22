@@ -3230,6 +3230,27 @@
         return mentioned;
     }
 
+    // Highlight @mentions in HTML content with styled spans
+    function highlightMentions(htmlContent) {
+        const allUsers = (appData.settings.users || []).map(u => u.name).filter(Boolean);
+        if (allUsers.length === 0 || !htmlContent) return htmlContent;
+
+        let result = htmlContent;
+        const sortedUsers = [...allUsers].sort((a, b) => b.length - a.length);
+
+        sortedUsers.forEach(name => {
+            // Match @"Full Name" pattern
+            const quotedPattern = new RegExp(`@"${name.replace(/[.*+?^${}()|\\[\\]\\\\]/g, '\\$&')}"`, 'gi');
+            result = result.replace(quotedPattern, `<span style="background: linear-gradient(135deg, #0A84FF, #BF5AF2); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; white-space: nowrap;">@"${name}"</span>`);
+
+            // Match @Name pattern (but not inside tags or already highlighted)
+            const pattern = new RegExp(`(?<![>\\w])@${name.replace(/[.*+?^${}()|\\[\\]\\\\]/g, '\\$&')}(?![\\w<])`, 'gi');
+            result = result.replace(pattern, `<span style="background: linear-gradient(135deg, #0A84FF, #BF5AF2); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; white-space: nowrap;">@${name}</span>`);
+        });
+
+        return result;
+    }
+
     // Legacy: add notification only to current user (for self-relevant things like due reminders)
     function addNotification(type, title, body, taskId) {
         if (!isNotifEnabled(type)) return;
@@ -3882,6 +3903,7 @@
             if (content && !content.includes('<') && content.includes('\n')) {
                 content = content.replace(/\n/g, '<br>');
             }
+            content = highlightMentions(content);
             descEl.innerHTML = content;
             
             dueEl.value = task.dueDate || '';
