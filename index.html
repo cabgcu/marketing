@@ -1774,6 +1774,8 @@
     function closeLoginOverlay() {
         document.getElementById('login-overlay').style.opacity = '0';
         setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
+        // Reload cleared notification IDs for the now-logged-in user
+        _loadClearedIds();
         renderApp();
         // Re-subscribe to Web Push on each login (subscriptions can expire)
         ensurePushSubscription();
@@ -3718,9 +3720,14 @@
     const _localNotifIds = new Set();
     // Track IDs of notifications this client has cleared/dismissed so they never come back
     // Persisted to localStorage so cleared notifs stay gone across page reloads
-    const _clearedStorageKey = 'cabClearedNotifIds_' + (currentUserName || '');
-    const _clearedNotifIds = new Set((() => { try { return JSON.parse(localStorage.getItem(_clearedStorageKey)) || []; } catch { return []; } })());
-    function _persistClearedIds() { try { localStorage.setItem(_clearedStorageKey, JSON.stringify([..._clearedNotifIds])); } catch {} }
+    function _getClearedStorageKey() { return 'cabClearedNotifIds_' + (currentUserName || ''); }
+    const _clearedNotifIds = new Set();
+    function _loadClearedIds() {
+        _clearedNotifIds.clear();
+        try { (JSON.parse(localStorage.getItem(_getClearedStorageKey())) || []).forEach(id => _clearedNotifIds.add(id)); } catch {}
+    }
+    function _persistClearedIds() { try { localStorage.setItem(_getClearedStorageKey(), JSON.stringify([..._clearedNotifIds])); } catch {} }
+    _loadClearedIds();
 
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
