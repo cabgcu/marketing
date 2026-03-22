@@ -1120,9 +1120,14 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                                 <h3 class="section-title">Marketing Checklist</h3>
-                                <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.8rem; border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                    <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(10,132,255,0.4); color: #0A84FF;" onclick="saveChecklistAsTemplate()">Save Template</button>
+                                    <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(191,90,242,0.4); color: #BF5AF2;" onclick="loadChecklistTemplate()">Load Template</button>
+                                    <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(52,199,89,0.4); color: #34C759;" onclick="copyChecklistToCards()">Copy to Cards</button>
+                                    <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 0.75rem; border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
+                                </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                                 <span style="font-size: 0.85rem; font-weight: bold; width: 35px; color: var(--text-muted);" id="checklistPercent">0%</span>
@@ -3591,6 +3596,110 @@
 
     async function clearChecklist() { const ok = await showConfirm('Clear Checklist', 'Delete all checklist items?', 'Clear All', true); if (ok) { currentEditingTask.checklist = []; scheduleAutoSave(); renderChecklist(); } }
 
+    async function saveChecklistAsTemplate() {
+        if (!currentEditingTask || !currentEditingTask.checklist || currentEditingTask.checklist.length === 0) {
+            showToast('No checklist items to save.'); return;
+        }
+        const name = await showPrompt('Save Template', 'Name this checklist template:');
+        if (!name || !name.trim()) return;
+        if (!appData.settings.checklistTemplates) appData.settings.checklistTemplates = [];
+        appData.settings.checklistTemplates.push({
+            id: generateId(),
+            name: name.trim(),
+            items: currentEditingTask.checklist.map(i => i.text)
+        });
+        saveData();
+        showToast('Template "' + name.trim() + '" saved!');
+    }
+
+    async function loadChecklistTemplate() {
+        const templates = appData.settings.checklistTemplates || [];
+        if (templates.length === 0) { showToast('No templates saved yet. Save one first.'); return; }
+
+        const options = templates.map(t => ({ value: t.id, label: t.name + ' (' + t.items.length + ' items)' }));
+        options.push({ value: '__delete__', label: '🗑 Delete a template...' });
+        const chosen = await showSelect('Load Template', 'Choose a checklist template to load:', options);
+        if (!chosen) return;
+
+        if (chosen === '__delete__') {
+            const delOptions = templates.map(t => ({ value: t.id, label: t.name }));
+            const delId = await showSelect('Delete Template', 'Which template to delete?', delOptions);
+            if (delId) {
+                appData.settings.checklistTemplates = templates.filter(t => t.id !== delId);
+                saveData();
+                showToast('Template deleted.');
+            }
+            return;
+        }
+
+        const tpl = templates.find(t => t.id === chosen);
+        if (!tpl) return;
+        if (!currentEditingTask.checklist) currentEditingTask.checklist = [];
+        let added = 0;
+        tpl.items.forEach(text => {
+            if (!currentEditingTask.checklist.find(c => c.text.toLowerCase() === text.toLowerCase())) {
+                currentEditingTask.checklist.push({ id: generateId(), text, done: false, dueDate: '' });
+                added++;
+            }
+        });
+        scheduleAutoSave();
+        renderChecklist();
+        showToast('Added ' + added + ' items from "' + tpl.name + '"');
+    }
+
+    async function copyChecklistToCards() {
+        if (!currentEditingTask || !currentEditingTask.checklist || currentEditingTask.checklist.length === 0) {
+            showToast('No checklist items to copy.'); return;
+        }
+        const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId && t.id !== currentEditingTask.id);
+        if (activeTasks.length === 0) { showToast('No other cards to copy to.'); return; }
+
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+
+        // Build options grouped by list
+        const options = [];
+        options.push({ value: '__all__', label: '📋 ALL cards in this workspace' });
+        boardCols.forEach(col => {
+            options.push({ value: 'col_' + col.id, label: '📁 All in "' + col.title + '"' });
+        });
+        activeTasks.forEach(t => {
+            const col = boardCols.find(c => c.id === t.columnId);
+            options.push({ value: t.id, label: (t.title || 'Untitled') + (col ? ' (' + col.title + ')' : '') });
+        });
+
+        const chosen = await showSelect('Copy Checklist', 'Copy this checklist to:', options);
+        if (!chosen) return;
+
+        let targetTasks = [];
+        if (chosen === '__all__') {
+            targetTasks = activeTasks;
+        } else if (chosen.startsWith('col_')) {
+            const colId = chosen.slice(4);
+            targetTasks = activeTasks.filter(t => t.columnId === colId);
+        } else {
+            const t = activeTasks.find(t => t.id === chosen);
+            if (t) targetTasks = [t];
+        }
+
+        if (targetTasks.length === 0) { showToast('No matching cards found.'); return; }
+
+        const ok = await showConfirm('Confirm Copy', 'Copy ' + currentEditingTask.checklist.length + ' checklist items to ' + targetTasks.length + ' card(s)?', 'Copy');
+        if (!ok) return;
+
+        let totalAdded = 0;
+        targetTasks.forEach(task => {
+            if (!task.checklist) task.checklist = [];
+            currentEditingTask.checklist.forEach(item => {
+                if (!task.checklist.find(c => c.text.toLowerCase() === item.text.toLowerCase())) {
+                    task.checklist.push({ id: generateId(), text: item.text, done: false, dueDate: item.dueDate || '' });
+                    totalAdded++;
+                }
+            });
+        });
+        saveData();
+        showToast('Copied to ' + targetTasks.length + ' card(s) (' + totalAdded + ' items added)');
+    }
+
     function renderComments() {
         const log = document.getElementById('activityLog');
         if (!log) return;
@@ -3955,6 +4064,7 @@
             remove_label:   () => `remove label <b>"${act.value}"</b>`,
             move_to_list:   () => `move to <b>${col ? col.title : '?'}</b>`,
             add_checklist:  () => `add checklist items`,
+            add_checklist_template: () => { const tpl = (appData.settings.checklistTemplates||[]).find(t => t.id === act.value); return `apply template <b>"${tpl ? tpl.name : '?'}"</b>`; },
             set_priority:   () => `set priority to <b>${priorityNames[act.value] || act.value}</b>`,
             mark_complete:  () => 'mark card complete',
             set_due_offset: () => `set due date <b>${act.value} days from now</b>`,
@@ -4044,6 +4154,7 @@
                     </optgroup>
                     <optgroup label="Content">
                         <option value="add_checklist">☑️ Add checklist items</option>
+                        <option value="add_checklist_template">📋 Apply checklist template</option>
                         <option value="add_member">👤 Assign member</option>
                         <option value="set_due_offset">📅 Set due date (days from now)</option>
                     </optgroup>
@@ -4090,6 +4201,15 @@
                 area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">Card will be marked as complete.</div>`; break;
             case 'add_checklist':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Item 1, Item 2, Item 3 (comma separated)">`; break;
+            case 'add_checklist_template': {
+                const tpls = (appData.settings.checklistTemplates || []);
+                if (tpls.length === 0) {
+                    area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">No templates saved yet. Save one from a card's checklist first.</div>`;
+                } else {
+                    area.innerHTML = `<select class="modern-input act-val-template">${tpls.map(t => `<option value="${t.id}">${t.name} (${t.items.length} items)</option>`).join('')}</select>`;
+                }
+                break;
+            }
             case 'add_member':
                 area.innerHTML = `<input type="text" class="modern-input act-val-text" placeholder="Member Name (e.g. Jane Doe)">`; break;
             case 'set_due_offset':
@@ -4170,6 +4290,9 @@
                 value = row.querySelector('.act-val-priority')?.value || 'med';
             } else if (type === 'mark_complete') {
                 value = 'true';
+            } else if (type === 'add_checklist_template') {
+                value = row.querySelector('.act-val-template')?.value || '';
+                if (!value) { showToast('Select a checklist template.'); valid = false; return; }
             } else {
                 value = row.querySelector('.act-val-text')?.value.trim() || '';
                 if (!value && type !== 'mark_complete') { showToast('Fill in all action values.'); valid = false; return; }
