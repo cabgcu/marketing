@@ -3790,12 +3790,11 @@
             }
         });
 
-        // Check checklist item deadlines for assigned users
+        // Check checklist item deadlines — notify the assigned user (even if they're not logged in)
         appData.tasks.forEach(task => {
             if (!task.checklist || task.checklist.length === 0) return;
             task.checklist.forEach(item => {
                 if (!item.dueDate || !item.assignedTo || item.done) return;
-                if (item.assignedTo !== currentUserName) return;
 
                 const itemDate = new Date(item.dueDate);
                 const itemTime = item.dueTime ? item.dueTime.split(':') : [0, 0];
@@ -3803,7 +3802,14 @@
 
                 // Tomorrow reminder for checklist items
                 if (item.dueDate === tomorrowStr && !shown['checklist_' + item.id]) {
-                    addNotification('due', 'Checklist due tomorrow: ' + item.text, 'In: ' + (task.title || 'Untitled'), task.id);
+                    const title = 'Due tomorrow: ' + item.text;
+                    const body = 'In: ' + (task.title || 'Untitled');
+                    if (item.assignedTo === currentUserName) {
+                        addNotification('due', title, body, task.id);
+                    } else {
+                        // Send in-app + push notification to the assigned user
+                        addNotificationFor([item.assignedTo], 'due', title, body, task.id, currentUserName);
+                    }
                     shown['checklist_' + item.id] = true;
                 }
 
@@ -3812,7 +3818,13 @@
                     const diffMs = itemDate.getTime() - now.getTime();
                     if (diffMs > 0 && diffMs <= 30 * 60 * 1000) {
                         const timeStr = itemDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                        addNotification('due', 'Checklist item due soon: ' + item.text, 'In: ' + (task.title || 'Untitled'), task.id);
+                        const title = 'Due soon: ' + item.text;
+                        const body = 'Due at ' + timeStr + ' — In: ' + (task.title || 'Untitled');
+                        if (item.assignedTo === currentUserName) {
+                            addNotification('due', title, body, task.id);
+                        } else {
+                            addNotificationFor([item.assignedTo], 'due', title, body, task.id, currentUserName);
+                        }
                         soonShown['checklist_' + item.id] = true;
                     }
                 }
