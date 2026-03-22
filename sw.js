@@ -4,25 +4,40 @@ const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
 
 self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', (e) => {});
+self.addEventListener('fetch', (e) => {}); // Required for PWA installability
 
 self.addEventListener('push', (e) => {
     // iOS REQUIRES showing a notification from every push event.
     // Always show immediately — never skip or defer.
+    
     let data = {};
     if (e.data) {
-        try { data = e.data.json(); } catch { try { data = { body: e.data.text() }; } catch {} }
+        try { 
+            data = e.data.json(); 
+        } catch (err) { 
+            data = { title: 'CAB Marketing', body: e.data.text() }; 
+        }
     }
 
-    // If we have payload data (encrypted push), show it directly — no fetch needed
-    if (data.title) {
-        e.waitUntil(self.registration.showNotification(data.title, {
-            body: data.body || '',
-            icon: data.icon || '',
-            tag: data.tag || 'cab-notif-' + Date.now(),
-            data: data.data || {},
-            renotify: true
-        }));
+    // If we successfully parsed the payload and it has a title (from our Edge Function)
+    if (data && (data.title || (data.notification && data.notification.title))) {
+        // Handle cases where payload might be nested in a `notification` object
+        const notifTitle = data.title || data.notification.title;
+        const notifBody = data.body || data.notification?.body || '';
+        const notifIcon = data.icon || data.notification?.icon || '';
+        const notifTag = data.tag || data.notification?.tag || 'cab-notif-' + Date.now();
+        const notifData = data.data || data.notification?.data || {};
+
+        const promiseChain = self.registration.showNotification(notifTitle, {
+            body: notifBody,
+            icon: notifIcon,
+            tag: notifTag,
+            data: notifData,
+            renotify: true,
+            requireInteraction: false
+        });
+
+        e.waitUntil(promiseChain);
         return;
     }
 
@@ -65,19 +80,31 @@ self.addEventListener('push', (e) => {
             })
             .catch(() => {}); // Generic notification already shown, so failing here is OK
         })
-    );
+        .catch(err => console.error('Fallback fetch failed:', err));
+    });
+
+    e.waitUntil(fallbackChain);
 });
 
 self.addEventListener('notificationclick', (e) => {
     e.notification.close();
+    
+    const urlToOpen = new URL('./', self.location.origin).href;
+
     e.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-            if (clients.length > 0) {
-                clients[0].focus();
-                clients[0].postMessage({ type: 'NOTIF_CLICK', data: e.notification.data });
-            } else {
-                self.clients.openWindow('./');
+            // Try to find an existing window to focus
+            for (const client of clients) {
+                if (client.url === urlToOpen || client.url === self.location.origin + '/') {
+                    client.focus();
+                    if (e.notification.data) {
+                        client.postMessage({ type: 'NOTIF_CLICK', data: e.notification.data });
+                    }
+                    return;
+                }
             }
+            // If no window is found, open a new one
+            return self.clients.openWindow(urlToOpen);
         })
     );
 });
