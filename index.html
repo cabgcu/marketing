@@ -683,6 +683,27 @@
         .due-row:hover { background: linear-gradient(145deg, rgba(10,132,255,0.12) 0%, rgba(191,90,242,0.12) 100%); transform: translateX(4px); }
         .due-countdown { font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
+        /* EVENTS VIEW */
+        .events-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 8px 0; }
+        .events-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 16px 4px; }
+        .events-header h2 { font-size: 1.1rem; font-weight: 800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .event-card {
+            background: linear-gradient(145deg, rgba(10,132,255,0.06) 0%, rgba(191,90,242,0.06) 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px; padding: 14px 18px;
+            margin-bottom: 8px; transition: 0.2s;
+        }
+        .event-card:hover { background: linear-gradient(145deg, rgba(10,132,255,0.12) 0%, rgba(191,90,242,0.12) 100%); }
+        .event-card-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .event-card-details { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.8rem; color: var(--text-muted); }
+        .event-card-details span { display: flex; align-items: center; gap: 4px; }
+        .event-card-members { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .event-card-member { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: rgba(10,132,255,0.15); color: rgba(10,132,255,0.9); }
+        .event-card-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .event-card-actions button { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
+        .event-card-actions button:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .event-card-actions button.danger:hover { background: rgba(255,59,48,0.2); color: #ff3b30; }
+
         /* ================= MOBILE OPTIMIZATIONS ================= */
         @media (max-width: 900px) {
             .view-toggle-wrap { display: none !important; }
@@ -860,12 +881,17 @@
         <button class="nav-tab active" id="tab-board" onclick="switchView('board')">Home</button>
         <button class="nav-tab" id="tab-calendar" onclick="switchView('calendar')">🗓 Calendar</button>
         <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')">⚡ Due</button>
+        <button class="nav-tab" id="tab-events" onclick="switchView('events')" style="display:none;">📋 Events</button>
     </div>
 
     <div class="app-view active board-container" id="view-board"></div>
     <div class="app-view" id="view-calendar"><div class="calendar-wrapper" id="calendar-main-wrapper"></div></div>
     <div class="app-view" id="view-duesoon" style="padding: 0 4px;">
         <div class="due-soon-wrapper" id="due-soon-content"></div>
+    </div>
+
+    <div class="app-view" id="view-events" style="padding: 0 4px;">
+        <div class="events-wrapper" id="events-content"></div>
     </div>
 
     <!-- BULK ACTION BAR -->
@@ -1435,6 +1461,7 @@
                 if (!appData.columns)    appData.columns = [];
                 if (!appData.tasks)      appData.tasks = [];
                 if (!appData.automations) appData.automations = [];
+                if (!appData.events)     appData.events = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
                 
@@ -1776,6 +1803,7 @@
         if (viewName === 'calendar') renderCalendar();
         if (viewName === 'settings') renderSettings();
         if (viewName === 'duesoon') renderDueSoon();
+        if (viewName === 'events') renderEvents();
     }
 
     let searchQuery = '';
@@ -1879,6 +1907,8 @@
         checkDueSoonAutomations();
         applyBoardBackground();
         renderTopbar();
+        const eventsTab = document.getElementById('tab-events');
+        if (eventsTab) eventsTab.style.display = currentUserRole === 'admin' ? 'inline-block' : 'none';
         switchView(currentView);
     }
 
@@ -4379,6 +4409,174 @@
     
     function showComboPrompt(title, message, options) {
         return showDialog({ type: 'combo', title, message, options, confirmText: 'Save' });
+    }
+
+    /* ================= EVENTS (Admin Only) ================= */
+
+    function renderEvents() {
+        const container = document.getElementById('events-content');
+        if (!container) return;
+        if (!appData.events) appData.events = [];
+
+        const events = [...appData.events].sort((a, b) => {
+            const da = a.date ? new Date(a.date + (a.time ? 'T' + a.time : '')) : new Date(0);
+            const db = b.date ? new Date(b.date + (b.time ? 'T' + b.time : '')) : new Date(0);
+            return da - db;
+        });
+
+        let html = `<div class="events-header">
+            <h2>📋 Events</h2>
+            <button class="btn-action" style="padding:8px 16px; font-size:0.85rem;" onclick="openAddEventForm()">+ Add Event</button>
+        </div>`;
+
+        if (events.length === 0) {
+            html += '<p style="color:var(--text-muted); text-align:center; padding:40px 0;">No events yet. Click "+ Add Event" to create one.</p>';
+        } else {
+            events.forEach(ev => {
+                const dateStr = ev.date ? new Date(ev.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'No date';
+                const timeStr = ev.time ? formatTime12(ev.time) : '';
+                const members = (ev.assignedMembers || []);
+                html += `<div class="event-card">
+                    <div class="event-card-title">${escapeHtml(ev.name || 'Untitled Event')}</div>
+                    <div class="event-card-details">
+                        <span>📅 ${dateStr}</span>
+                        ${timeStr ? `<span>🕐 ${timeStr}</span>` : ''}
+                        ${ev.location ? `<span>📍 ${escapeHtml(ev.location)}</span>` : ''}
+                    </div>
+                    ${members.length > 0 ? `<div class="event-card-members">${members.map(m => `<span class="event-card-member">${escapeHtml(m)}</span>`).join('')}</div>` : ''}
+                    <div class="event-card-actions">
+                        <button onclick="editEvent('${ev.id}')">Edit</button>
+                        <button class="danger" onclick="deleteEvent('${ev.id}')">Delete</button>
+                    </div>
+                </div>`;
+            });
+        }
+        container.innerHTML = html;
+    }
+
+    function formatTime12(t) {
+        const [h, m] = t.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    async function openAddEventForm() {
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password);
+        const name = await showPrompt('Add Event', 'Event Name:');
+        if (name === null || !name.trim()) return;
+
+        const date = await showPrompt('Event Date', 'Date (YYYY-MM-DD):');
+        if (date === null) return;
+
+        const time = await showPrompt('Event Time', 'Time (HH:MM, 24hr format, e.g. 14:00):');
+        if (time === null) return;
+
+        const location = await showPrompt('Event Location', 'Location:');
+        if (location === null) return;
+
+        let assignedMembers = [];
+        if (registeredUsers.length > 0) {
+            const memberOptions = registeredUsers.map(u => ({ value: u.name, label: u.name }));
+            let addingMembers = true;
+            while (addingMembers && memberOptions.length > 0) {
+                const available = memberOptions.filter(m => !assignedMembers.includes(m.value));
+                if (available.length === 0) break;
+                const member = await showSelect(
+                    'Assign Board Members',
+                    `Currently assigned: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nSelect a member to assign (or Cancel to finish):`,
+                    available
+                );
+                if (member === null) {
+                    addingMembers = false;
+                } else {
+                    assignedMembers.push(member);
+                    const more = await showConfirm('Add Another?', 'Assign another board member?', 'Yes');
+                    if (!more) addingMembers = false;
+                }
+            }
+        }
+
+        if (!appData.events) appData.events = [];
+        appData.events.push({
+            id: generateId(),
+            name: name.trim(),
+            date: date.trim(),
+            time: time.trim(),
+            location: location.trim(),
+            assignedMembers: assignedMembers
+        });
+        saveData();
+        renderEvents();
+        showToast('Event added!');
+    }
+
+    async function editEvent(eventId) {
+        const ev = (appData.events || []).find(e => e.id === eventId);
+        if (!ev) return;
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password);
+
+        const name = await showPrompt('Edit Event', 'Event Name:', ev.name);
+        if (name === null) return;
+
+        const date = await showPrompt('Event Date', 'Date (YYYY-MM-DD):', ev.date);
+        if (date === null) return;
+
+        const time = await showPrompt('Event Time', 'Time (HH:MM, 24hr):', ev.time);
+        if (time === null) return;
+
+        const location = await showPrompt('Event Location', 'Location:', ev.location);
+        if (location === null) return;
+
+        let assignedMembers = [...(ev.assignedMembers || [])];
+        if (registeredUsers.length > 0) {
+            const editMembers = await showConfirm('Edit Members', `Current: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nWould you like to reassign members?`, 'Yes');
+            if (editMembers) {
+                assignedMembers = [];
+                const memberOptions = registeredUsers.map(u => ({ value: u.name, label: u.name }));
+                let addingMembers = true;
+                while (addingMembers) {
+                    const available = memberOptions.filter(m => !assignedMembers.includes(m.value));
+                    if (available.length === 0) break;
+                    const member = await showSelect(
+                        'Assign Board Members',
+                        `Currently assigned: ${assignedMembers.length > 0 ? assignedMembers.join(', ') : 'None'}\n\nSelect a member:`,
+                        available
+                    );
+                    if (member === null) {
+                        addingMembers = false;
+                    } else {
+                        assignedMembers.push(member);
+                        const more = await showConfirm('Add Another?', 'Assign another board member?', 'Yes');
+                        if (!more) addingMembers = false;
+                    }
+                }
+            }
+        }
+
+        ev.name = name.trim();
+        ev.date = date.trim();
+        ev.time = time.trim();
+        ev.location = location.trim();
+        ev.assignedMembers = assignedMembers;
+        saveData();
+        renderEvents();
+        showToast('Event updated!');
+    }
+
+    async function deleteEvent(eventId) {
+        const confirmed = await showConfirm('Delete Event', 'Are you sure you want to delete this event?', 'Delete', true);
+        if (!confirmed) return;
+        appData.events = (appData.events || []).filter(e => e.id !== eventId);
+        saveData();
+        renderEvents();
+        showToast('Event deleted.');
     }
 </script>
 </body>
