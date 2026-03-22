@@ -1424,8 +1424,8 @@
             ]
         };
         
-        const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: 'application/json' });
-        const manifestUrl = URL.createObjectURL(manifestBlob);
+       const manifestString = JSON.stringify(pwaManifest);
+       const manifestUrl = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(manifestString);
         
         let linkManifest = document.getElementById('dynamic-manifest');
         if (!linkManifest) {
@@ -3519,7 +3519,7 @@
         navigator.serviceWorker.addEventListener('message', (event) => {
             if (event.data && event.data.type === 'NOTIF_CLICK' && event.data.data?.taskId) {
                 const task = appData.tasks.find(t => t.id === event.data.data.taskId);
-                if (task) openTask(task.columnId, task.id);
+                if (task) openTaskModal(task.columnId, task.id);
             }
         });
     }
