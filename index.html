@@ -2189,6 +2189,22 @@
                 taskEl.style.position = 'relative';
                 taskEl.draggable = !selectedCards.size;
                 taskEl.id = task.id;
+                let eventsHtml = '';
+                const linkedEvents = (appData.events || []).filter(e => e.cardId === task.id);
+                if (linkedEvents.length > 0) {
+                    eventsHtml = `<div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">` +
+                        linkedEvents.map(ev => {
+                            const parts = [];
+                            if (ev.date) { const d = new Date(ev.date + 'T00:00:00'); parts.push('📅 ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })); }
+                            if (ev.time) { const [h,m] = ev.time.split(':').map(Number); parts.push('🕐 ' + (h%12||12) + ':' + String(m).padStart(2,'0') + (h>=12?' PM':' AM')); }
+                            if (ev.location) parts.push('📍 ' + ev.location);
+                            return `<div style="padding: 6px 10px; background: rgba(191,90,242,0.08); border: 1px solid rgba(191,90,242,0.15); border-radius: 10px; font-size: 0.75rem;">
+                                <div style="font-weight: 700; color: #BF5AF2; margin-bottom: 2px;">${ev.name || 'Event'}</div>
+                                <div style="color: var(--text-muted);">${parts.join(' &nbsp; ')}</div>
+                            </div>`;
+                        }).join('') + '</div>';
+                }
+
                 let clHtml = '';
                 if(task.checklist && task.checklist.length > 0) {
                     const doneCnt = task.checklist.filter(i => i.done).length;
@@ -2242,7 +2258,7 @@
                     </div>
                 `;
 
-                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
+                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${eventsHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
                 taskEl.onclick = (e) => {
                     if (e.target.classList.contains('complete-btn')) return;
                     if (e.shiftKey || selectedCards.size > 0) {
@@ -4433,8 +4449,8 @@
         if (!container) return;
         if (!appData.events) appData.events = [];
 
-        const boards = appData.boards || [];
-        const boardOpts = boards.map(b => `<option value="${b.id}">${b.year}</option>`).join('');
+        const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId);
+        const cardOpts = activeTasks.map(t => `<option value="${t.id}">${escapeAttr(t.title || 'Untitled Task')}</option>`).join('');
 
         let html = `<div class="events-header">
             <h2>📋 Events</h2>
@@ -4442,10 +4458,10 @@
         <table class="events-table">
             <thead><tr>
                 <th style="width:22%;">Event Name</th>
-                <th style="width:15%;">Date</th>
-                <th style="width:12%;">Time</th>
-                <th style="width:20%;">Location</th>
-                <th style="width:22%;">Board</th>
+                <th style="width:14%;">Date</th>
+                <th style="width:11%;">Time</th>
+                <th style="width:18%;">Location</th>
+                <th style="width:26%;">Card</th>
                 <th style="width:9%;"></th>
             </tr></thead>
             <tbody>`;
@@ -4456,9 +4472,9 @@
                 <td><input class="ev-input" type="date" value="${ev.date || ''}" onchange="updateEvent('${ev.id}','date',this.value)"></td>
                 <td><input class="ev-input" type="time" value="${ev.time || ''}" onchange="updateEvent('${ev.id}','time',this.value)"></td>
                 <td><input class="ev-input" type="text" value="${escapeAttr(ev.location || '')}" placeholder="Location" onchange="updateEvent('${ev.id}','location',this.value)" oninput="scheduleEventSave('${ev.id}','location',this.value)"></td>
-                <td><select class="ev-input" onchange="updateEvent('${ev.id}','boardId',this.value)">
+                <td><select class="ev-input" onchange="updateEvent('${ev.id}','cardId',this.value)">
                     <option value="">— None —</option>
-                    ${boardOpts.replace(ev.boardId ? `value="${ev.boardId}"` : '____NOMATCH____', ev.boardId ? `value="${ev.boardId}" selected` : '____NOMATCH____')}
+                    ${cardOpts}
                 </select></td>
                 <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEvent('${ev.id}')" title="Delete">✕</button></td>
             </tr>`;
@@ -4469,11 +4485,11 @@
 
         container.innerHTML = html;
 
-        // Fix board selects (the replace trick above is fragile, do it properly)
+        // Set selected card for each event
         appData.events.forEach(ev => {
-            if (ev.boardId) {
-                const row = container.querySelector(`tr[data-evid="${ev.id}"] select`);
-                if (row) row.value = ev.boardId;
+            if (ev.cardId) {
+                const sel = container.querySelector(`tr[data-evid="${ev.id}"] select`);
+                if (sel) sel.value = ev.cardId;
             }
         });
     }
@@ -4496,7 +4512,7 @@
             date: '',
             time: '',
             location: '',
-            boardId: appData.activeBoardId || ''
+            cardId: ''
         });
         renderEvents();
         // Focus the new row's name input
