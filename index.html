@@ -3505,6 +3505,9 @@
     async function clearAllNotifs() {
         const ok = await showConfirm('Clear Notifications', 'Delete all notifications?', 'Clear All', true);
         if (ok) {
+            // Track cleared IDs so polling doesn't bring them back
+            const notifs = getNotifications();
+            notifs.forEach(n => _clearedNotifIds.add(n.id));
             saveNotifications([]);
             updateNotifBadge();
             renderNotifList();
@@ -3563,17 +3566,28 @@
     // Poll Supabase for new notifications from other users (every 30 seconds)
     // Track when this session started — only push-notify for notifications created after this time
     const _sessionStartTime = new Date().toISOString();
+    // Track IDs of notifications this client has cleared/dismissed so they never come back
+    const _clearedNotifIds = new Set();
+
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
         try {
             const { data, error } = await _supabase.from('app_state').select('data').eq('id', 1).single();
             if (error || !data || !data.data) return;
-            const remoteNotifs = (data.data.notifications && data.data.notifications[currentUserName]) || [];
+            let remoteNotifs = (data.data.notifications && data.data.notifications[currentUserName]) || [];
             const localNotifs = getNotifications();
+            // Filter out any notifications this client has cleared
+            remoteNotifs = remoteNotifs.filter(n => !_clearedNotifIds.has(n.id));
             // Merge: keep remote as source of truth but preserve local read status
             const localReadMap = {};
             localNotifs.forEach(n => { if (n.read) localReadMap[n.id] = true; });
-            remoteNotifs.forEach(n => { if (localReadMap[n.id]) n.read = true; });
+            let readStatusChanged = false;
+            remoteNotifs.forEach(n => {
+                if (localReadMap[n.id] && !n.read) {
+                    n.read = true;
+                    readStatusChanged = true;
+                }
+            });
             // Detect truly new notifications (not in our local list)
             const localIds = new Set(localNotifs.map(n => n.id));
             const newNotifs = remoteNotifs.filter(n => !localIds.has(n.id));
@@ -3585,6 +3599,11 @@
             if (data.data.columns) appData.columns = data.data.columns;
             if (data.data.boards) appData.boards = data.data.boards;
             if (data.data.notifPrefs) appData.notifPrefs = data.data.notifPrefs;
+            // Sync read/cleared status back to Supabase so other tabs and future polls stay in sync
+            if (readStatusChanged || _clearedNotifIds.size > 0) {
+                data.data.notifications[currentUserName] = remoteNotifs;
+                await _supabase.from('app_state').update({ data: data.data }).eq('id', 1);
+            }
             // Update UI
             updateNotifBadge();
             renderNotifList();
