@@ -3348,9 +3348,9 @@
                 // Send a test notification
                 sendPushNotification({ title: 'Notifications Enabled', body: 'Notifications are working!', type: 'test', id: 'test' });
             } else if (result === 'denied') {
-                showToast('Permission denied. You can change this in browser/system settings.');
+                showNotifBlockOverlay();
             } else {
-                showToast('Permission dismissed. Try again when ready.');
+                showNotifBlockOverlay();
             }
         } catch (err) {
             showToast('Could not request permission: ' + err.message);
@@ -3359,12 +3359,76 @@
     }
 
     function autoPromptNotifPermission() {
-        if (!('Notification' in window) || Notification.permission !== 'default') return;
-        // Only auto-prompt once per browser
-        if (localStorage.getItem('cabNotifPrompted')) return;
-        localStorage.setItem('cabNotifPrompted', '1');
-        // Small delay so the app renders first
-        setTimeout(() => { requestNotifPermission(); }, 1500);
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') return;
+        // Show the blocking overlay for both 'default' and 'denied'
+        setTimeout(() => { showNotifBlockOverlay(); }, 800);
+    }
+
+    function showNotifBlockOverlay() {
+        const overlay = document.getElementById('notifBlockOverlay');
+        const box = document.getElementById('notifBlockBox');
+        const btn = document.getElementById('notifBlockBtn');
+        const help = document.getElementById('notifBlockHelp');
+        const msg = document.getElementById('notifBlockMessage');
+        if (!overlay) return;
+
+        const isDenied = 'Notification' in window && Notification.permission === 'denied';
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+        if (isDenied) {
+            msg.textContent = 'Notifications are currently blocked. Please update your browser settings to allow notifications, then tap the button below.';
+            btn.textContent = 'I\'ve Enabled Notifications';
+            help.style.display = 'block';
+            if (isIOS) {
+                help.innerHTML = 'Go to <b>Settings → Notifications</b> → find this app → toggle <b>Allow Notifications</b> on.';
+            } else {
+                help.innerHTML = 'Click the 🔒 icon in your browser\'s address bar → set Notifications to <b>Allow</b> → reload the page.';
+            }
+        } else {
+            msg.textContent = 'Notifications are required to stay up to date with your team. Please enable them to continue.';
+            btn.textContent = 'Enable Notifications';
+            help.style.display = 'none';
+        }
+
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.opacity = '1'; box.style.transform = 'translateY(0)'; }, 10);
+    }
+
+    function hideNotifBlockOverlay() {
+        const overlay = document.getElementById('notifBlockOverlay');
+        const box = document.getElementById('notifBlockBox');
+        if (!overlay) return;
+        overlay.style.opacity = '0';
+        box.style.transform = 'translateY(16px)';
+        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+
+    async function handleNotifBlockEnable() {
+        const isDenied = 'Notification' in window && Notification.permission === 'denied';
+        if (isDenied) {
+            // User says they've updated settings — check if it's actually changed
+            // Browser won't update without a reload, so reload the page
+            location.reload();
+            return;
+        }
+        // Permission is 'default' — request it
+        try {
+            const result = await Notification.requestPermission();
+            if (result === 'granted') {
+                showToast('Push notifications enabled!');
+                await subscribeToPush();
+                sendPushNotification({ title: 'Notifications Enabled', body: 'Notifications are working!', type: 'test', id: 'test' });
+                hideNotifBlockOverlay();
+                loadNotifPrefToggles();
+            } else {
+                // Still not granted — update overlay to show denied state
+                showNotifBlockOverlay();
+            }
+        } catch (err) {
+            showToast('Could not request permission: ' + err.message);
+        }
     }
 
     // Subscribe to Web Push via PushManager and store subscription in Supabase
@@ -5109,6 +5173,39 @@
             <button id="customDialogCancel" class="btn-outline" style="border: none; padding: 10px 16px;">Cancel</button>
             <button id="customDialogConfirm" class="btn-action" style="padding: 10px 20px;"></button>
         </div>
+    </div>
+</div>
+
+<!-- Blocking notification permission overlay -->
+<div id="notifBlockOverlay" style="
+    position: fixed; inset: 0; z-index: 999999;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; transition: opacity 0.3s ease;
+">
+    <div id="notifBlockBox" style="
+        background: #161616;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 24px;
+        padding: 36px 28px;
+        width: 100%; max-width: 400px;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+        transform: translateY(16px); transition: transform 0.3s ease;
+        text-align: center;
+    ">
+        <div style="font-size: 2.5rem; margin-bottom: 16px;">🔔</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #fff; margin-bottom: 10px;">Enable Notifications</div>
+        <div id="notifBlockMessage" style="font-size: 0.88rem; color: #a1a1aa; margin-bottom: 24px; line-height: 1.6;">
+            Notifications are required to stay up to date with your team. Please enable them to continue.
+        </div>
+        <button id="notifBlockBtn" onclick="handleNotifBlockEnable()" class="btn-action" style="
+            padding: 14px 28px; width: 100%; font-size: 0.95rem; font-weight: 700;
+            border-radius: 14px; border: none; cursor: pointer;
+            background: var(--gradient-accent); color: #fff;
+        ">Enable Notifications</button>
+        <div id="notifBlockHelp" style="display:none; margin-top: 16px; font-size: 0.8rem; color: #FF9500; line-height: 1.5;"></div>
     </div>
 </div>
 
