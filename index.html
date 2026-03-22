@@ -4429,7 +4429,7 @@
 
         const now = new Date();
         now.setHours(0,0,0,0);
-        const cardMembers = currentEditingTask.members || [];
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password).map(u => u.name);
 
         container.innerHTML = items.map(item => {
             let dateColor = 'var(--text-muted)';
@@ -4440,7 +4440,7 @@
             }
             const dueDateDisplay = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
             const assigned = item.assignedTo || '';
-            const assignBtn = cardMembers.length > 0 ? (assigned
+            const assignBtn = registeredUsers.length > 0 ? (assigned
                 ? `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" title="${assigned}"><span class="cl-assign-avatar">${getInitials(assigned)}</span></button>`
                 : `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn" title="Assign member"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg></button>`
             ) : '';
@@ -4460,10 +4460,18 @@
 
     function showChecklistAssignPicker(itemId, btnEl) {
         hideChecklistAssignPicker();
-        const cardMembers = currentEditingTask.members || [];
-        if (cardMembers.length === 0) return;
+        const registeredUsers = (appData.settings.users || []).filter(u => u.name && u.password).map(u => u.name);
+        if (registeredUsers.length === 0) return;
         const item = currentEditingTask.checklist.find(i => i.id === itemId);
         if (!item) return;
+
+        // Show card members first, then other users
+        const cardMembers = new Set(currentEditingTask.members || []);
+        const sorted = [...registeredUsers].sort((a, b) => {
+            const aM = cardMembers.has(a) ? 0 : 1;
+            const bM = cardMembers.has(b) ? 0 : 1;
+            return aM - bM || a.localeCompare(b);
+        });
 
         const picker = document.createElement('div');
         picker.className = 'cl-assign-picker';
@@ -4473,10 +4481,11 @@
                 <span style="width:28px;height:28px;border-radius:50%;background:rgba(255,59,48,0.15);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#FF3B30;flex-shrink:0;">✕</span>
                 <span style="color:#FF3B30;">Unassign</span>
             </button>` : ''}
-            ${cardMembers.map(m => `
+            ${sorted.map(m => `
                 <button class="cl-assign-option ${(item.assignedTo || '') === m ? 'active' : ''}" onclick="pickChecklistAssignee('${itemId}', '${m.replace(/'/g, "\\'")}')">
                     <span class="cl-assign-avatar">${getInitials(m)}</span>
                     <span>${m}</span>
+                    ${!cardMembers.has(m) ? '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:auto;">not on card</span>' : ''}
                     ${(item.assignedTo || '') === m ? '<span style="margin-left:auto;color:#30D158;">✓</span>' : ''}
                 </button>
             `).join('')}
@@ -4527,6 +4536,14 @@
 
     function pickChecklistAssignee(itemId, userName) {
         hideChecklistAssignPicker();
+        // Auto-add to card members if not already a member
+        if (userName && currentEditingTask) {
+            if (!currentEditingTask.members) currentEditingTask.members = [];
+            if (!currentEditingTask.members.includes(userName)) {
+                currentEditingTask.members.push(userName);
+                renderMembers();
+            }
+        }
         updateChecklistAssignee(itemId, userName);
     }
 
