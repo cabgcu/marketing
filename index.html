@@ -1477,7 +1477,6 @@
                 if (!appData.columns)    appData.columns = [];
                 if (!appData.tasks)      appData.tasks = [];
                 if (!appData.automations) appData.automations = [];
-                if (!appData.events)     appData.events = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
                 
@@ -2192,22 +2191,6 @@
                 taskEl.style.position = 'relative';
                 taskEl.draggable = !selectedCards.size;
                 taskEl.id = task.id;
-                let eventsHtml = '';
-                const linkedEvents = (appData.events || []).filter(e => e.listId === task.columnId);
-                if (linkedEvents.length > 0) {
-                    eventsHtml = `<div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">` +
-                        linkedEvents.map(ev => {
-                            const parts = [];
-                            if (ev.date) { const d = new Date(ev.date + 'T00:00:00'); parts.push('📅 ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })); }
-                            if (ev.time) { const [h,m] = ev.time.split(':').map(Number); parts.push('🕐 ' + (h%12||12) + ':' + String(m).padStart(2,'0') + (h>=12?' PM':' AM')); }
-                            if (ev.location) parts.push('📍 ' + ev.location);
-                            return `<div style="padding: 6px 10px; background: rgba(191,90,242,0.08); border: 1px solid rgba(191,90,242,0.15); border-radius: 10px; font-size: 0.75rem;">
-                                <div style="font-weight: 700; color: #BF5AF2; margin-bottom: 2px;">${ev.name || 'Event'}</div>
-                                <div style="color: var(--text-muted);">${parts.join(' &nbsp; ')}</div>
-                            </div>`;
-                        }).join('') + '</div>';
-                }
-
                 let clHtml = '';
                 if(task.checklist && task.checklist.length > 0) {
                     const doneCnt = task.checklist.filter(i => i.done).length;
@@ -2261,7 +2244,7 @@
                     </div>
                 `;
 
-                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${eventsHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
+                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
                 taskEl.onclick = (e) => {
                     if (e.target.classList.contains('complete-btn')) return;
                     if (e.shiftKey || selectedCards.size > 0) {
@@ -4444,59 +4427,26 @@
     }
 
     /* ================= EVENTS (Admin Only) ================= */
+    /* Events tab is a spreadsheet view over real task cards.
+       Adding a row creates a card. Editing updates the card. Deleting removes it. */
 
     let evSaveTimer = null;
 
     function renderEvents() {
         const container = document.getElementById('events-content');
         if (!container) return;
-        if (!appData.events) appData.events = [];
 
         const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
         const listOpts = boardCols.map(c => `<option value="${c.id}">${escapeAttr(c.title)}</option>`).join('');
-        const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId);
 
-        // Build unified list: card events (from tasks with dueDate) + manual events
-        const allRows = [];
-
-        // Card events from existing tasks
-        activeTasks.forEach(t => {
-            if (!t.dueDate) return;
-            const dt = new Date(t.dueDate);
-            const dateStr = dt.toISOString().slice(0, 10);
-            const timeStr = dt.toTimeString().slice(0, 5);
-            const col = boardCols.find(c => c.id === t.columnId);
-            allRows.push({
-                type: 'card',
-                name: t.title || 'Untitled Task',
-                date: dateStr,
-                time: timeStr,
-                location: t.eventLocation || '',
-                listName: col ? col.title : '',
-                sortDate: dt,
-                taskId: t.id
+        // Get all tasks from the active board that have a dueDate, sorted by date
+        const allTasks = appData.tasks
+            .filter(t => t.boardId === appData.activeBoardId)
+            .sort((a, b) => {
+                const da = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
+                const db = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
+                return da - db;
             });
-        });
-
-        // Manual events
-        appData.events.forEach(ev => {
-            const sortDate = ev.date ? new Date(ev.date + (ev.time ? 'T' + ev.time : 'T00:00:00')) : new Date('9999-12-31');
-            const linkedCol = ev.listId ? boardCols.find(c => c.id === ev.listId) : null;
-            allRows.push({
-                type: 'manual',
-                id: ev.id,
-                name: ev.name || '',
-                date: ev.date || '',
-                time: ev.time || '',
-                location: ev.location || '',
-                listId: ev.listId || '',
-                listName: linkedCol ? linkedCol.title : '',
-                sortDate: sortDate
-            });
-        });
-
-        // Sort all by date
-        allRows.sort((a, b) => a.sortDate - b.sortDate);
 
         let html = `<div class="events-header">
             <h2>📋 Events</h2>
@@ -4512,33 +4462,21 @@
             </tr></thead>
             <tbody>`;
 
-        allRows.forEach(row => {
-            if (row.type === 'card') {
-                // Read-only row for existing card events
-                const fmtDate = row.date ? new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-                const fmtTime = row.time ? fmtTime12(row.time) : '';
-                html += `<tr style="opacity: 0.7;">
-                    <td><span class="ev-readonly">${escapeHtml(row.name)}</span></td>
-                    <td><span class="ev-readonly" style="color:#aaa;">${fmtDate}</span></td>
-                    <td><span class="ev-readonly" style="color:#aaa;">${fmtTime}</span></td>
-                    <td><span class="ev-readonly" style="color:#aaa;">${escapeHtml(row.location)}</span></td>
-                    <td><span class="ev-readonly" style="color:#0A84FF;">${escapeHtml(row.listName)}</span></td>
-                    <td style="text-align:center; font-size:0.65rem; color:#888;">from card</td>
-                </tr>`;
-            } else {
-                // Editable manual event row
-                html += `<tr data-evid="${row.id}">
-                    <td><input class="ev-input" type="text" value="${escapeAttr(row.name)}" placeholder="Event name" onchange="updateEvent('${row.id}','name',this.value)" oninput="scheduleEventSave('${row.id}','name',this.value)"></td>
-                    <td><input class="ev-input" type="date" value="${row.date}" onchange="updateEvent('${row.id}','date',this.value)"></td>
-                    <td><input class="ev-input" type="time" value="${row.time}" onchange="updateEvent('${row.id}','time',this.value)"></td>
-                    <td><input class="ev-input" type="text" value="${escapeAttr(row.location)}" placeholder="Location" onchange="updateEvent('${row.id}','location',this.value)" oninput="scheduleEventSave('${row.id}','location',this.value)"></td>
-                    <td><select class="ev-input" onchange="updateEvent('${row.id}','listId',this.value)">
-                        <option value="">— None —</option>
-                        ${listOpts}
-                    </select></td>
-                    <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEvent('${row.id}')" title="Delete">✕</button></td>
-                </tr>`;
-            }
+        allTasks.forEach(t => {
+            const dtVal = t.dueDate || '';
+            const dateVal = dtVal ? dtVal.slice(0, 10) : '';
+            const timeVal = dtVal ? dtVal.slice(11, 16) : '';
+
+            html += `<tr data-tid="${t.id}">
+                <td><input class="ev-input" type="text" value="${escapeAttr(t.title || '')}" placeholder="Event name" onchange="updateEventTask('${t.id}','title',this.value)" oninput="scheduleEventTaskSave('${t.id}','title',this.value)"></td>
+                <td><input class="ev-input" type="date" value="${dateVal}" onchange="updateEventTaskDate('${t.id}', this.value)"></td>
+                <td><input class="ev-input" type="time" value="${timeVal}" onchange="updateEventTaskTime('${t.id}', this.value)"></td>
+                <td><input class="ev-input" type="text" value="${escapeAttr(t.eventLocation || '')}" placeholder="Location" onchange="updateEventTask('${t.id}','eventLocation',this.value)" oninput="scheduleEventTaskSave('${t.id}','eventLocation',this.value)"></td>
+                <td><select class="ev-input" onchange="updateEventTask('${t.id}','columnId',this.value)">
+                    ${listOpts}
+                </select></td>
+                <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEventTask('${t.id}')" title="Delete">✕</button></td>
+            </tr>`;
         });
 
         html += `</tbody></table>
@@ -4546,12 +4484,10 @@
 
         container.innerHTML = html;
 
-        // Set selected list for manual events
-        appData.events.forEach(ev => {
-            if (ev.listId) {
-                const sel = container.querySelector(`tr[data-evid="${ev.id}"] select`);
-                if (sel) sel.value = ev.listId;
-            }
+        // Set selected list for each task
+        allTasks.forEach(t => {
+            const sel = container.querySelector(`tr[data-tid="${t.id}"] select`);
+            if (sel) sel.value = t.columnId;
         });
     }
 
@@ -4571,47 +4507,81 @@
     }
 
     function addEventRow() {
-        if (!appData.events) appData.events = [];
-        appData.events.push({
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+        const firstCol = boardCols[0];
+        if (!firstCol) { showToast('Create a task board first.'); return; }
+
+        const newTask = {
             id: generateId(),
-            name: '',
-            date: '',
-            time: '',
-            location: '',
-            listId: ''
-        });
+            boardId: appData.activeBoardId,
+            columnId: firstCol.id,
+            title: '',
+            description: '',
+            text: '',
+            dueDate: '',
+            eventLocation: '',
+            priority: '',
+            postingSchedule: { story: '', photo: '', reel: '' },
+            customFields: [],
+            attachments: [],
+            coverImage: '',
+            checklist: [],
+            members: [],
+            labels: [],
+            comments: [],
+            completed: false
+        };
+        appData.tasks.push(newTask);
+        saveData();
         renderEvents();
+
         // Focus the new row's name input
         const rows = document.querySelectorAll('.events-table tbody tr');
         if (rows.length > 0) {
             const lastInput = rows[rows.length - 1].querySelector('input[type="text"]');
             if (lastInput) lastInput.focus();
         }
+    }
+
+    function updateEventTask(taskId, field, value) {
+        const t = appData.tasks.find(t => t.id === taskId);
+        if (!t) return;
+        t[field] = value;
+        saveData();
+        if (currentView === 'board') renderBoard();
+    }
+
+    function updateEventTaskDate(taskId, dateVal) {
+        const t = appData.tasks.find(t => t.id === taskId);
+        if (!t) return;
+        const timeVal = t.dueDate ? t.dueDate.slice(11, 16) : '00:00';
+        t.dueDate = dateVal ? dateVal + 'T' + timeVal : '';
         saveData();
     }
 
-    function updateEvent(evId, field, value) {
-        const ev = (appData.events || []).find(e => e.id === evId);
-        if (!ev) return;
-        ev[field] = value;
+    function updateEventTaskTime(taskId, timeVal) {
+        const t = appData.tasks.find(t => t.id === taskId);
+        if (!t) return;
+        const dateVal = t.dueDate ? t.dueDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+        t.dueDate = dateVal + 'T' + (timeVal || '00:00');
         saveData();
     }
 
-    function scheduleEventSave(evId, field, value) {
-        const ev = (appData.events || []).find(e => e.id === evId);
-        if (!ev) return;
-        ev[field] = value;
+    function scheduleEventTaskSave(taskId, field, value) {
+        const t = appData.tasks.find(t => t.id === taskId);
+        if (!t) return;
+        t[field] = value;
         clearTimeout(evSaveTimer);
-        evSaveTimer = setTimeout(() => saveData(), 1000);
+        evSaveTimer = setTimeout(() => { saveData(); if (currentView === 'board') renderBoard(); }, 1000);
     }
 
-    async function deleteEvent(eventId) {
-        const confirmed = await showConfirm('Delete Event', 'Are you sure you want to delete this event?', 'Delete', true);
+    async function deleteEventTask(taskId) {
+        const confirmed = await showConfirm('Delete Event', 'This will delete the card from its task board. Continue?', 'Delete', true);
         if (!confirmed) return;
-        appData.events = (appData.events || []).filter(e => e.id !== eventId);
+        appData.tasks = appData.tasks.filter(t => t.id !== taskId);
         saveData();
         renderEvents();
-        showToast('Event deleted.');
+        showToast('Event & card deleted.');
     }
 </script>
 </body>
