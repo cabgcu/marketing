@@ -4452,6 +4452,47 @@
         const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId);
         const cardOpts = activeTasks.map(t => `<option value="${t.id}">${escapeAttr(t.title || 'Untitled Task')}</option>`).join('');
 
+        // Build unified list: card events (from tasks with dueDate) + manual events
+        const allRows = [];
+
+        // Card events from existing tasks
+        activeTasks.forEach(t => {
+            if (!t.dueDate) return;
+            const dt = new Date(t.dueDate);
+            const dateStr = dt.toISOString().slice(0, 10);
+            const timeStr = dt.toTimeString().slice(0, 5);
+            allRows.push({
+                type: 'card',
+                name: t.title || 'Untitled Task',
+                date: dateStr,
+                time: timeStr,
+                location: t.eventLocation || '',
+                cardName: t.title || 'Untitled Task',
+                sortDate: dt,
+                taskId: t.id
+            });
+        });
+
+        // Manual events
+        appData.events.forEach(ev => {
+            const sortDate = ev.date ? new Date(ev.date + (ev.time ? 'T' + ev.time : 'T00:00:00')) : new Date('9999-12-31');
+            const linkedTask = ev.cardId ? activeTasks.find(t => t.id === ev.cardId) : null;
+            allRows.push({
+                type: 'manual',
+                id: ev.id,
+                name: ev.name || '',
+                date: ev.date || '',
+                time: ev.time || '',
+                location: ev.location || '',
+                cardId: ev.cardId || '',
+                cardName: linkedTask ? (linkedTask.title || 'Untitled Task') : '',
+                sortDate: sortDate
+            });
+        });
+
+        // Sort all by date
+        allRows.sort((a, b) => a.sortDate - b.sortDate);
+
         let html = `<div class="events-header">
             <h2>📋 Events</h2>
         </div>
@@ -4466,18 +4507,33 @@
             </tr></thead>
             <tbody>`;
 
-        appData.events.forEach(ev => {
-            html += `<tr data-evid="${ev.id}">
-                <td><input class="ev-input" type="text" value="${escapeAttr(ev.name || '')}" placeholder="Event name" onchange="updateEvent('${ev.id}','name',this.value)" oninput="scheduleEventSave('${ev.id}','name',this.value)"></td>
-                <td><input class="ev-input" type="date" value="${ev.date || ''}" onchange="updateEvent('${ev.id}','date',this.value)"></td>
-                <td><input class="ev-input" type="time" value="${ev.time || ''}" onchange="updateEvent('${ev.id}','time',this.value)"></td>
-                <td><input class="ev-input" type="text" value="${escapeAttr(ev.location || '')}" placeholder="Location" onchange="updateEvent('${ev.id}','location',this.value)" oninput="scheduleEventSave('${ev.id}','location',this.value)"></td>
-                <td><select class="ev-input" onchange="updateEvent('${ev.id}','cardId',this.value)">
-                    <option value="">— None —</option>
-                    ${cardOpts}
-                </select></td>
-                <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEvent('${ev.id}')" title="Delete">✕</button></td>
-            </tr>`;
+        allRows.forEach(row => {
+            if (row.type === 'card') {
+                // Read-only row for existing card events
+                const fmtDate = row.date ? new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                const fmtTime = row.time ? fmtTime12(row.time) : '';
+                html += `<tr style="opacity: 0.65;">
+                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:#fff;">${escapeHtml(row.name)}</span></td>
+                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${fmtDate}</span></td>
+                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${fmtTime}</span></td>
+                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${escapeHtml(row.location)}</span></td>
+                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:#0A84FF; cursor:pointer;" onclick="openTaskFromEvent('${row.taskId}')">${escapeHtml(row.cardName)}</span></td>
+                    <td style="text-align:center; font-size:0.7rem; color:var(--text-muted);">from card</td>
+                </tr>`;
+            } else {
+                // Editable manual event row
+                html += `<tr data-evid="${row.id}">
+                    <td><input class="ev-input" type="text" value="${escapeAttr(row.name)}" placeholder="Event name" onchange="updateEvent('${row.id}','name',this.value)" oninput="scheduleEventSave('${row.id}','name',this.value)"></td>
+                    <td><input class="ev-input" type="date" value="${row.date}" onchange="updateEvent('${row.id}','date',this.value)"></td>
+                    <td><input class="ev-input" type="time" value="${row.time}" onchange="updateEvent('${row.id}','time',this.value)"></td>
+                    <td><input class="ev-input" type="text" value="${escapeAttr(row.location)}" placeholder="Location" onchange="updateEvent('${row.id}','location',this.value)" oninput="scheduleEventSave('${row.id}','location',this.value)"></td>
+                    <td><select class="ev-input" onchange="updateEvent('${row.id}','cardId',this.value)">
+                        <option value="">— None —</option>
+                        ${cardOpts}
+                    </select></td>
+                    <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEvent('${row.id}')" title="Delete">✕</button></td>
+                </tr>`;
+            }
         });
 
         html += `</tbody></table>
@@ -4485,13 +4541,23 @@
 
         container.innerHTML = html;
 
-        // Set selected card for each event
+        // Set selected card for manual events
         appData.events.forEach(ev => {
             if (ev.cardId) {
                 const sel = container.querySelector(`tr[data-evid="${ev.id}"] select`);
                 if (sel) sel.value = ev.cardId;
             }
         });
+    }
+
+    function fmtTime12(t) {
+        const [h, m] = t.split(':').map(Number);
+        return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h >= 12 ? ' PM' : ' AM');
+    }
+
+    function openTaskFromEvent(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (task) openTaskModal(task.columnId, taskId);
     }
 
     function escapeAttr(str) {
