@@ -2182,7 +2182,7 @@
             if (completedCol) t.columnId = completedCol.id;
             
             processAutomations(t, 'card_completed');
-            addNotification('complete', 'Completed: ' + (t.title || 'Untitled'), 'Card marked as complete.', t.id);
+            notifyCardMembers(t, 'complete', 'Completed: ' + (t.title || 'Untitled'), (currentUserName || 'Someone') + ' marked this card complete.');
             if (window.confetti) confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
         }
         saveData(); renderBoard();
@@ -2991,7 +2991,7 @@
         if (oldColId !== newColId) {
             processAutomations(task, 'card_moved', { newColId });
             const newCol = appData.columns.find(c => c.id === newColId);
-            addNotification('move', 'Moved: ' + (task.title || 'Untitled'), 'Moved to ' + (newCol ? newCol.title : 'another list'), task.id);
+            notifyCardMembers(task, 'move', 'Moved: ' + (task.title || 'Untitled'), (currentUserName || 'Someone') + ' moved this to ' + (newCol ? newCol.title : 'another list'));
         }
         saveData(); renderBoard();
     }
@@ -3124,30 +3124,70 @@
 
     // ==================== NOTIFICATION SYSTEM ====================
 
-    const NOTIF_STORAGE_KEY = 'cabNotifications';
     const NOTIF_PREFS_KEY = 'cabNotifPrefs';
 
+    function notifStorageKey(userName) { return 'cabNotifs_' + (userName || 'guest'); }
+
     function getNotifPrefs() {
-        try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY)) || {}; } catch { return {}; }
+        try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY + '_' + (currentUserName || ''))) || {}; } catch { return {}; }
     }
-    function saveNotifPrefs(prefs) { localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs)); }
+    function saveNotifPrefs(prefs) { localStorage.setItem(NOTIF_PREFS_KEY + '_' + (currentUserName || ''), JSON.stringify(prefs)); }
     function updateNotifPref(key, enabled) { const p = getNotifPrefs(); p[key] = enabled; saveNotifPrefs(p); }
     function isNotifEnabled(type) { const p = getNotifPrefs(); return p[type] !== false; }
 
     function getNotifications() {
-        try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE_KEY)) || []; } catch { return []; }
+        try { return JSON.parse(localStorage.getItem(notifStorageKey(currentUserName))) || []; } catch { return []; }
     }
     function saveNotifications(notifs) {
-        // Keep max 100 notifications
-        localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(notifs.slice(0, 100)));
+        localStorage.setItem(notifStorageKey(currentUserName), JSON.stringify(notifs.slice(0, 100)));
+    }
+    function getNotificationsFor(userName) {
+        try { return JSON.parse(localStorage.getItem(notifStorageKey(userName))) || []; } catch { return []; }
+    }
+    function saveNotificationsFor(userName, notifs) {
+        localStorage.setItem(notifStorageKey(userName), JSON.stringify(notifs.slice(0, 100)));
     }
 
-    function addNotification(type, title, body, taskId, icon) {
+    // Route a notification to specific target users
+    function addNotificationFor(targetUsers, type, title, body, taskId, actorName) {
+        const targets = (targetUsers || []).filter(u => u && u !== actorName);
+        if (targets.length === 0) return;
+        targets.forEach(userName => {
+            const userPrefs = (() => { try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY + '_' + userName)) || {}; } catch { return {}; } })();
+            if (userPrefs[type] === false) return;
+            const notif = {
+                id: generateId(),
+                type, title, body, taskId,
+                icon: getNotifIcon(type),
+                iconBg: getNotifIconBg(type),
+                read: false,
+                timestamp: new Date().toISOString()
+            };
+            const notifs = getNotificationsFor(userName);
+            notifs.unshift(notif);
+            saveNotificationsFor(userName, notifs);
+            // If this target is the currently logged-in user, update UI + push
+            if (userName === currentUserName) {
+                updateNotifBadge();
+                renderNotifList();
+                sendPushNotification(notif);
+            }
+        });
+    }
+
+    // Convenience: notify all members of a card except the actor
+    function notifyCardMembers(task, type, title, body) {
+        const members = task.members || [];
+        addNotificationFor(members, type, title, body, task.id, currentUserName);
+    }
+
+    // Legacy: add notification only to current user (for self-relevant things like due reminders)
+    function addNotification(type, title, body, taskId) {
         if (!isNotifEnabled(type)) return;
         const notif = {
             id: generateId(),
             type, title, body, taskId,
-            icon: icon || getNotifIcon(type),
+            icon: getNotifIcon(type),
             iconBg: getNotifIconBg(type),
             read: false,
             timestamp: new Date().toISOString()
@@ -3374,20 +3414,20 @@
 
     // Due date reminder check — runs every 5 minutes
     function checkDueDateReminders() {
-        if (!isNotifEnabled('due')) return;
+        if (!currentUserName || !isNotifEnabled('due')) return;
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
         const tomorrowDate = new Date(now);
         tomorrowDate.setDate(tomorrowDate.getDate() + 1);
         const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
 
-        const reminderKey = 'cabDueRemindersShown_' + todayStr;
+        const reminderKey = 'cabDueReminders_' + currentUserName + '_' + todayStr;
         let shown = {};
         try { shown = JSON.parse(localStorage.getItem(reminderKey)) || {}; } catch {}
 
         appData.tasks.forEach(task => {
             if (!task.dueDate || shown[task.id]) return;
-            const isMember = !currentUserName || (task.members && task.members.includes(currentUserName));
+            const isMember = task.members && task.members.includes(currentUserName);
             if (!isMember) return;
 
             if (task.dueDate === todayStr) {
@@ -3548,7 +3588,8 @@
                 currentEditingTask.members.push(selectedName);
                 renderMembers();
                 scheduleAutoSave();
-                addNotification('assign', 'Assigned: ' + (currentEditingTask.title || 'Untitled'), selectedName + ' was assigned to this card.', currentEditingTask.id || document.getElementById('taskModalTaskId').value);
+                const assignTaskId = currentEditingTask.id || document.getElementById('taskModalTaskId').value;
+                addNotificationFor([selectedName], 'assign', 'You were assigned: ' + (currentEditingTask.title || 'Untitled'), (currentUserName || 'Someone') + ' assigned you to this card.', assignTaskId, null);
             }
         }
     }
@@ -3579,7 +3620,7 @@
                 
                 currentEditingTask.labels.push({ text: cleanText, color });
                 processAutomations(currentEditingTask, 'label_added', { labelText: cleanText });
-                addNotification('label', 'Label added: ' + cleanText, 'Added to ' + (currentEditingTask.title || 'Untitled'), currentEditingTask.id || document.getElementById('taskModalTaskId').value);
+                notifyCardMembers(currentEditingTask, 'label', 'Label added: ' + cleanText, (currentUserName || 'Someone') + ' added label "' + cleanText + '"');
                 renderLabels();
                 scheduleAutoSave();
             }
@@ -3943,7 +3984,7 @@
                 processAutomations(currentEditingTask, 'checklist_completed'); renderLabels();
                 // Notify when ALL items complete
                 if (currentEditingTask.checklist && currentEditingTask.checklist.length > 0 && currentEditingTask.checklist.every(c => c.done)) {
-                    addNotification('checklist', 'Checklist complete!', 'All items done on: ' + (currentEditingTask.title || 'Untitled'), currentEditingTask.id || document.getElementById('taskModalTaskId').value);
+                    notifyCardMembers(currentEditingTask, 'checklist', 'Checklist complete!', (currentUserName || 'Someone') + ' completed all items on: ' + (currentEditingTask.title || 'Untitled'));
                 }
             }
         }
@@ -4143,7 +4184,7 @@
             if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
         }
         renderComments();
-        addNotification('comment', 'Comment on: ' + (currentEditingTask.title || 'Untitled'), userName + ': ' + text.substring(0, 100), taskId || '');
+        notifyCardMembers(currentEditingTask, 'comment', 'Comment on: ' + (currentEditingTask.title || 'Untitled'), userName + ': ' + text.substring(0, 100));
     }
 
     async function deleteComment(id) {
