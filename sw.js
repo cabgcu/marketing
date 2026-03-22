@@ -31,7 +31,7 @@ self.addEventListener('push', (e) => {
     const fallbackTag = 'cab-notif-' + Date.now();
     e.waitUntil(
         // Show generic notification FIRST (iOS will kill SW if we don't show quickly)
-        self.registration.showNotification('CAB Marketing', {
+        self.registration.showNotification('New Notification', {
             body: 'You have a new notification',
             tag: fallbackTag,
             renotify: true
@@ -55,7 +55,7 @@ self.addEventListener('push', (e) => {
                     }
                 }
                 if (latest) {
-                    return self.registration.showNotification(latest.title || 'CAB Marketing', {
+                    return self.registration.showNotification(latest.title || 'New Notification', {
                         body: latest.body || 'You have a new notification',
                         tag: fallbackTag, // Replace the generic one
                         data: { taskId: latest.taskId, type: latest.type },
