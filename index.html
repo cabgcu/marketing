@@ -2403,7 +2403,6 @@
                     <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
                         <button class="col-action-btn ${calendarMode === 'grid' ? 'active' : ''}" style="${calendarMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('grid')">Grid</button>
                         <button class="col-action-btn ${calendarMode === 'list' ? 'active' : ''}" style="${calendarMode === 'list' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('list')">List</button>
-                        <button class="col-action-btn ${calendarMode === 'schedule' ? 'active' : ''}" style="${calendarMode === 'schedule' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('schedule')">Schedule</button>
                     </div>
                 </div>
             </div>`;
@@ -2461,56 +2460,6 @@
                 }
             }
             wrapper.appendChild(listContainer);
-        } else if (activeMode === 'schedule') {
-            const scheduleContainer = document.createElement('div');
-            scheduleContainer.style.cssText = 'display: flex; flex-direction: column; gap: 20px; padding: 15px;';
-            const monthItems = items.filter(item => { const d = new Date(item.date); return d.getMonth() === month && d.getFullYear() === year; });
-
-            if (monthItems.length === 0) {
-                scheduleContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); margin-top: 40px;">No ${calendarType === 'events' ? 'events' : 'posts'} scheduled for this month.</div>`;
-            } else {
-                const grouped = {};
-                monthItems.forEach(item => {
-                    const d = new Date(item.date);
-                    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-                    if(!grouped[dateKey]) grouped[dateKey] = { date: d, items: [] };
-                    grouped[dateKey].items.push(item);
-                });
-
-                Object.entries(grouped)
-                    .sort((a, b) => a[1].date - b[1].date)
-                    .forEach(([dateKey, dayData]) => {
-                        const dayEl = document.createElement('div');
-                        dayEl.style.cssText = 'background: rgba(255,255,255,0.05); border-radius: 10px; padding: 15px; border-left: 3px solid ' + (calendarType === 'events' ? '#0A84FF' : '#BF5AF2') + ';';
-                        const dayLabel = new Intl.DateTimeFormat('en-US', { weekday:'long', month: 'short', day: 'numeric', year: 'numeric' }).format(dayData.date);
-                        dayEl.innerHTML = `<div style="font-weight: 700; font-size: 1.1rem; color: ${calendarType === 'events' ? '#0A84FF' : '#BF5AF2'}; margin-bottom: 12px;">${dayLabel}</div>`;
-
-                        dayData.items.sort((a, b) => new Date(a.date) - new Date(b.date));
-                        dayData.items.forEach(item => {
-                            const itemRow = document.createElement('div');
-                            itemRow.style.cssText = 'display: flex; gap: 15px; padding: 10px; border-radius: 6px; cursor: pointer; align-items: center; transition: background 0.2s;';
-                            itemRow.onmouseover = () => itemRow.style.background = 'rgba(255,255,255,0.08)';
-                            itemRow.onmouseout = () => itemRow.style.background = 'transparent';
-                            itemRow.onclick = () => openTaskModal(item.task.columnId, item.task.id);
-
-                            const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute:'2-digit', hour12: true }).format(new Date(item.date));
-                            const badge = calendarType === 'planner' ? `<span class="label-tag" style="background: rgba(255,255,255,0.1); color: ${item.hex}; border-color: ${item.hex}; flex-shrink: 0;">${item.type}</span>` : '';
-                            const labels = item.task.labels && item.task.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem;">(${item.task.labels[0].text})</span>` : '';
-
-                            itemRow.innerHTML = `
-                                <span style="color: var(--text-muted); font-family: monospace; font-size: 0.95rem; min-width: 60px; flex-shrink: 0; font-weight: 600;">${time}</span>
-                                <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 0;">
-                                    ${badge}
-                                    <span style="font-weight: 500; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.task.title)}</span>
-                                    ${labels}
-                                </div>
-                            `;
-                            dayEl.appendChild(itemRow);
-                        });
-                        scheduleContainer.appendChild(dayEl);
-                    });
-            }
-            wrapper.appendChild(scheduleContainer);
         } else {
             const grid = document.createElement('div');
             grid.className = 'calendar-grid';
@@ -3754,6 +3703,36 @@
                 }
             }
         });
+
+        // Check checklist item deadlines for assigned users
+        appData.tasks.forEach(task => {
+            if (!task.checklist || task.checklist.length === 0) return;
+            task.checklist.forEach(item => {
+                if (!item.dueDate || !item.assignedTo || item.done) return;
+                if (item.assignedTo !== currentUserName) return;
+
+                const itemDate = new Date(item.dueDate);
+                const itemTime = item.dueTime ? item.dueTime.split(':') : [0, 0];
+                itemDate.setHours(parseInt(itemTime[0]) || 0, parseInt(itemTime[1]) || 0, 0);
+
+                // Tomorrow reminder for checklist items
+                if (item.dueDate === tomorrowStr && !shown['checklist_' + item.id]) {
+                    addNotification('due', 'Checklist due tomorrow: ' + item.text, 'In: ' + (task.title || 'Untitled'), task.id);
+                    shown['checklist_' + item.id] = true;
+                }
+
+                // Starting soon reminder for checklist items with time (within 30 min)
+                if (item.dueTime && !soonShown['checklist_' + item.id]) {
+                    const diffMs = itemDate.getTime() - now.getTime();
+                    if (diffMs > 0 && diffMs <= 30 * 60 * 1000) {
+                        const timeStr = itemDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                        addNotification('due', 'Checklist item due soon: ' + item.text, 'In: ' + (task.title || 'Untitled'), task.id);
+                        soonShown['checklist_' + item.id] = true;
+                    }
+                }
+            });
+        });
+
         localStorage.setItem(reminderKey, JSON.stringify(shown));
         localStorage.setItem(soonKey, JSON.stringify(soonShown));
     }
@@ -4356,11 +4335,17 @@
                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
                 if (d < now) dateColor = '#FF3B30'; // Highlight if overdue
             }
+            const userOptions = (appData.settings.users || []).map(u => `<option value="${u.name}" ${item.assignedTo === u.name ? 'selected' : ''}>${u.name}</option>`).join('');
             return `
-            <div class="checklist-item ${item.done ? 'done' : ''}" style="display: flex; align-items: center; gap: 10px;">
+            <div class="checklist-item ${item.done ? 'done' : ''}" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')" style="margin: 0; flex-shrink: 0;">
                 <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; padding-right: 10px; min-width: 50px;">${item.text}</div>
                 <input type="date" class="modern-input" value="${item.dueDate || ''}" onchange="updateChecklistDueDate('${item.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem !important; height: auto; width: 125px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: ${dateColor}; flex-shrink: 0;">
+                <input type="time" class="modern-input" value="${item.dueTime || ''}" onchange="updateChecklistDueTime('${item.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem !important; height: auto; width: 100px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: var(--text-muted); flex-shrink: 0;">
+                <select class="modern-input" onchange="updateChecklistAssignee('${item.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem !important; height: auto; width: auto; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: var(--text-muted); flex-shrink: 0;">
+                    <option value="">Assign user</option>
+                    ${userOptions}
+                </select>
                 <button type="button" class="task-btn delete" onclick="deleteChecklistItem('${item.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center;" title="Remove">&times;</button>
             </div>
         `}).join('');
@@ -4385,6 +4370,16 @@
     function updateChecklistDueDate(id, dateStr) {
         const item = currentEditingTask.checklist.find(i => i.id === id);
         if(item) { item.dueDate = dateStr; scheduleAutoSave(); renderChecklist(); }
+    }
+
+    function updateChecklistDueTime(id, timeStr) {
+        const item = currentEditingTask.checklist.find(i => i.id === id);
+        if(item) { item.dueTime = timeStr; scheduleAutoSave(); renderChecklist(); }
+    }
+
+    function updateChecklistAssignee(id, userName) {
+        const item = currentEditingTask.checklist.find(i => i.id === id);
+        if(item) { item.assignedTo = userName; scheduleAutoSave(); renderChecklist(); }
     }
 
     function deleteChecklistItem(id) { currentEditingTask.checklist = currentEditingTask.checklist.filter(i => i.id !== id); scheduleAutoSave(); renderChecklist(); }
@@ -4659,6 +4654,16 @@
             currentEditingTask = newTask;
         }
         saveData();
+
+        // Parse mentions in description and title, notify mentioned users
+        const mentionedUsers = parseMentions(desc + ' ' + title);
+        if (mentionedUsers.length > 0) {
+            const mentioned = mentionedUsers.filter(u => u !== currentUserName);
+            if (mentioned.length > 0) {
+                addNotificationFor(mentioned, 'mention', 'Mentioned in: ' + (title || 'Untitled'), 'You were mentioned in a card', taskId || '', currentUserName);
+            }
+        }
+
         if (!silent) {
             const ind = document.getElementById('autoSaveIndicator');
             if (ind) { ind.style.opacity = '1'; setTimeout(() => ind.style.opacity = '0', 1500); }
