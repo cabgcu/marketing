@@ -688,25 +688,25 @@
         .events-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 8px 4px; }
         .events-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 12px 4px; }
         .events-header h2 { font-size: 1.1rem; font-weight: 800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .events-table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(255,255,255,0.04); border-radius: 14px; overflow: hidden; }
+        .events-table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(30,30,30,0.95); border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
         .events-table thead th {
             font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
-            color: #ccc; padding: 10px 10px; text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.12); position: sticky; top: 0;
-            background: rgba(255,255,255,0.06); z-index: 2;
+            color: #ddd; padding: 10px 10px; text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.15); position: sticky; top: 0;
+            background: rgba(40,40,40,0.98); z-index: 2;
         }
-        .events-table tbody tr { transition: 0.15s; }
-        .events-table tbody tr:hover { background: rgba(255,255,255,0.04); }
-        .events-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
-        .events-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: middle; }
+        .events-table tbody tr { transition: 0.15s; background: rgba(25,25,25,0.95); }
+        .events-table tbody tr:hover { background: rgba(45,45,50,0.95); }
+        .events-table tbody tr:nth-child(even) { background: rgba(32,32,32,0.95); }
+        .events-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: middle; }
         .events-table .ev-input {
-            background: transparent; border: 1px solid transparent; color: #eee; font-size: 0.85rem;
+            background: transparent; border: 1px solid transparent; color: #fff; font-size: 0.85rem;
             padding: 5px 8px; border-radius: 8px; width: 100%; font-family: inherit;
             transition: 0.15s;
         }
-        .events-table .ev-input:focus { border-color: rgba(10,132,255,0.5); background: rgba(255,255,255,0.06); outline: none; }
-        .events-table .ev-input::placeholder { color: rgba(255,255,255,0.25); }
-        .events-table select.ev-input { cursor: pointer; appearance: auto; }
+        .events-table .ev-input:focus { border-color: rgba(10,132,255,0.5); background: rgba(255,255,255,0.08); outline: none; }
+        .events-table .ev-input::placeholder { color: rgba(255,255,255,0.35); }
+        .events-table select.ev-input { cursor: pointer; appearance: auto; color: #fff; }
         .ev-delete-btn {
             background: none; border: none; color: rgba(255,59,48,0.6); cursor: pointer;
             font-size: 1rem; padding: 4px 8px; border-radius: 8px; transition: 0.15s;
