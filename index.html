@@ -3181,6 +3181,29 @@
         addNotificationFor(members, type, title, body, task.id, currentUserName);
     }
 
+    // Parse @mentions from text — matches @FirstName or @"First Last"
+    function parseMentions(text) {
+        const allUsers = (appData.settings.users || []).map(u => u.name).filter(Boolean);
+        if (allUsers.length === 0) return [];
+        const mentioned = [];
+        // Match @"Full Name" or @Name
+        const quotedPattern = /@"([^"]+)"/g;
+        let m;
+        while ((m = quotedPattern.exec(text)) !== null) {
+            const match = allUsers.find(u => u.toLowerCase() === m[1].toLowerCase());
+            if (match) mentioned.push(match);
+        }
+        // Match @Name against known user names (greedy: try full names first)
+        const sortedUsers = [...allUsers].sort((a, b) => b.length - a.length);
+        const lowerText = text.toLowerCase();
+        sortedUsers.forEach(name => {
+            if (mentioned.find(n => n.toLowerCase() === name.toLowerCase())) return;
+            const atName = '@' + name.toLowerCase();
+            if (lowerText.includes(atName)) mentioned.push(name);
+        });
+        return mentioned;
+    }
+
     // Legacy: add notification only to current user (for self-relevant things like due reminders)
     function addNotification(type, title, body, taskId) {
         if (!isNotifEnabled(type)) return;
@@ -3585,11 +3608,17 @@
         if (selectedName) {
             if(!currentEditingTask.members) currentEditingTask.members = [];
             if (!currentEditingTask.members.includes(selectedName)) {
+                const existingMembers = [...currentEditingTask.members];
                 currentEditingTask.members.push(selectedName);
                 renderMembers();
                 scheduleAutoSave();
                 const assignTaskId = currentEditingTask.id || document.getElementById('taskModalTaskId').value;
+                // Notify the new assignee
                 addNotificationFor([selectedName], 'assign', 'You were assigned: ' + (currentEditingTask.title || 'Untitled'), (currentUserName || 'Someone') + ' assigned you to this card.', assignTaskId, null);
+                // Notify existing card members that someone new was added
+                if (existingMembers.length > 0) {
+                    addNotificationFor(existingMembers, 'assign', selectedName + ' joined: ' + (currentEditingTask.title || 'Untitled'), (currentUserName || 'Someone') + ' assigned ' + selectedName + ' to this card.', assignTaskId, currentUserName);
+                }
             }
         }
     }
@@ -4184,7 +4213,11 @@
             if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
         }
         renderComments();
-        notifyCardMembers(currentEditingTask, 'comment', 'Comment on: ' + (currentEditingTask.title || 'Untitled'), userName + ': ' + text.substring(0, 100));
+        // Notify card members + anyone @mentioned
+        const cardMembers = currentEditingTask.members || [];
+        const mentioned = parseMentions(text);
+        const allTargets = [...new Set([...cardMembers, ...mentioned])];
+        addNotificationFor(allTargets, 'comment', 'Comment on: ' + (currentEditingTask.title || 'Untitled'), userName + ': ' + text.substring(0, 100), taskId || '', currentUserName);
     }
 
     async function deleteComment(id) {
