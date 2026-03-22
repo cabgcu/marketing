@@ -3184,6 +3184,7 @@
         // Single save for all notification changes
         saveData();
         // Send real push notifications to remote users via Edge Function
+        console.log('[Push] remoteTargets:', remoteTargets.map(t => t.userName), '| currentUser:', currentUserName);
         if (remoteTargets.length > 0) {
             const notif = remoteTargets[0].notif;
             sendServerPush(remoteTargets.map(t => t.userName), notif);
@@ -3341,6 +3342,7 @@
 
     // Subscribe to Web Push via PushManager and store subscription in Supabase
     async function subscribeToPush() {
+        console.log('[Push] subscribeToPush called. VAPID:', !!VAPID_PUBLIC_KEY, 'SW:', 'serviceWorker' in navigator, 'PushMgr:', 'PushManager' in window);
         if (!VAPID_PUBLIC_KEY || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
             const reg = await navigator.serviceWorker.ready;
@@ -3379,9 +3381,10 @@
 
     // Send a real server-side push notification to other users via Supabase Edge Function
     async function sendServerPush(targetUserNames, notif) {
-        if (!VAPID_PUBLIC_KEY || !_supabase) return;
+        if (!VAPID_PUBLIC_KEY || !_supabase) { console.warn('[Push] Skipped: no VAPID key or Supabase'); return; }
+        console.log('[Push] Sending server push to:', targetUserNames);
         try {
-            await fetch(SUPABASE_URL + '/functions/v1/send-push', {
+            const resp = await fetch(SUPABASE_URL + '/functions/v1/send-push', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3398,6 +3401,8 @@
                     }
                 })
             });
+            const result = await resp.text();
+            console.log('[Push] Edge Function response:', resp.status, result);
         } catch (err) {
             console.warn('Server push failed:', err);
         }
