@@ -879,10 +879,46 @@
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
         }
+        /* @mention autocomplete dropdown */
+        .mention-dropdown {
+            position: absolute;
+            background: var(--card-bg, #1c1c1e);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 10000;
+            max-height: 180px;
+            overflow-y: auto;
+            min-width: 180px;
+            padding: 4px;
+            display: none;
+        }
+        .mention-dropdown .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #e0e0e0;
+            transition: background 0.15s;
+        }
+        .mention-dropdown .mention-item:hover,
+        .mention-dropdown .mention-item.active {
+            background: rgba(10,132,255,0.2);
+        }
+        .mention-dropdown .mention-item .mention-avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: linear-gradient(135deg, #0A84FF, #BF5AF2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700; color: white; flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
 
+<div class="mention-dropdown" id="mentionDropdown"></div>
 <div id="bg-container"></div>
 <div id="toast">Notification</div>
 
@@ -1230,7 +1266,7 @@
                             <div class="activity-item" style="margin-top: 15px;">
                                 <div class="avatar" id="currentUserAvatar">Me</div>
                                 <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
-                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitComment(); }"></textarea>
+                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { var dd=document.getElementById('mentionDropdown'); if(dd && dd.style.display!=='none') return; event.preventDefault(); submitComment(); }"></textarea>
                                 </div>
                             </div>
                             <div id="activityLog" style="margin-top: 20px;"></div>
@@ -3855,6 +3891,8 @@
     }
 
     let currentEditingTask = null;
+    // Track which @mentions have already been notified per task to prevent duplicates on auto-save
+    const _notifiedMentions = {};
 
     function openTaskModal(colId, taskId = null) {
         document.getElementById('taskModalColId').value = colId;
@@ -3913,7 +3951,10 @@
             }
             content = highlightMentions(content);
             descEl.innerHTML = content;
-            
+
+            // Pre-populate notified mentions so existing @mentions don't re-fire notifications
+            _notifiedMentions[taskId] = new Set(parseMentions((task.description || task.text || '') + ' ' + (task.title || '')));
+
             dueEl.value = task.dueDate || '';
             document.getElementById('taskEventLocation').value = task.eventLocation || '';
             document.getElementById('taskPriority').value = task.priority || '';
@@ -4576,7 +4617,7 @@
                             <button type="button" onclick="deleteComment('${c.id}')" style="background:none; border:none; color:#FF3B30; font-size:1.2rem; cursor:pointer; padding:0; line-height:0.8; transition:0.2s;" title="Delete Comment" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">&times;</button>
                         </div>
                     </div>
-                    <div style="font-size:0.9rem; line-height:1.5; color:#e0e0e0; white-space: pre-wrap;">${c.text}</div>
+                    <div style="font-size:0.9rem; line-height:1.5; color:#e0e0e0; white-space: pre-wrap;">${highlightMentions(c.text.replace(/</g, '&lt;').replace(/>/g, '&gt;'))}</div>
                 </div>
             </div>`;
         }).join('');
@@ -4630,6 +4671,207 @@
     }
 
     let _autoSaveTimer = null;
+
+    // ==================== @MENTION AUTOCOMPLETE ====================
+    let _mentionActiveEl = null;
+    let _mentionActiveIdx = 0;
+    let _mentionQuery = '';
+
+    function getMentionDropdown() { return document.getElementById('mentionDropdown'); }
+
+    function hideMentionDropdown() {
+        const dd = getMentionDropdown();
+        if (dd) { dd.style.display = 'none'; dd.innerHTML = ''; }
+        _mentionActiveEl = null;
+    }
+
+    function getCaretCoordinates() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return null;
+        const range = sel.getRangeAt(0).cloneRange();
+        range.collapse(false);
+        const rect = range.getClientRects()[0];
+        if (!rect) {
+            // Fallback: use a temp span
+            const span = document.createElement('span');
+            span.textContent = '\u200b';
+            range.insertNode(span);
+            const r = span.getBoundingClientRect();
+            span.parentNode.removeChild(span);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            return r;
+        }
+        return rect;
+    }
+
+    function getTextBeforeCaret(el) {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return '';
+        const range = sel.getRangeAt(0).cloneRange();
+        range.selectNodeContents(el);
+        range.setEnd(sel.anchorNode, sel.anchorOffset);
+        return range.toString();
+    }
+
+    function getTextBeforeCaretTextarea(el) {
+        return el.value.substring(0, el.selectionStart);
+    }
+
+    function checkMentionTrigger(textBefore) {
+        // Look for @ followed by optional partial name (no space before @ or at start)
+        const match = textBefore.match(/(^|[\s\n])@([^\s@]*)$/);
+        if (match) return match[2]; // the query after @
+        return null;
+    }
+
+    function showMentionDropdown(el, query, isTextarea) {
+        const allUsers = (appData.settings.users || []).map(u => u.name).filter(Boolean);
+        const filtered = query === '' ? allUsers : allUsers.filter(u => u.toLowerCase().startsWith(query.toLowerCase()));
+        const dd = getMentionDropdown();
+        if (filtered.length === 0) { hideMentionDropdown(); return; }
+        _mentionActiveEl = el;
+        _mentionActiveIdx = 0;
+        _mentionQuery = query;
+
+        dd.innerHTML = filtered.map((name, i) => {
+            const initials = getInitials(name);
+            return `<div class="mention-item ${i === 0 ? 'active' : ''}" data-name="${name}" onmousedown="insertMention('${name.replace(/'/g, "\\'")}', event)">
+                <div class="mention-avatar">${initials}</div>
+                <span>${name}</span>
+            </div>`;
+        }).join('');
+
+        // Position dropdown near caret
+        let x, y;
+        if (isTextarea) {
+            const rect = el.getBoundingClientRect();
+            x = rect.left + 20;
+            y = rect.top - dd.offsetHeight - 4;
+        } else {
+            const coords = getCaretCoordinates();
+            if (coords) { x = coords.left; y = coords.bottom + 4; }
+            else { const rect = el.getBoundingClientRect(); x = rect.left + 20; y = rect.bottom + 4; }
+        }
+        dd.style.left = x + 'px';
+        dd.style.top = y + 'px';
+        dd.style.display = 'block';
+
+        // Re-position if it goes off-screen
+        const ddRect = dd.getBoundingClientRect();
+        if (ddRect.bottom > window.innerHeight) {
+            dd.style.top = (y - ddRect.height - 30) + 'px';
+        }
+    }
+
+    function insertMention(name, event) {
+        if (event) event.preventDefault();
+        const el = _mentionActiveEl;
+        if (!el) return;
+        const hasSpace = name.includes(' ');
+        const mentionText = hasSpace ? `@"${name}" ` : `@${name} `;
+
+        if (el.tagName === 'TEXTAREA') {
+            const text = el.value;
+            const cursorPos = el.selectionStart;
+            const textBefore = text.substring(0, cursorPos);
+            const match = textBefore.match(/(^|[\s\n])@([^\s@]*)$/);
+            if (match) {
+                const replaceStart = textBefore.lastIndexOf('@');
+                el.value = text.substring(0, replaceStart) + mentionText + text.substring(cursorPos);
+                el.selectionStart = el.selectionEnd = replaceStart + mentionText.length;
+                el.focus();
+            }
+        } else {
+            // contenteditable
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const range = sel.getRangeAt(0);
+            const textNode = sel.anchorNode;
+            if (textNode.nodeType === Node.TEXT_NODE) {
+                const text = textNode.textContent;
+                const offset = sel.anchorOffset;
+                const before = text.substring(0, offset);
+                const atIdx = before.lastIndexOf('@');
+                if (atIdx !== -1) {
+                    textNode.textContent = text.substring(0, atIdx) + mentionText + text.substring(offset);
+                    const newRange = document.createRange();
+                    newRange.setStart(textNode, atIdx + mentionText.length);
+                    newRange.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                }
+            }
+            el.focus();
+            scheduleAutoSave();
+        }
+        hideMentionDropdown();
+    }
+
+    function handleMentionKeydown(e, isTextarea) {
+        const dd = getMentionDropdown();
+        if (!dd || dd.style.display === 'none') return false;
+        const items = dd.querySelectorAll('.mention-item');
+        if (items.length === 0) return false;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            items[_mentionActiveIdx].classList.remove('active');
+            _mentionActiveIdx = (_mentionActiveIdx + 1) % items.length;
+            items[_mentionActiveIdx].classList.add('active');
+            items[_mentionActiveIdx].scrollIntoView({ block: 'nearest' });
+            return true;
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            items[_mentionActiveIdx].classList.remove('active');
+            _mentionActiveIdx = (_mentionActiveIdx - 1 + items.length) % items.length;
+            items[_mentionActiveIdx].classList.add('active');
+            items[_mentionActiveIdx].scrollIntoView({ block: 'nearest' });
+            return true;
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            e.stopPropagation();
+            const name = items[_mentionActiveIdx].dataset.name;
+            insertMention(name);
+            return true;
+        } else if (e.key === 'Escape') {
+            hideMentionDropdown();
+            return true;
+        }
+        return false;
+    }
+
+    // Attach to description (contenteditable)
+    document.addEventListener('DOMContentLoaded', () => {
+        const descEl = document.getElementById('taskContentInput');
+        if (descEl) {
+            descEl.addEventListener('input', () => {
+                const textBefore = getTextBeforeCaret(descEl);
+                const query = checkMentionTrigger(textBefore);
+                if (query !== null) showMentionDropdown(descEl, query, false);
+                else hideMentionDropdown();
+            });
+            descEl.addEventListener('keydown', (e) => { handleMentionKeydown(e, false); });
+        }
+        const commentEl = document.getElementById('commentInput');
+        if (commentEl) {
+            commentEl.addEventListener('input', () => {
+                const textBefore = getTextBeforeCaretTextarea(commentEl);
+                const query = checkMentionTrigger(textBefore);
+                if (query !== null) showMentionDropdown(commentEl, query, true);
+                else hideMentionDropdown();
+            });
+            commentEl.addEventListener('keydown', (e) => {
+                if (handleMentionKeydown(e, true)) return;
+            });
+        }
+    });
+    // Hide dropdown on click outside
+    document.addEventListener('mousedown', (e) => {
+        const dd = getMentionDropdown();
+        if (dd && dd.style.display !== 'none' && !dd.contains(e.target)) hideMentionDropdown();
+    });
+    // ==================== END @MENTION AUTOCOMPLETE ====================
 
     function scheduleAutoSave() {
         clearTimeout(_autoSaveTimer);
@@ -4686,12 +4928,17 @@
         }
         saveData();
 
-        // Parse mentions in description and title, notify mentioned users
+        // Parse mentions in description and title, notify mentioned users (only for NEW mentions)
         const mentionedUsers = parseMentions(desc + ' ' + title);
         if (mentionedUsers.length > 0) {
             const mentioned = mentionedUsers.filter(u => u !== currentUserName);
-            if (mentioned.length > 0) {
-                addNotificationFor(mentioned, 'mention', 'Mentioned in: ' + (title || 'Untitled'), 'You were mentioned in a card', taskId || '', currentUserName);
+            // Only notify for mentions we haven't already notified about for this task
+            const mentionKey = taskId || document.getElementById('taskModalTaskId').value || '';
+            if (!_notifiedMentions[mentionKey]) _notifiedMentions[mentionKey] = new Set();
+            const newMentions = mentioned.filter(u => !_notifiedMentions[mentionKey].has(u));
+            if (newMentions.length > 0) {
+                newMentions.forEach(u => _notifiedMentions[mentionKey].add(u));
+                addNotificationFor(newMentions, 'mention', 'Mentioned in: ' + (title || 'Untitled'), 'You were mentioned in a card', mentionKey, currentUserName);
             }
         }
 
