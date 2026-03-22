@@ -46,7 +46,7 @@ self.addEventListener('push', (e) => {
     const fallbackTag = 'cab-notif-fallback';
     
     // FIX 1: Properly declare fallbackChain before passing it to waitUntil
-    const fallbackChain = self.registration.showNotification('CABGCU', {
+    const fallbackChain = self.registration.showNotification('CAB Marketing', {
         body: 'Checking for new updates...',
         tag: fallbackTag,
         renotify: true
