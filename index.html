@@ -459,6 +459,12 @@
         .cl-assign-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: none; background: none; color: #e0e0e0; font-size: 0.9rem; cursor: pointer; border-radius: 10px; transition: background 0.15s; text-align: left; }
         .cl-assign-option:hover, .cl-assign-option:active { background: rgba(255,255,255,0.08); }
         .cl-assign-option.active { background: rgba(10,132,255,0.12); }
+        .cl-drag-handle { cursor: grab; color: rgba(255,255,255,0.2); flex-shrink: 0; display: flex; align-items: center; padding: 0 2px; touch-action: none; user-select: none; -webkit-user-select: none; }
+        .cl-drag-handle:hover { color: rgba(255,255,255,0.45); }
+        .cl-drag-handle:active { cursor: grabbing; }
+        .checklist-item.cl-dragging { opacity: 0.4; }
+        .checklist-item.cl-drag-over-top { box-shadow: 0 -2px 0 0 #0A84FF; }
+        .checklist-item.cl-drag-over-bottom { box-shadow: 0 2px 0 0 #0A84FF; }
         
         .progress-container { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 15px; overflow: hidden; }
         .progress-bar { height: 100%; background: var(--gradient-success); width: 0%; transition: width 0.3s ease; }
@@ -4445,7 +4451,8 @@
                 : `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn" title="Assign member"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg></button>`
             ) : '';
             return `
-            <div class="checklist-item ${item.done ? 'done' : ''}" style="display: flex; align-items: center; gap: 8px;">
+            <div class="checklist-item ${item.done ? 'done' : ''}" data-cl-id="${item.id}" style="display: flex; align-items: center; gap: 8px;">
+                <span class="cl-drag-handle" title="Drag to reorder"><svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg></span>
                 <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')" style="margin: 0; flex-shrink: 0;">
                 <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; min-width: 60px; padding-right: 4px;">${item.text}</div>
                 ${item.dueDate ? `<span style="font-size: 0.75rem; color: ${dateColor}; white-space: nowrap; flex-shrink: 0; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">${dueDateDisplay}</span>` : ''}
@@ -4454,6 +4461,109 @@
             </div>
         `}).join('');
     }
+
+    // ── CHECKLIST DRAG-TO-REORDER (touch + mouse) ──
+    let _clDragItem = null;   // the DOM element being dragged
+    let _clDragId = null;     // checklist item id
+    let _clDragStartY = 0;
+    let _clDragClone = null;  // floating clone for touch
+
+    function initChecklistDrag() {
+        const container = document.getElementById('checklistContainer');
+        if (!container) return;
+
+        container.addEventListener('pointerdown', (e) => {
+            const handle = e.target.closest('.cl-drag-handle');
+            if (!handle) return;
+            const row = handle.closest('.checklist-item');
+            if (!row) return;
+            e.preventDefault();
+            _clDragId = row.dataset.clId;
+            _clDragItem = row;
+            _clDragStartY = e.clientY;
+            row.classList.add('cl-dragging');
+            row.setPointerCapture(e.pointerId);
+
+            // Create floating clone for visual feedback
+            _clDragClone = row.cloneNode(true);
+            _clDragClone.style.cssText = `position:fixed; left:${row.getBoundingClientRect().left}px; top:${row.getBoundingClientRect().top}px; width:${row.offsetWidth}px; opacity:0.85; z-index:10002; pointer-events:none; border-radius:8px; background:var(--card-bg,#1c1c1e); border:1px solid rgba(10,132,255,0.4); box-shadow:0 8px 24px rgba(0,0,0,0.4); transition:none;`;
+            document.body.appendChild(_clDragClone);
+
+            const onMove = (ev) => {
+                if (!_clDragClone) return;
+                const dy = ev.clientY - _clDragStartY;
+                _clDragClone.style.top = (row.getBoundingClientRect().top + dy) + 'px';
+
+                // Highlight drop target
+                const items = container.querySelectorAll('.checklist-item:not(.cl-dragging)');
+                items.forEach(el => { el.classList.remove('cl-drag-over-top', 'cl-drag-over-bottom'); });
+                const target = getDropTarget(container, ev.clientY);
+                if (target.el) {
+                    target.el.classList.add(target.pos === 'top' ? 'cl-drag-over-top' : 'cl-drag-over-bottom');
+                }
+            };
+
+            const onUp = (ev) => {
+                row.releasePointerCapture(ev.pointerId);
+                row.removeEventListener('pointermove', onMove);
+                row.removeEventListener('pointerup', onUp);
+                row.removeEventListener('pointercancel', onUp);
+                row.classList.remove('cl-dragging');
+                if (_clDragClone) { _clDragClone.remove(); _clDragClone = null; }
+
+                // Clear all highlights
+                container.querySelectorAll('.checklist-item').forEach(el => {
+                    el.classList.remove('cl-drag-over-top', 'cl-drag-over-bottom');
+                });
+
+                // Determine drop position and reorder
+                const target = getDropTarget(container, ev.clientY);
+                if (target.el && target.el.dataset.clId !== _clDragId) {
+                    reorderChecklistItem(_clDragId, target.el.dataset.clId, target.pos);
+                }
+                _clDragItem = null;
+                _clDragId = null;
+            };
+
+            row.addEventListener('pointermove', onMove);
+            row.addEventListener('pointerup', onUp);
+            row.addEventListener('pointercancel', onUp);
+        });
+    }
+
+    function getDropTarget(container, clientY) {
+        const items = container.querySelectorAll('.checklist-item:not(.cl-dragging)');
+        let closest = { el: null, pos: 'bottom', dist: Infinity };
+        items.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            const mid = rect.top + rect.height / 2;
+            const dist = Math.abs(clientY - mid);
+            if (dist < closest.dist) {
+                closest = { el, pos: clientY < mid ? 'top' : 'bottom', dist };
+            }
+        });
+        return closest;
+    }
+
+    function reorderChecklistItem(dragId, targetId, pos) {
+        if (!currentEditingTask || !currentEditingTask.checklist) return;
+        const items = currentEditingTask.checklist;
+        const dragIdx = items.findIndex(i => i.id === dragId);
+        if (dragIdx === -1) return;
+        const [dragged] = items.splice(dragIdx, 1);
+        let targetIdx = items.findIndex(i => i.id === targetId);
+        if (targetIdx === -1) { items.push(dragged); }
+        else {
+            if (pos === 'bottom') targetIdx++;
+            items.splice(targetIdx, 0, dragged);
+        }
+        scheduleAutoSave();
+        renderChecklist();
+    }
+
+    // Re-init drag listeners after each render
+    const _origRenderChecklist = renderChecklist;
+    renderChecklist = function() { _origRenderChecklist(); initChecklistDrag(); };
 
     // Checklist assignment picker (mobile-friendly popover)
     let _clAssignPickerEl = null;
