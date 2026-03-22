@@ -1577,7 +1577,9 @@
                 if (!appData.automations) appData.automations = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
-                
+                if (!appData.notifications) appData.notifications = {};
+                if (!appData.notifPrefs) appData.notifPrefs = {};
+
                 appData.boards.forEach(b => {
                     if (b.backgroundImage === undefined) b.backgroundImage = '';
                     if (b.assignedTo     === undefined) b.assignedTo = '';
@@ -1653,6 +1655,8 @@
         const colCompleted = generateId();
         appData = {
             settings: { password: 'Marketing49!', users: [] },
+            notifications: {},
+            notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
             columns: [
                 { id: colBacklog, boardId: defaultBoardId, title: 'Backlog', order: 0, assignedTo: '' },
@@ -3124,36 +3128,50 @@
 
     // ==================== NOTIFICATION SYSTEM ====================
 
-    const NOTIF_PREFS_KEY = 'cabNotifPrefs';
-
-    function notifStorageKey(userName) { return 'cabNotifs_' + (userName || 'guest'); }
+    // Ensure appData.notifications and appData.notifPrefs exist (keyed by username)
+    function ensureNotifStructures() {
+        if (!appData.notifications) appData.notifications = {};
+        if (!appData.notifPrefs) appData.notifPrefs = {};
+    }
 
     function getNotifPrefs() {
-        try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY + '_' + (currentUserName || ''))) || {}; } catch { return {}; }
+        ensureNotifStructures();
+        return appData.notifPrefs[currentUserName || ''] || {};
     }
-    function saveNotifPrefs(prefs) { localStorage.setItem(NOTIF_PREFS_KEY + '_' + (currentUserName || ''), JSON.stringify(prefs)); }
+    function saveNotifPrefs(prefs) {
+        ensureNotifStructures();
+        appData.notifPrefs[currentUserName || ''] = prefs;
+        saveData();
+    }
     function updateNotifPref(key, enabled) { const p = getNotifPrefs(); p[key] = enabled; saveNotifPrefs(p); }
     function isNotifEnabled(type) { const p = getNotifPrefs(); return p[type] !== false; }
 
     function getNotifications() {
-        try { return JSON.parse(localStorage.getItem(notifStorageKey(currentUserName))) || []; } catch { return []; }
+        ensureNotifStructures();
+        return appData.notifications[currentUserName || ''] || [];
     }
     function saveNotifications(notifs) {
-        localStorage.setItem(notifStorageKey(currentUserName), JSON.stringify(notifs.slice(0, 100)));
+        ensureNotifStructures();
+        appData.notifications[currentUserName || ''] = notifs.slice(0, 100);
+        saveData();
     }
     function getNotificationsFor(userName) {
-        try { return JSON.parse(localStorage.getItem(notifStorageKey(userName))) || []; } catch { return []; }
+        ensureNotifStructures();
+        return appData.notifications[userName || ''] || [];
     }
     function saveNotificationsFor(userName, notifs) {
-        localStorage.setItem(notifStorageKey(userName), JSON.stringify(notifs.slice(0, 100)));
+        ensureNotifStructures();
+        appData.notifications[userName || ''] = notifs.slice(0, 100);
+        saveData();
     }
 
-    // Route a notification to specific target users
+    // Route a notification to specific target users (stored in appData, synced via Supabase)
     function addNotificationFor(targetUsers, type, title, body, taskId, actorName) {
         const targets = (targetUsers || []).filter(u => u && u !== actorName);
         if (targets.length === 0) return;
+        ensureNotifStructures();
         targets.forEach(userName => {
-            const userPrefs = (() => { try { return JSON.parse(localStorage.getItem(NOTIF_PREFS_KEY + '_' + userName)) || {}; } catch { return {}; } })();
+            const userPrefs = appData.notifPrefs[userName] || {};
             if (userPrefs[type] === false) return;
             const notif = {
                 id: generateId(),
@@ -3165,7 +3183,8 @@
             };
             const notifs = getNotificationsFor(userName);
             notifs.unshift(notif);
-            saveNotificationsFor(userName, notifs);
+            // Save without triggering individual saveData calls — we batch below
+            appData.notifications[userName] = notifs.slice(0, 100);
             // If this target is the currently logged-in user, update UI + push
             if (userName === currentUserName) {
                 updateNotifBadge();
@@ -3173,6 +3192,8 @@
                 sendPushNotification(notif);
             }
         });
+        // Single save for all notification changes
+        saveData();
     }
 
     // Convenience: notify all members of a card except the actor
@@ -3473,6 +3494,43 @@
 
     // Initialize badge on load
     setTimeout(updateNotifBadge, 500);
+
+    // Poll Supabase for new notifications from other users (every 30 seconds)
+    let _lastKnownNotifCount = 0;
+    async function pollNotifications() {
+        if (!currentUserName || !_supabase) return;
+        try {
+            const { data, error } = await _supabase.from('app_state').select('data').eq('id', 1).single();
+            if (error || !data || !data.data) return;
+            const remoteNotifs = (data.data.notifications && data.data.notifications[currentUserName]) || [];
+            const localNotifs = getNotifications();
+            // Merge: keep remote as source of truth but preserve local read status
+            const localReadMap = {};
+            localNotifs.forEach(n => { if (n.read) localReadMap[n.id] = true; });
+            remoteNotifs.forEach(n => { if (localReadMap[n.id]) n.read = true; });
+            // Detect truly new notifications (not in our local list)
+            const localIds = new Set(localNotifs.map(n => n.id));
+            const newNotifs = remoteNotifs.filter(n => !localIds.has(n.id));
+            // Update local appData with merged remote data
+            ensureNotifStructures();
+            appData.notifications[currentUserName] = remoteNotifs;
+            // Also sync other fields that may have changed (tasks, columns, etc.)
+            if (data.data.tasks) appData.tasks = data.data.tasks;
+            if (data.data.columns) appData.columns = data.data.columns;
+            if (data.data.boards) appData.boards = data.data.boards;
+            if (data.data.notifPrefs) appData.notifPrefs = data.data.notifPrefs;
+            // Update UI
+            updateNotifBadge();
+            renderNotifList();
+            // Fire push notifications for new ones
+            newNotifs.forEach(n => { if (!n.read) sendPushNotification(n); });
+        } catch (err) {
+            console.error('Notification poll error:', err);
+        }
+    }
+    // Start polling after a short delay
+    setTimeout(pollNotifications, 5000);
+    setInterval(pollNotifications, 30 * 1000);
 
     // ==================== END NOTIFICATION SYSTEM ====================
 
