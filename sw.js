@@ -15,7 +15,7 @@ self.addEventListener('push', (e) => {
         try { 
             data = e.data.json(); 
         } catch (err) { 
-            data = { title: 'CAB Marketing', body: e.data.text() }; 
+            data = { title: 'CABGCU', body: e.data.text() };
         }
     }
 
@@ -87,7 +87,7 @@ self.addEventListener('push', (e) => {
 self.addEventListener('notificationclick', (e) => {
     e.notification.close();
     
-    const urlToOpen = new URL('./', self.location.origin).href;
+    const urlToOpen = new URL('./', self.location).href;
 
     e.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
