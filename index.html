@@ -3561,7 +3561,8 @@
     setTimeout(updateNotifBadge, 500);
 
     // Poll Supabase for new notifications from other users (every 30 seconds)
-    let _pollInitialized = false;
+    // Track when this session started — only push-notify for notifications created after this time
+    const _sessionStartTime = new Date().toISOString();
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
         try {
@@ -3587,12 +3588,13 @@
             // Update UI
             updateNotifBadge();
             renderNotifList();
-            // Only fire push for truly new notifications AFTER the first poll
-            // (first poll loads existing state — don't re-fire old notifications)
-            if (_pollInitialized) {
-                newNotifs.forEach(n => { if (!n.read) sendPushNotification(n); });
-            }
-            _pollInitialized = true;
+            // Only push-notify for notifications created AFTER this session started
+            // This prevents old dismissed notifications from re-firing on app open
+            newNotifs.forEach(n => {
+                if (!n.read && n.timestamp > _sessionStartTime) {
+                    sendPushNotification(n);
+                }
+            });
         } catch (err) {
             console.error('Notification poll error:', err);
         }
