@@ -45,6 +45,7 @@
         html {
             background-color: #050505;
             color-scheme: dark;
+            font-size: 14px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -684,26 +685,27 @@
         .due-countdown { font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
         /* EVENTS VIEW */
-        .events-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 8px 0; }
+        .events-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 8px 4px; }
         .events-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 12px 4px; }
         .events-header h2 { font-size: 1.1rem; font-weight: 800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .events-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .events-table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(255,255,255,0.04); border-radius: 14px; overflow: hidden; }
         .events-table thead th {
             font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
-            color: var(--text-muted); padding: 8px 10px; text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0;
-            background: rgba(0,0,0,0.9); z-index: 2;
+            color: #ccc; padding: 10px 10px; text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.12); position: sticky; top: 0;
+            background: rgba(255,255,255,0.06); z-index: 2;
         }
         .events-table tbody tr { transition: 0.15s; }
-        .events-table tbody tr:hover { background: rgba(10,132,255,0.06); }
-        .events-table td { padding: 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+        .events-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+        .events-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+        .events-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: middle; }
         .events-table .ev-input {
-            background: transparent; border: 1px solid transparent; color: #fff; font-size: 0.85rem;
-            padding: 6px 8px; border-radius: 8px; width: 100%; font-family: inherit;
+            background: transparent; border: 1px solid transparent; color: #eee; font-size: 0.85rem;
+            padding: 5px 8px; border-radius: 8px; width: 100%; font-family: inherit;
             transition: 0.15s;
         }
-        .events-table .ev-input:focus { border-color: rgba(10,132,255,0.4); background: rgba(255,255,255,0.04); outline: none; }
-        .events-table .ev-input::placeholder { color: rgba(255,255,255,0.2); }
+        .events-table .ev-input:focus { border-color: rgba(10,132,255,0.5); background: rgba(255,255,255,0.06); outline: none; }
+        .events-table .ev-input::placeholder { color: rgba(255,255,255,0.25); }
         .events-table select.ev-input { cursor: pointer; appearance: auto; }
         .ev-delete-btn {
             background: none; border: none; color: rgba(255,59,48,0.6); cursor: pointer;
@@ -711,11 +713,12 @@
         }
         .ev-delete-btn:hover { color: #ff3b30; background: rgba(255,59,48,0.1); }
         .ev-add-row {
-            background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.12);
             border-radius: 10px; padding: 10px; text-align: center; margin-top: 6px;
             cursor: pointer; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; transition: 0.15s;
         }
         .ev-add-row:hover { background: rgba(10,132,255,0.08); color: #fff; border-color: rgba(10,132,255,0.3); }
+        .ev-readonly { font-size: 0.85rem; padding: 5px 8px; display: block; color: #ddd; }
 
         /* ================= MOBILE OPTIMIZATIONS ================= */
         @media (max-width: 900px) {
@@ -2190,7 +2193,7 @@
                 taskEl.draggable = !selectedCards.size;
                 taskEl.id = task.id;
                 let eventsHtml = '';
-                const linkedEvents = (appData.events || []).filter(e => e.cardId === task.id);
+                const linkedEvents = (appData.events || []).filter(e => e.listId === task.columnId);
                 if (linkedEvents.length > 0) {
                     eventsHtml = `<div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">` +
                         linkedEvents.map(ev => {
@@ -4449,8 +4452,9 @@
         if (!container) return;
         if (!appData.events) appData.events = [];
 
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+        const listOpts = boardCols.map(c => `<option value="${c.id}">${escapeAttr(c.title)}</option>`).join('');
         const activeTasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId);
-        const cardOpts = activeTasks.map(t => `<option value="${t.id}">${escapeAttr(t.title || 'Untitled Task')}</option>`).join('');
 
         // Build unified list: card events (from tasks with dueDate) + manual events
         const allRows = [];
@@ -4461,13 +4465,14 @@
             const dt = new Date(t.dueDate);
             const dateStr = dt.toISOString().slice(0, 10);
             const timeStr = dt.toTimeString().slice(0, 5);
+            const col = boardCols.find(c => c.id === t.columnId);
             allRows.push({
                 type: 'card',
                 name: t.title || 'Untitled Task',
                 date: dateStr,
                 time: timeStr,
                 location: t.eventLocation || '',
-                cardName: t.title || 'Untitled Task',
+                listName: col ? col.title : '',
                 sortDate: dt,
                 taskId: t.id
             });
@@ -4476,7 +4481,7 @@
         // Manual events
         appData.events.forEach(ev => {
             const sortDate = ev.date ? new Date(ev.date + (ev.time ? 'T' + ev.time : 'T00:00:00')) : new Date('9999-12-31');
-            const linkedTask = ev.cardId ? activeTasks.find(t => t.id === ev.cardId) : null;
+            const linkedCol = ev.listId ? boardCols.find(c => c.id === ev.listId) : null;
             allRows.push({
                 type: 'manual',
                 id: ev.id,
@@ -4484,8 +4489,8 @@
                 date: ev.date || '',
                 time: ev.time || '',
                 location: ev.location || '',
-                cardId: ev.cardId || '',
-                cardName: linkedTask ? (linkedTask.title || 'Untitled Task') : '',
+                listId: ev.listId || '',
+                listName: linkedCol ? linkedCol.title : '',
                 sortDate: sortDate
             });
         });
@@ -4498,11 +4503,11 @@
         </div>
         <table class="events-table">
             <thead><tr>
-                <th style="width:22%;">Event Name</th>
+                <th style="width:24%;">Event Name</th>
                 <th style="width:14%;">Date</th>
                 <th style="width:11%;">Time</th>
-                <th style="width:18%;">Location</th>
-                <th style="width:26%;">Card</th>
+                <th style="width:20%;">Location</th>
+                <th style="width:22%;">Task Board</th>
                 <th style="width:9%;"></th>
             </tr></thead>
             <tbody>`;
@@ -4512,13 +4517,13 @@
                 // Read-only row for existing card events
                 const fmtDate = row.date ? new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                 const fmtTime = row.time ? fmtTime12(row.time) : '';
-                html += `<tr style="opacity: 0.65;">
-                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:#fff;">${escapeHtml(row.name)}</span></td>
-                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${fmtDate}</span></td>
-                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${fmtTime}</span></td>
-                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:var(--text-muted);">${escapeHtml(row.location)}</span></td>
-                    <td><span class="ev-input" style="display:block; font-size:0.85rem; padding:6px 8px; color:#0A84FF; cursor:pointer;" onclick="openTaskFromEvent('${row.taskId}')">${escapeHtml(row.cardName)}</span></td>
-                    <td style="text-align:center; font-size:0.7rem; color:var(--text-muted);">from card</td>
+                html += `<tr style="opacity: 0.7;">
+                    <td><span class="ev-readonly">${escapeHtml(row.name)}</span></td>
+                    <td><span class="ev-readonly" style="color:#aaa;">${fmtDate}</span></td>
+                    <td><span class="ev-readonly" style="color:#aaa;">${fmtTime}</span></td>
+                    <td><span class="ev-readonly" style="color:#aaa;">${escapeHtml(row.location)}</span></td>
+                    <td><span class="ev-readonly" style="color:#0A84FF;">${escapeHtml(row.listName)}</span></td>
+                    <td style="text-align:center; font-size:0.65rem; color:#888;">from card</td>
                 </tr>`;
             } else {
                 // Editable manual event row
@@ -4527,9 +4532,9 @@
                     <td><input class="ev-input" type="date" value="${row.date}" onchange="updateEvent('${row.id}','date',this.value)"></td>
                     <td><input class="ev-input" type="time" value="${row.time}" onchange="updateEvent('${row.id}','time',this.value)"></td>
                     <td><input class="ev-input" type="text" value="${escapeAttr(row.location)}" placeholder="Location" onchange="updateEvent('${row.id}','location',this.value)" oninput="scheduleEventSave('${row.id}','location',this.value)"></td>
-                    <td><select class="ev-input" onchange="updateEvent('${row.id}','cardId',this.value)">
+                    <td><select class="ev-input" onchange="updateEvent('${row.id}','listId',this.value)">
                         <option value="">— None —</option>
-                        ${cardOpts}
+                        ${listOpts}
                     </select></td>
                     <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEvent('${row.id}')" title="Delete">✕</button></td>
                 </tr>`;
@@ -4541,11 +4546,11 @@
 
         container.innerHTML = html;
 
-        // Set selected card for manual events
+        // Set selected list for manual events
         appData.events.forEach(ev => {
-            if (ev.cardId) {
+            if (ev.listId) {
                 const sel = container.querySelector(`tr[data-evid="${ev.id}"] select`);
-                if (sel) sel.value = ev.cardId;
+                if (sel) sel.value = ev.listId;
             }
         });
     }
@@ -4553,11 +4558,6 @@
     function fmtTime12(t) {
         const [h, m] = t.split(':').map(Number);
         return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h >= 12 ? ' PM' : ' AM');
-    }
-
-    function openTaskFromEvent(taskId) {
-        const task = appData.tasks.find(t => t.id === taskId);
-        if (task) openTaskModal(task.columnId, taskId);
     }
 
     function escapeAttr(str) {
@@ -4578,7 +4578,7 @@
             date: '',
             time: '',
             location: '',
-            cardId: ''
+            listId: ''
         });
         renderEvents();
         // Focus the new row's name input
