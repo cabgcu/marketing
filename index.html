@@ -205,6 +205,7 @@
             transition: 0.2s;
         }
         .btn-outline:hover { background: rgba(255,255,255,0.1); }
+        .cl-btn { padding: 4px 10px !important; font-size: 0.75rem !important; min-height: 0 !important; border-radius: 8px !important; white-space: nowrap; }
 
         /* Enforce 16px to stop iOS auto-zoom on inputs */
         .modern-input { 
@@ -1198,13 +1199,13 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
-                                <h3 class="section-title" style="margin: 0; font-size: 0.85rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Marketing Checklist</h3>
-                                <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                                    <button type="button" class="btn-outline" style="padding: 3px 6px; font-size: 0.65rem; border-color: rgba(10,132,255,0.4); color: #0A84FF; white-space: nowrap;" onclick="saveChecklistAsTemplate()">Save</button>
-                                    <button type="button" class="btn-outline" style="padding: 3px 6px; font-size: 0.65rem; border-color: rgba(191,90,242,0.4); color: #BF5AF2; white-space: nowrap;" onclick="loadChecklistTemplate()">Load</button>
-                                    <button type="button" class="btn-outline" style="padding: 3px 6px; font-size: 0.65rem; border-color: rgba(52,199,89,0.4); color: #34C759; white-space: nowrap;" onclick="copyChecklistToCards()">Copy</button>
-                                    <button type="button" class="btn-outline" style="padding: 3px 6px; font-size: 0.65rem; border-color: rgba(255, 59, 48, 0.4); color: #FF3B30; white-space: nowrap;" onclick="clearChecklist()">Clear</button>
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+                                <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
+                                <div class="checklist-actions" style="display: flex; gap: 5px; flex-shrink: 0;">
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(10,132,255,0.4); color: #0A84FF;" onclick="saveChecklistAsTemplate()">Save</button>
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(191,90,242,0.4); color: #BF5AF2;" onclick="loadChecklistTemplate()">Load</button>
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(52,199,89,0.4); color: #34C759;" onclick="copyChecklistToCards()">Copy</button>
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
                                 </div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
