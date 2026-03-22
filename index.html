@@ -4357,17 +4357,18 @@
                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
                 if (d < now) dateColor = '#FF3B30'; // Highlight if overdue
             }
-            const userOptions = (appData.settings.users || []).map(u => `<option value="${u.name}" ${(item.assignedTo || '') === u.name ? 'selected' : ''}>${u.name}</option>`).join('');
+            const cardMembers = currentEditingTask.members || [];
+            const userOptions = cardMembers.map(m => `<option value="${m}" ${(item.assignedTo || '') === m ? 'selected' : ''}>${m}</option>`).join('');
+            const dueDateDisplay = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
             return `
-            <div class="checklist-item ${item.done ? 'done' : ''}" style="display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow-x: auto;">
+            <div class="checklist-item ${item.done ? 'done' : ''}" style="display: flex; align-items: center; gap: 6px;">
                 <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')" style="margin: 0; flex-shrink: 0;">
-                <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; padding-right: 8px; min-width: 80px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${item.text}</div>
-                <input type="date" class="modern-input" value="${item.dueDate || ''}" onchange="updateChecklistDueDate('${item.id}', this.value)" style="padding: 3px 6px; font-size: 0.7rem !important; height: auto; width: 110px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: ${dateColor}; flex-shrink: 0;">
-                <input type="time" class="modern-input" value="${item.dueTime || ''}" onchange="updateChecklistDueTime('${item.id}', this.value)" style="padding: 3px 6px; font-size: 0.7rem !important; height: auto; width: 85px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: var(--text-muted); flex-shrink: 0;">
-                <select class="modern-input" onchange="updateChecklistAssignee('${item.id}', this.value)" style="padding: 3px 6px; font-size: 0.7rem !important; height: auto; width: 100px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 6px; color: var(--text-muted); flex-shrink: 0;">
-                    <option value="">–</option>
+                <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; min-width: 100px; padding-right: 8px;">${item.text}</div>
+                ${item.dueDate ? `<span style="font-size: 0.75rem; color: ${dateColor}; white-space: nowrap; flex-shrink: 0; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">${dueDateDisplay}</span>` : ''}
+                ${cardMembers.length > 0 ? `<select onchange="updateChecklistAssignee('${item.id}', this.value)" style="padding: 3px 6px; font-size: 0.75rem; height: auto; width: 90px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.2); border-radius: 4px; color: var(--text-muted); flex-shrink: 0;">
+                    <option value="">Assign</option>
                     ${userOptions}
-                </select>
+                </select>` : ''}
                 <button type="button" class="task-btn delete" onclick="deleteChecklistItem('${item.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center;" title="Remove">&times;</button>
             </div>
         `}).join('');
