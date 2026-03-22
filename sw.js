@@ -70,7 +70,7 @@ self.addEventListener('push', (e) => {
                 }
             }
             if (latest) {
-                return self.registration.showNotification(latest.title || 'CAB Marketing', {
+                return self.registration.showNotification(latest.title || 'CABGCU', {
                     body: latest.body || 'You have a new notification',
                     tag: fallbackTag, // Replace the generic one
                     data: { taskId: latest.taskId, type: latest.type },
