@@ -3583,14 +3583,20 @@
         }
     }
 
+    // Track which notification IDs have already triggered a push (prevents double-push from server + poll)
+    const _pushedNotifIds = new Set();
+
     function sendPushNotification(notif) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        // Skip if we already pushed this notification
+        if (_pushedNotifIds.has(notif.id)) return;
+        _pushedNotifIds.add(notif.id);
         const iconUrl = (appData.settings && appData.settings.appIconUrl) || '';
         const opts = {
             body: notif.body,
             icon: iconUrl,
             tag: 'cab-' + notif.type + '-' + (notif.taskId || notif.id),
-            renotify: true,
+            renotify: false,
             data: { taskId: notif.taskId, type: notif.type }
         };
         // Try service worker first (required for iOS PWA), fall back to Notification constructor
@@ -4931,7 +4937,9 @@
         // Parse mentions in description and title, notify mentioned users (only for NEW mentions)
         const mentionedUsers = parseMentions(desc + ' ' + title);
         if (mentionedUsers.length > 0) {
-            const mentioned = mentionedUsers.filter(u => u !== currentUserName);
+            const cardMembers = new Set(currentEditingTask.members || []);
+            // Filter out current user and existing card members (they get notified via other events)
+            const mentioned = mentionedUsers.filter(u => u !== currentUserName && !cardMembers.has(u));
             // Only notify for mentions we haven't already notified about for this task
             const mentionKey = taskId || document.getElementById('taskModalTaskId').value || '';
             if (!_notifiedMentions[mentionKey]) _notifiedMentions[mentionKey] = new Set();
@@ -4952,6 +4960,7 @@
 
     async function handleSaveTask(e) {
         if (e) e.preventDefault();
+        clearTimeout(_autoSaveTimer);
         doAutoSave(false);
         showToast("Task saved manually!");
     }
