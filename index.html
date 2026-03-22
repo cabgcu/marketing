@@ -3649,6 +3649,16 @@
             notifs.forEach(n => _clearedNotifIds.add(n.id));
             _persistClearedIds();
             saveNotifications([]);
+            // Sync cleared status to Supabase immediately
+            try {
+                const { data } = await _supabase.from('app_state').select('data').eq('id', 1).single();
+                if (data && data.data) {
+                    data.data.notifications[currentUserName] = [];
+                    await _supabase.from('app_state').update({ data: data.data }).eq('id', 1);
+                }
+            } catch (err) {
+                console.error('Error syncing cleared notifications:', err);
+            }
             updateNotifBadge();
             renderNotifList();
         }
@@ -3800,9 +3810,9 @@
                     readStatusChanged = true;
                 }
             });
-            // Detect truly new notifications (not in our local list)
+            // Detect truly new notifications (not in our local list and created after session start)
             const localIds = new Set(localNotifs.map(n => n.id));
-            const newNotifs = remoteNotifs.filter(n => !localIds.has(n.id));
+            const newNotifs = remoteNotifs.filter(n => !localIds.has(n.id) && n.timestamp > _sessionStartTime);
             // Update local appData with merged remote data
             ensureNotifStructures();
             appData.notifications[currentUserName] = remoteNotifs;
@@ -3819,11 +3829,9 @@
             // Update UI
             updateNotifBadge();
             renderNotifList();
-            // Only push-notify for notifications created AFTER this session started
-            // This prevents old dismissed notifications from re-firing on app open
-            // Skip notifications we created locally (prevents double push)
+            // Only push-notify for truly new notifications (not created locally, not cleared)
             newNotifs.forEach(n => {
-                if (!n.read && n.timestamp > _sessionStartTime && !_localNotifIds.has(n.id)) {
+                if (!n.read && !_localNotifIds.has(n.id)) {
                     sendPushNotification(n);
                 }
             });
