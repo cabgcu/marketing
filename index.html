@@ -3561,7 +3561,7 @@
     setTimeout(updateNotifBadge, 500);
 
     // Poll Supabase for new notifications from other users (every 30 seconds)
-    let _lastKnownNotifCount = 0;
+    let _pollInitialized = false;
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
         try {
@@ -3587,8 +3587,12 @@
             // Update UI
             updateNotifBadge();
             renderNotifList();
-            // Fire push notifications for new ones
-            newNotifs.forEach(n => { if (!n.read) sendPushNotification(n); });
+            // Only fire push for truly new notifications AFTER the first poll
+            // (first poll loads existing state — don't re-fire old notifications)
+            if (_pollInitialized) {
+                newNotifs.forEach(n => { if (!n.read) sendPushNotification(n); });
+            }
+            _pollInitialized = true;
         } catch (err) {
             console.error('Notification poll error:', err);
         }
