@@ -451,8 +451,7 @@
         .cl-assign-btn { width: 32px; height: 32px; min-height: 32px; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,0.2); background: rgba(255,255,255,0.03); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.2s; }
         .cl-assign-btn:hover { border-color: rgba(10,132,255,0.5); color: #0A84FF; background: rgba(10,132,255,0.08); }
         .cl-assign-btn.assigned { border: none; background: linear-gradient(135deg, #0A84FF, #BF5AF2); }
-        .cl-assign-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); color: white; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-        .cl-assign-btn.assigned .cl-assign-avatar { width: 100%; height: 100%; border-radius: 50%; font-size: 0.65rem; }
+        .cl-assign-avatar { width: 28px; height: 28px; min-width: 28px; min-height: 28px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); color: white; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
         .cl-assign-picker { position: fixed; z-index: 10001; background: var(--card-bg, #1c1c1e); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 6px; width: 220px; animation: clPickerIn 0.15s ease-out; }
         @keyframes clPickerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         .cl-assign-picker-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 10px 4px; }
@@ -961,6 +960,7 @@
         <div class="notif-pref-row"><span>Due date reminders</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('due', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Card moved</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('move', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Checklist completed</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('checklist', this.checked)"><span class="slider"></span></label></div>
+        <div class="notif-pref-row"><span>Checklist item assigned</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('checklist_assign', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Labels added</span><label class="toggle-switch"><input type="checkbox" onchange="updateNotifPref('label', this.checked)"><span class="slider"></span></label></div>
     </div>
 </div>
@@ -3327,11 +3327,11 @@
     }
 
     function getNotifIcon(type) {
-        const map = { assign: '👤', comment: '💬', due: '⏰', move: '📦', checklist: '☑️', label: '🏷', complete: '✅', create: '✨' };
+        const map = { assign: '👤', comment: '💬', due: '⏰', move: '📦', checklist: '☑️', checklist_assign: '📋', label: '🏷', complete: '✅', create: '✨' };
         return map[type] || '🔔';
     }
     function getNotifIconBg(type) {
-        const map = { assign: 'rgba(10,132,255,0.15)', comment: 'rgba(52,199,89,0.15)', due: 'rgba(255,149,0,0.15)', move: 'rgba(191,90,242,0.15)', checklist: 'rgba(52,199,89,0.15)', label: 'rgba(255,55,95,0.15)', complete: 'rgba(52,199,89,0.15)', create: 'rgba(10,132,255,0.15)' };
+        const map = { assign: 'rgba(10,132,255,0.15)', comment: 'rgba(52,199,89,0.15)', due: 'rgba(255,149,0,0.15)', move: 'rgba(191,90,242,0.15)', checklist: 'rgba(52,199,89,0.15)', checklist_assign: 'rgba(10,132,255,0.15)', label: 'rgba(255,55,95,0.15)', complete: 'rgba(52,199,89,0.15)', create: 'rgba(10,132,255,0.15)' };
         return map[type] || 'rgba(255,255,255,0.08)';
     }
 
@@ -4677,7 +4677,8 @@
         const item = currentEditingTask.checklist.find(i => i.id === itemId);
         if (!item) return;
         let assignees = getChecklistAssignees(item);
-        if (assignees.includes(userName)) {
+        const wasAssigned = assignees.includes(userName);
+        if (wasAssigned) {
             assignees = assignees.filter(u => u !== userName);
         } else {
             assignees.push(userName);
@@ -4687,6 +4688,12 @@
                 currentEditingTask.members.push(userName);
                 renderMembers();
             }
+            // Notify the newly assigned user
+            const taskId = currentEditingTask.id || document.getElementById('taskModalTaskId').value || '';
+            addNotificationFor([userName], 'checklist_assign',
+                'Assigned: ' + (item.text || 'Checklist item'),
+                (currentUserName || 'Someone') + ' assigned you to "' + (item.text || '').substring(0, 60) + '" in ' + (currentEditingTask.title || 'Untitled'),
+                taskId, currentUserName);
         }
         item.assignedTo = assignees;
         scheduleAutoSave();
