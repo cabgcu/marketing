@@ -1263,7 +1263,7 @@
                                     <button type="button" class="btn-outline cl-btn" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
                                 </div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 15px; margin: 16px 0 18px;">
                                 <span style="font-size: 0.85rem; font-weight: bold; width: 35px; color: var(--text-muted);" id="checklistPercent">0%</span>
                                 <div class="progress-container" style="margin-bottom: 0;">
                                     <div class="progress-bar" id="checklistProgress"></div>
@@ -4444,7 +4444,12 @@
                 const d = new Date(parts[0], parts[1] - 1, parts[2]);
                 if (d < now) dateColor = '#FF3B30';
             }
-            const dueDateDisplay = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            let dueDateDisplay = '';
+            if (item.dueDate) {
+                const dp = item.dueDate.split('-');
+                const localDate = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
+                dueDateDisplay = localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
             const assigned = item.assignedTo || '';
             const assignBtn = registeredUsers.length > 0 ? (assigned
                 ? `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" title="${assigned}"><span class="cl-assign-avatar">${getInitials(assigned)}</span></button>`
