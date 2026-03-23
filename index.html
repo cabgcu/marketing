@@ -3796,11 +3796,13 @@
             }
         });
 
-        // Check checklist item deadlines — notify the assigned user (even if they're not logged in)
+        // Check checklist item deadlines — notify all assigned users (even if they're not logged in)
         appData.tasks.forEach(task => {
             if (!task.checklist || task.checklist.length === 0) return;
             task.checklist.forEach(item => {
-                if (!item.dueDate || !item.assignedTo || item.done) return;
+                if (!item.dueDate || item.done) return;
+                const assignees = getChecklistAssignees(item);
+                if (assignees.length === 0) return;
 
                 const itemDate = new Date(item.dueDate);
                 const itemTime = item.dueTime ? item.dueTime.split(':') : [0, 0];
@@ -3810,11 +3812,14 @@
                 if (item.dueDate === tomorrowStr && !shown['checklist_' + item.id]) {
                     const title = 'Due tomorrow: ' + item.text;
                     const body = 'In: ' + (task.title || 'Untitled');
-                    if (item.assignedTo === currentUserName) {
+                    // Notify current user locally if assigned
+                    if (assignees.includes(currentUserName)) {
                         addNotification('due', title, body, task.id);
-                    } else {
-                        // Send in-app + push notification to the assigned user
-                        addNotificationFor([item.assignedTo], 'due', title, body, task.id, currentUserName);
+                    }
+                    // Notify other assigned users via push
+                    const others = assignees.filter(u => u !== currentUserName);
+                    if (others.length > 0) {
+                        addNotificationFor(others, 'due', title, body, task.id, currentUserName);
                     }
                     shown['checklist_' + item.id] = true;
                 }
@@ -3826,10 +3831,12 @@
                         const timeStr = itemDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                         const title = 'Due soon: ' + item.text;
                         const body = 'Due at ' + timeStr + ' — In: ' + (task.title || 'Untitled');
-                        if (item.assignedTo === currentUserName) {
+                        if (assignees.includes(currentUserName)) {
                             addNotification('due', title, body, task.id);
-                        } else {
-                            addNotificationFor([item.assignedTo], 'due', title, body, task.id, currentUserName);
+                        }
+                        const others = assignees.filter(u => u !== currentUserName);
+                        if (others.length > 0) {
+                            addNotificationFor(others, 'due', title, body, task.id, currentUserName);
                         }
                         soonShown['checklist_' + item.id] = true;
                     }
@@ -4418,6 +4425,13 @@
         scheduleAutoSave();
     }
 
+    // Backward-compatible helper: returns assignees as an array (handles old string or new array format)
+    function getChecklistAssignees(item) {
+        if (Array.isArray(item.assignedTo)) return item.assignedTo;
+        if (item.assignedTo) return [item.assignedTo];
+        return [];
+    }
+
     function renderChecklist() {
         const container = document.getElementById('checklistContainer');
         const progress = document.getElementById('checklistProgress');
@@ -4450,18 +4464,28 @@
                 const localDate = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
                 dueDateDisplay = localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            const assigned = item.assignedTo || '';
-            const assignBtn = registeredUsers.length > 0 ? (assigned
-                ? `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" title="${assigned}"><span class="cl-assign-avatar">${getInitials(assigned)}</span></button>`
-                : `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn" title="Assign member"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg></button>`
-            ) : '';
+            const assignees = getChecklistAssignees(item);
+            // Build assignee avatars (stacked) or add button
+            let assignHtml = '';
+            if (registeredUsers.length > 0) {
+                if (assignees.length > 0) {
+                    const avatars = assignees.map((u, i) => `<span class="cl-assign-avatar" style="margin-left:${i > 0 ? '-8px' : '0'};border:2px solid var(--card-bg,#1c1c1e);position:relative;z-index:${assignees.length - i};" title="${u}">${getInitials(u)}</span>`).join('');
+                    assignHtml = `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" style="width:auto;border-radius:14px;padding:0 2px;" title="${assignees.join(', ')}">${avatars}</button>`;
+                } else {
+                    assignHtml = `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn" title="Assign member"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg></button>`;
+                }
+            }
+            // Date badge — tappable to change, or show add-date icon
+            const dateBadge = item.dueDate
+                ? `<button type="button" onclick="showChecklistDatePicker('${item.id}', this)" style="font-size: 0.75rem; color: ${dateColor}; white-space: nowrap; flex-shrink: 0; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: border-color 0.15s;" onmouseover="this.style.borderColor='rgba(10,132,255,0.4)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">${dueDateDisplay}</button>`
+                : `<button type="button" onclick="showChecklistDatePicker('${item.id}', this)" style="flex-shrink:0;width:28px;height:28px;min-height:28px;border-radius:50%;border:1.5px dashed rgba(255,255,255,0.15);background:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;" title="Set due date" onmouseover="this.style.borderColor='rgba(10,132,255,0.4)';this.style.color='#0A84FF'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='var(--text-muted)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>`;
             return `
             <div class="checklist-item ${item.done ? 'done' : ''}" data-cl-id="${item.id}" style="display: flex; align-items: center; gap: 8px;">
                 <span class="cl-drag-handle" title="Drag to reorder"><svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg></span>
                 <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem('${item.id}')" style="margin: 0; flex-shrink: 0;">
                 <div class="checklist-text" contenteditable="true" onblur="updateChecklistItemText('${item.id}', this.innerText)" style="flex-grow: 1; line-height: 1.4; min-width: 60px; padding-right: 4px;">${item.text}</div>
-                ${item.dueDate ? `<span style="font-size: 0.75rem; color: ${dateColor}; white-space: nowrap; flex-shrink: 0; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">${dueDateDisplay}</span>` : ''}
-                ${assignBtn}
+                ${dateBadge}
+                ${assignHtml}
                 <button type="button" class="task-btn delete" onclick="deleteChecklistItem('${item.id}')" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center;" title="Remove">&times;</button>
             </div>
         `}).join('');
@@ -4580,7 +4604,7 @@
         const item = currentEditingTask.checklist.find(i => i.id === itemId);
         if (!item) return;
 
-        // Show card members first, then other users
+        const assignees = new Set(getChecklistAssignees(item));
         const cardMembers = new Set(currentEditingTask.members || []);
         const sorted = [...registeredUsers].sort((a, b) => {
             const aM = cardMembers.has(a) ? 0 : 1;
@@ -4591,17 +4615,17 @@
         const picker = document.createElement('div');
         picker.className = 'cl-assign-picker';
         picker.innerHTML = `
-            <div class="cl-assign-picker-title">Assign to</div>
-            ${item.assignedTo ? `<button class="cl-assign-option" onclick="pickChecklistAssignee('${itemId}', '')">
+            <div class="cl-assign-picker-title">Assign to (tap to toggle)</div>
+            ${assignees.size > 0 ? `<button class="cl-assign-option" onclick="clearChecklistAssignees('${itemId}')">
                 <span style="width:28px;height:28px;border-radius:50%;background:rgba(255,59,48,0.15);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#FF3B30;flex-shrink:0;">✕</span>
-                <span style="color:#FF3B30;">Unassign</span>
+                <span style="color:#FF3B30;">Unassign all</span>
             </button>` : ''}
             ${sorted.map(m => `
-                <button class="cl-assign-option ${(item.assignedTo || '') === m ? 'active' : ''}" onclick="pickChecklistAssignee('${itemId}', '${m.replace(/'/g, "\\'")}')">
+                <button class="cl-assign-option ${assignees.has(m) ? 'active' : ''}" onclick="toggleChecklistAssignee('${itemId}', '${m.replace(/'/g, "\\'")}')">
                     <span class="cl-assign-avatar">${getInitials(m)}</span>
                     <span>${m}</span>
-                    ${!cardMembers.has(m) ? '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:auto;">not on card</span>' : ''}
-                    ${(item.assignedTo || '') === m ? '<span style="margin-left:auto;color:#30D158;">✓</span>' : ''}
+                    ${!cardMembers.has(m) && !assignees.has(m) ? '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:auto;">not on card</span>' : ''}
+                    ${assignees.has(m) ? '<span style="margin-left:auto;color:#30D158;">✓</span>' : ''}
                 </button>
             `).join('')}
         `;
@@ -4649,17 +4673,58 @@
         document.removeEventListener('touchstart', _clAssignOutsideClick);
     }
 
-    function pickChecklistAssignee(itemId, userName) {
-        hideChecklistAssignPicker();
-        // Auto-add to card members if not already a member
-        if (userName && currentEditingTask) {
+    function toggleChecklistAssignee(itemId, userName) {
+        const item = currentEditingTask.checklist.find(i => i.id === itemId);
+        if (!item) return;
+        let assignees = getChecklistAssignees(item);
+        if (assignees.includes(userName)) {
+            assignees = assignees.filter(u => u !== userName);
+        } else {
+            assignees.push(userName);
+            // Auto-add to card members
             if (!currentEditingTask.members) currentEditingTask.members = [];
             if (!currentEditingTask.members.includes(userName)) {
                 currentEditingTask.members.push(userName);
                 renderMembers();
             }
         }
-        updateChecklistAssignee(itemId, userName);
+        item.assignedTo = assignees;
+        scheduleAutoSave();
+        // Re-render the picker in place (don't close it)
+        const pickerBtn = document.querySelector(`.checklist-item[data-cl-id="${itemId}"] .cl-assign-btn`);
+        hideChecklistAssignPicker();
+        renderChecklist();
+        // Re-open picker on the updated button
+        const newBtn = document.querySelector(`.checklist-item[data-cl-id="${itemId}"] .cl-assign-btn`);
+        if (newBtn) setTimeout(() => showChecklistAssignPicker(itemId, newBtn), 10);
+    }
+
+    function clearChecklistAssignees(itemId) {
+        const item = currentEditingTask.checklist.find(i => i.id === itemId);
+        if (!item) return;
+        item.assignedTo = [];
+        scheduleAutoSave();
+        hideChecklistAssignPicker();
+        renderChecklist();
+    }
+
+    function showChecklistDatePicker(itemId, btnEl) {
+        // Create a hidden date input and trigger it
+        let input = document.getElementById('_clDateInput');
+        if (input) input.remove();
+        input = document.createElement('input');
+        input.type = 'date';
+        input.id = '_clDateInput';
+        input.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0;';
+        const item = currentEditingTask.checklist.find(i => i.id === itemId);
+        if (item && item.dueDate) input.value = item.dueDate;
+        document.body.appendChild(input);
+        input.addEventListener('change', () => {
+            updateChecklistDueDate(itemId, input.value);
+            input.remove();
+        });
+        input.addEventListener('blur', () => { setTimeout(() => input.remove(), 200); });
+        input.showPicker ? input.showPicker() : input.click();
     }
 
     function toggleChecklistItem(id) {
@@ -4690,7 +4755,7 @@
 
     function updateChecklistAssignee(id, userName) {
         const item = currentEditingTask.checklist.find(i => i.id === id);
-        if(item) { item.assignedTo = userName; scheduleAutoSave(); renderChecklist(); }
+        if(item) { item.assignedTo = userName ? [userName] : []; scheduleAutoSave(); renderChecklist(); }
     }
 
     function deleteChecklistItem(id) { currentEditingTask.checklist = currentEditingTask.checklist.filter(i => i.id !== id); scheduleAutoSave(); renderChecklist(); }
