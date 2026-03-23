@@ -960,6 +960,7 @@
         <div class="notif-pref-row"><span>Due date reminders</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('due', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Card moved</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('move', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Checklist completed</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('checklist', this.checked)"><span class="slider"></span></label></div>
+        <div class="notif-pref-row"><span>Checklist item assigned</span><label class="toggle-switch"><input type="checkbox" checked onchange="updateNotifPref('checklist_assign', this.checked)"><span class="slider"></span></label></div>
         <div class="notif-pref-row"><span>Labels added</span><label class="toggle-switch"><input type="checkbox" onchange="updateNotifPref('label', this.checked)"><span class="slider"></span></label></div>
     </div>
 </div>
@@ -3326,11 +3327,11 @@
     }
 
     function getNotifIcon(type) {
-        const map = { assign: '👤', comment: '💬', due: '⏰', move: '📦', checklist: '☑️', label: '🏷', complete: '✅', create: '✨' };
+        const map = { assign: '👤', comment: '💬', due: '⏰', move: '📦', checklist: '☑️', checklist_assign: '📋', label: '🏷', complete: '✅', create: '✨' };
         return map[type] || '🔔';
     }
     function getNotifIconBg(type) {
-        const map = { assign: 'rgba(10,132,255,0.15)', comment: 'rgba(52,199,89,0.15)', due: 'rgba(255,149,0,0.15)', move: 'rgba(191,90,242,0.15)', checklist: 'rgba(52,199,89,0.15)', label: 'rgba(255,55,95,0.15)', complete: 'rgba(52,199,89,0.15)', create: 'rgba(10,132,255,0.15)' };
+        const map = { assign: 'rgba(10,132,255,0.15)', comment: 'rgba(52,199,89,0.15)', due: 'rgba(255,149,0,0.15)', move: 'rgba(191,90,242,0.15)', checklist: 'rgba(52,199,89,0.15)', checklist_assign: 'rgba(10,132,255,0.15)', label: 'rgba(255,55,95,0.15)', complete: 'rgba(52,199,89,0.15)', create: 'rgba(10,132,255,0.15)' };
         return map[type] || 'rgba(255,255,255,0.08)';
     }
 
@@ -4676,7 +4677,8 @@
         const item = currentEditingTask.checklist.find(i => i.id === itemId);
         if (!item) return;
         let assignees = getChecklistAssignees(item);
-        if (assignees.includes(userName)) {
+        const wasAssigned = assignees.includes(userName);
+        if (wasAssigned) {
             assignees = assignees.filter(u => u !== userName);
         } else {
             assignees.push(userName);
@@ -4686,6 +4688,12 @@
                 currentEditingTask.members.push(userName);
                 renderMembers();
             }
+            // Notify the newly assigned user
+            const taskId = currentEditingTask.id || document.getElementById('taskModalTaskId').value || '';
+            addNotificationFor([userName], 'checklist_assign',
+                'Assigned: ' + (item.text || 'Checklist item'),
+                (currentUserName || 'Someone') + ' assigned you to "' + (item.text || '').substring(0, 60) + '" in ' + (currentEditingTask.title || 'Untitled'),
+                taskId, currentUserName);
         }
         item.assignedTo = assignees;
         scheduleAutoSave();
