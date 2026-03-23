@@ -2266,6 +2266,7 @@
                     ${memberBar}
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
+                    <button class="col-action-btn" onclick="sortColumnByDueDate('${col.id}')" title="Sort by due date" style="font-size:0.85rem;">↕ Due</button>
                     <button class="col-action-btn" onclick="editColumnDetails('${col.id}')" title="Edit List">Edit</button>
                     <button class="col-action-btn delete" onclick="deleteColumn('${col.id}')" title="Delete List">&times;</button>
                 </div>`;
@@ -3076,6 +3077,42 @@
             document.getElementById('colAssignedInput').value = '';
             renderBoard();
         }
+    }
+
+    // Track sort direction per column so clicking toggles asc/desc
+    const _colSortDir = {};
+
+    function sortColumnByDueDate(colId) {
+        const colTasks = appData.tasks.filter(t => t.columnId === colId);
+        if (colTasks.length < 2) return;
+
+        // Toggle direction
+        _colSortDir[colId] = _colSortDir[colId] === 'asc' ? 'desc' : 'asc';
+        const asc = _colSortDir[colId] === 'asc';
+
+        colTasks.sort((a, b) => {
+            const aDate = a.dueDate || '';
+            const bDate = b.dueDate || '';
+            // Tasks without due dates go to the bottom
+            if (!aDate && !bDate) return 0;
+            if (!aDate) return 1;
+            if (!bDate) return -1;
+            return asc ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
+        });
+
+        // Remove column tasks from global array and re-insert in sorted order
+        const otherTasks = appData.tasks.filter(t => t.columnId !== colId);
+        // Find where the first task of this column was in the global array
+        const firstGlobalIdx = appData.tasks.findIndex(t => t.columnId === colId);
+        appData.tasks = [
+            ...otherTasks.slice(0, firstGlobalIdx < 0 ? otherTasks.length : Math.min(firstGlobalIdx, otherTasks.length)),
+            ...colTasks,
+            ...otherTasks.slice(firstGlobalIdx < 0 ? otherTasks.length : Math.min(firstGlobalIdx, otherTasks.length))
+        ];
+
+        saveData();
+        renderBoard();
+        showToast(asc ? 'Sorted by due date (earliest first)' : 'Sorted by due date (latest first)');
     }
 
     function editColumnDetails(id) {
@@ -3909,10 +3946,11 @@
             // Update UI
             updateNotifBadge();
             renderNotifList();
-            // Only push-notify for truly new notifications (not created locally, not cleared)
+            // Skip push from poll — server push via edge function already handles remote delivery.
+            // The poll only syncs in-app UI state (badge, notification list).
             newNotifs.forEach(n => {
                 if (!n.read && !_localNotifIds.has(n.id)) {
-                    sendPushNotification(n);
+                    // Just mark as seen so badge updates; push already sent via sendServerPush
                 }
             });
         } catch (err) {

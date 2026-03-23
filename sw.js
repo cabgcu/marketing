@@ -33,7 +33,7 @@ self.addEventListener('push', (e) => {
             icon: notifIcon,
             tag: notifTag,
             data: notifData,
-            renotify: true,
+            renotify: false,
             requireInteraction: false
         });
 
