@@ -3402,7 +3402,7 @@
         const prefs = getNotifPrefs();
         const area = document.getElementById('notifPermissionArea');
         const rows = document.querySelectorAll('.notif-pref-row input[type="checkbox"]');
-        const types = ['assign', 'comment', 'due', 'move', 'checklist', 'label'];
+        const types = ['assign', 'comment', 'due', 'move', 'checklist', 'checklist_assign', 'label'];
         const isAdmin = currentUserRole === 'admin';
         rows.forEach((cb, i) => {
             if (types[i] !== undefined) cb.checked = prefs[types[i]] !== false;
