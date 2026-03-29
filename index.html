@@ -1961,6 +1961,8 @@
             const { error } = await _supabase.from('app_state').upsert({ id: 1, data: appData });
             if (error) {
                 console.error("Supabase sync error:", error);
+            } else if (appData.settings && appData.settings.googleCalendarAutoSync && appData.settings.googleCalendarWebhook) {
+                queueGoogleCalendarAutoSync();
             }
         } catch (err) {
             console.error("Supabase request failed:", err);
