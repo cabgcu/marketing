@@ -969,7 +969,7 @@
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
     <div class="login-box frosted" id="login-overlay-email">
-        <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Marketing</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace email to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkEmailStep()">
@@ -977,7 +977,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-password" style="display: none;">
-        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;" id="pwdEmailDisplay"></p>
         <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
@@ -986,6 +986,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-setup" style="display: none;">
+        <img id="login-brand-logo-setup" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome!</h1>
         <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
         <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
@@ -2622,15 +2623,25 @@
         const logoEl = document.getElementById('brand-logo');
         const loginLogoEl = document.getElementById('login-brand-logo');
         const pwdLogoEl = document.getElementById('login-brand-logo-pwd');
-        if (appData.settings && appData.settings.logoUrl) {
-            if(logoEl) { logoEl.src = appData.settings.logoUrl; logoEl.style.display = 'block'; }
-            if(loginLogoEl) { loginLogoEl.src = appData.settings.logoUrl; loginLogoEl.style.display = 'block'; }
-            if(pwdLogoEl) { pwdLogoEl.src = appData.settings.logoUrl; pwdLogoEl.style.display = 'block'; }
-        } else {
-            if(logoEl) { logoEl.style.display = 'none'; logoEl.src = ''; }
-            if(loginLogoEl) { loginLogoEl.style.display = 'none'; loginLogoEl.src = ''; }
-            if(pwdLogoEl) { pwdLogoEl.style.display = 'none'; pwdLogoEl.src = ''; }
+        const setupLogoEl = document.getElementById('login-brand-logo-setup');
+        const defaultLoginLogo = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="70" viewBox="0 0 160 70"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0A84FF"/><stop offset="100%" stop-color="#BF5AF2"/></linearGradient></defs><rect width="160" height="70" rx="14" fill="url(#g)"/><text x="80" y="45" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="30" font-weight="800" fill="#fff">M</text></svg>`)}`;
+        const loginLogoUrl = (appData.settings && appData.settings.logoUrl) ? appData.settings.logoUrl : defaultLoginLogo;
+
+        if(logoEl) {
+            if (appData.settings && appData.settings.logoUrl) {
+                logoEl.src = appData.settings.logoUrl;
+                logoEl.style.display = 'block';
+            } else {
+                logoEl.style.display = 'none';
+                logoEl.src = '';
+            }
         }
+
+        [loginLogoEl, pwdLogoEl, setupLogoEl].forEach(el => {
+            if (!el) return;
+            el.src = loginLogoUrl;
+            el.style.display = 'block';
+        });
     }
 
     function renderSettings() {
