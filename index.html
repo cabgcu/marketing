@@ -4236,8 +4236,24 @@
         currentEditingTask.customFields.push({ id: generateId(), name, type: 'text', value });
     }
 
-    function applyMondayEntriesToCard(entries, sourceUrl = '') {
-        if (!entries || !entries.length) return;
+    async function importMondayFormToCard() {
+        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
+        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
+        if (!raw || !raw.trim()) return;
+
+        const parsed = parseMondaySubmission(raw);
+        if (!parsed) {
+            showToast('Could not parse form results. Paste JSON or key:value lines.');
+            return;
+        }
+
+        const flat = flattenMondayData(parsed);
+        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
+        if (!entries.length) {
+            showToast('No usable fields found in pasted results.');
+            return;
+        }
+
         const titleInput = document.getElementById('taskTitleInput');
         const descInput = document.getElementById('taskContentInput');
         const locationInput = document.getElementById('taskEventLocation');
@@ -4258,129 +4274,13 @@
 
         const existingDesc = (descInput && descInput.innerHTML ? descInput.innerHTML.trim() : '');
         const importedLines = entries.map(([key, value]) => `<strong>${escapeHtml(normalizeMondayFieldName(key))}:</strong> ${escapeHtml(value)}`).join('<br>');
-        const sourceLink = sourceUrl ? `<br><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Source Form</a>` : '';
-        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}${sourceLink}</div>`;
+        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}<br><a href="${mondayFormUrl}" target="_blank" rel="noopener noreferrer">Source Form</a></div>`;
         if (descInput) descInput.innerHTML = existingDesc ? `${existingDesc}<br><br>${importBlock}` : importBlock;
 
         entries.forEach(([key, value]) => upsertTaskCustomField(normalizeMondayFieldName(key), value));
 
         renderCustomFields();
         scheduleAutoSave();
-    }
-
-    async function pullLatestMondaySubmission() {
-        const savedToken = localStorage.getItem('monday_api_token') || '';
-        const token = await showPrompt('Monday API Token', 'Paste your monday API token:', savedToken);
-        if (!token || !token.trim()) return;
-
-        const boardId = await showPrompt('Monday Board ID', 'Enter the board ID that receives this form submissions:', '');
-        if (!boardId || !boardId.trim()) return;
-
-        localStorage.setItem('monday_api_token', token.trim());
-
-        const query = `query ($boardIds: [ID!]) {
-            boards(ids: $boardIds) {
-                items_page(limit: 25, query_params: {order_by: [{column_id: "__creation_log__"}]}) {
-                    items {
-                        id
-                        name
-                        created_at
-                        column_values {
-                            text
-                            column { title }
-                        }
-                    }
-                }
-            }
-        }`;
-
-        const res = await fetch('https://api.monday.com/v2', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': token.trim()
-            },
-            body: JSON.stringify({ query, variables: { boardIds: [boardId.trim()] } })
-        });
-        const data = await res.json();
-        if (!res.ok || data.errors) {
-            const msg = data?.errors?.[0]?.message || 'Failed to pull monday submissions.';
-            showToast(msg);
-            return;
-        }
-
-        const items = (data?.data?.boards?.[0]?.items_page?.items || []).slice().sort((a, b) => {
-            const da = new Date(a.created_at || 0).getTime();
-            const db = new Date(b.created_at || 0).getTime();
-            return db - da;
-        });
-        if (!items.length) {
-            showToast('No submissions found on that board.');
-            return;
-        }
-
-        const selectedItemId = await showSelect(
-            'Choose Submission',
-            'Pick a monday item to import:',
-            items.map(item => ({
-                value: item.id,
-                label: `${item.name || 'Untitled'} (${new Date(item.created_at || Date.now()).toLocaleDateString()})`
-            })),
-            items[0].id
-        );
-        if (!selectedItemId) return;
-
-        const selected = items.find(item => item.id === selectedItemId);
-        if (!selected) return;
-
-        const parsed = {
-            name: selected.name || '',
-            created_at: selected.created_at || '',
-            ...Object.fromEntries((selected.column_values || [])
-                .filter(cv => cv && cv.column && cv.column.title && (cv.text || '').trim() !== '')
-                .map(cv => [cv.column.title, cv.text]))
-        };
-
-        const entries = Object.entries(flattenMondayData(parsed)).filter(([, value]) => (value || '').trim() !== '');
-        if (!entries.length) {
-            showToast('Selected submission has no text values to import.');
-            return;
-        }
-
-        applyMondayEntriesToCard(entries, 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1');
-        showToast(`Imported ${entries.length} fields from Monday.`);
-    }
-
-    async function importMondayFormToCard() {
-        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
-        const method = await showSelect('Import Monday Form', 'How do you want to import?', [
-            { value: 'pull', label: 'Pull latest from monday board' },
-            { value: 'paste', label: 'Paste submission JSON/text' }
-        ], 'pull');
-        if (!method) return;
-
-        if (method === 'pull') {
-            await pullLatestMondaySubmission();
-            return;
-        }
-
-        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
-        if (!raw || !raw.trim()) return;
-
-        const parsed = parseMondaySubmission(raw);
-        if (!parsed) {
-            showToast('Could not parse form results. Paste JSON or key:value lines.');
-            return;
-        }
-
-        const flat = flattenMondayData(parsed);
-        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
-        if (!entries.length) {
-            showToast('No usable fields found in pasted results.');
-            return;
-        }
-
-        applyMondayEntriesToCard(entries, mondayFormUrl);
         showToast(`Imported ${entries.length} fields from Monday form.`);
     }
 
