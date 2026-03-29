@@ -1320,6 +1320,7 @@
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
                     <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
+                    <button type="button" class="sidebar-btn" onclick="importMondayFormToCard()">Import Monday Form</button>
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
                     <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
                     <h4 class="stat-label">Actions</h4>
@@ -4166,6 +4167,118 @@
             renderLabels(); 
             scheduleAutoSave();
         }
+    }
+
+    function normalizeMondayFieldName(key = '') {
+        return key
+            .replace(/_/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function parseMondaySubmission(raw = '') {
+        const input = (raw || '').trim();
+        if (!input) return null;
+
+        try {
+            const parsed = JSON.parse(input);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (_) {}
+
+        if (input.includes('=') && input.includes('&')) {
+            const params = new URLSearchParams(input.startsWith('?') ? input.slice(1) : input);
+            const out = {};
+            params.forEach((value, key) => { out[key] = value; });
+            if (Object.keys(out).length) return out;
+        }
+
+        const lineObj = {};
+        input.split('\n').forEach(line => {
+            const idx = line.indexOf(':');
+            if (idx === -1) return;
+            const key = line.slice(0, idx).trim();
+            const value = line.slice(idx + 1).trim();
+            if (key) lineObj[key] = value;
+        });
+        return Object.keys(lineObj).length ? lineObj : null;
+    }
+
+    function flattenMondayData(obj, prefix = '', out = {}) {
+        if (obj == null) return out;
+        if (Array.isArray(obj)) {
+            obj.forEach((item, idx) => flattenMondayData(item, prefix ? `${prefix} ${idx + 1}` : String(idx + 1), out));
+            return out;
+        }
+        if (typeof obj !== 'object') {
+            if (prefix) out[prefix] = String(obj);
+            return out;
+        }
+        Object.entries(obj).forEach(([key, value]) => {
+            const next = prefix ? `${prefix} ${key}` : key;
+            if (value && typeof value === 'object') flattenMondayData(value, next, out);
+            else if (value !== undefined && value !== null && String(value).trim() !== '') out[next] = String(value);
+        });
+        return out;
+    }
+
+    function upsertTaskCustomField(name, value) {
+        if (!name || !value) return;
+        if (!currentEditingTask.customFields) currentEditingTask.customFields = [];
+        const existing = currentEditingTask.customFields.find(f => (f.name || '').toLowerCase() === name.toLowerCase());
+        if (existing) {
+            existing.value = value;
+            return;
+        }
+        currentEditingTask.customFields.push({ id: generateId(), name, type: 'text', value });
+    }
+
+    async function importMondayFormToCard() {
+        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
+        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
+        if (!raw || !raw.trim()) return;
+
+        const parsed = parseMondaySubmission(raw);
+        if (!parsed) {
+            showToast('Could not parse form results. Paste JSON or key:value lines.');
+            return;
+        }
+
+        const flat = flattenMondayData(parsed);
+        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
+        if (!entries.length) {
+            showToast('No usable fields found in pasted results.');
+            return;
+        }
+
+        const titleInput = document.getElementById('taskTitleInput');
+        const descInput = document.getElementById('taskContentInput');
+        const locationInput = document.getElementById('taskEventLocation');
+        const dueInput = document.getElementById('taskDueDate');
+
+        const titleEntry = entries.find(([key]) => /(name|title|event|campaign)/i.test(key));
+        if (titleEntry && titleInput && !titleInput.value.trim()) titleInput.value = titleEntry[1];
+
+        const locationEntry = entries.find(([key]) => /(location|venue|address)/i.test(key));
+        if (locationEntry && locationInput && !locationInput.value.trim()) locationInput.value = locationEntry[1];
+
+        const dateEntry = entries.find(([key, value]) => /(date|due|start|deadline)/i.test(key) && !isNaN(Date.parse(value)));
+        if (dateEntry && dueInput && !dueInput.value) {
+            const d = new Date(dateEntry[1]);
+            const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+            dueInput.value = local;
+        }
+
+        const existingDesc = (descInput && descInput.innerHTML ? descInput.innerHTML.trim() : '');
+        const importedLines = entries.map(([key, value]) => `<strong>${escapeHtml(normalizeMondayFieldName(key))}:</strong> ${escapeHtml(value)}`).join('<br>');
+        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}<br><a href="${mondayFormUrl}" target="_blank" rel="noopener noreferrer">Source Form</a></div>`;
+        if (descInput) descInput.innerHTML = existingDesc ? `${existingDesc}<br><br>${importBlock}` : importBlock;
+
+        entries.forEach(([key, value]) => upsertTaskCustomField(normalizeMondayFieldName(key), value));
+
+        renderCustomFields();
+        scheduleAutoSave();
+        showToast(`Imported ${entries.length} fields from Monday form.`);
     }
 
     function renderCustomFields() {
