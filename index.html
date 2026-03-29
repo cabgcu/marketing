@@ -554,10 +554,17 @@
             width: calc(100% + 36px);
             margin: -18px -18px 15px -18px;
             height: 140px;
-            background-size: cover;
-            background-position: center;
             border-radius: 20px 20px 0 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+            position: relative;
+        }
+        .card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
         }
 
         .modal-cover {
@@ -2421,7 +2428,7 @@
                     membersHtml = collabBadge + '<div class="collab-avatars">' + avatars + '</div>';
                 }
                 let coverHtml = '';
-                if(task.coverImage) { coverHtml = `<div class="card-cover" style="background-image: url('${task.coverImage}')"></div>`; }
+                if(task.coverImage) { coverHtml = `<div class="card-cover"><img src="${task.coverImage}" loading="lazy" alt="" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src=this.src;}"></div>`; }
                 let attachmentBadge = '';
                 if(task.attachments && task.attachments.length > 0) { attachmentBadge = `<span style="font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; margin-left: 10px;">🔗 ${task.attachments.length}</span>`; }
 
