@@ -1376,7 +1376,7 @@
                     <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
                     <h4 class="stat-label">Actions</h4>
                     <button type="button" class="sidebar-btn" onclick="copyTask()">Copy</button>
-                    <button type="button" class="sidebar-btn" onclick="showToast('Share link copied to clipboard!')">Share</button>
+                    <button type="button" class="sidebar-btn" onclick="shareCard()">Share</button>
                     <button type="submit" class="btn-action" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;">Save Task</button>
                     <div id="autoSaveIndicator" style="text-align:center; font-size:0.78rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
                 </div>
@@ -6107,6 +6107,29 @@
     window.onload = async () => {
         _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         await initData();
+
+        // Check for shared card preview mode
+        const shareParams = new URLSearchParams(window.location.search);
+        const sharedCardId = shareParams.get('card');
+        if (sharedCardId) {
+            const task = appData.tasks.find(t => t.id === sharedCardId);
+            if (task) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.querySelector('.app-container').style.display = 'none';
+                document.getElementById('sharedCardOverlay').style.display = 'block';
+                isAuthenticated = true; // prevent anti-tamper from firing
+                renderSharedCard(task);
+                applyBranding();
+                // Also set the shared card logo from branding
+                const logoUrl = (appData.settings && appData.settings.logoUrl) ? toDirectDriveUrl(appData.settings.logoUrl) : '';
+                if (logoUrl) { const el = document.getElementById('sharedCardLogo'); if (el) { el.src = logoUrl; el.style.display = 'block'; } }
+            } else {
+                document.getElementById('login-overlay').innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:var(--text-muted);font-weight:700;font-family:var(--font-stack);">Card not found.</div>';
+                isAuthenticated = true;
+            }
+            return;
+        }
+
         tryAutoLogin();
 
         // Anti-Tamper: Prevent users from deleting the login overlay in DevTools
@@ -6493,6 +6516,188 @@
         saveData();
         renderEvents();
         showToast('Event & card deleted.');
+    }
+</script>
+<!-- SHARED CARD PREVIEW -->
+<div id="sharedCardOverlay" style="
+    position: fixed; inset: 0; z-index: 9999999;
+    background: #050505;
+    display: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+">
+    <div style="max-width: 700px; margin: 0 auto; padding: 30px 20px 60px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 30px;">
+            <img id="sharedCardLogo" src="" style="height: 36px; width: auto; border-radius: 6px; display: none;" alt="Logo">
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Shared Card Preview</span>
+        </div>
+        <div id="sharedCardContent" class="frosted" style="border-radius: var(--radius-card); padding: 0; overflow: hidden;"></div>
+        <div style="text-align: center; margin-top: 30px;">
+            <span style="color: var(--text-muted); font-size: 0.8rem;">This is a read-only preview.</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function shareCard() {
+        const taskId = currentEditingTask?.id || document.getElementById('taskModalTaskId').value;
+        if (!taskId) { showToast('Save the card first before sharing.'); return; }
+        const url = window.location.origin + window.location.pathname + '?card=' + taskId;
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Share link copied to clipboard!');
+        }).catch(() => {
+            showToast('Share link: ' + url);
+        });
+    }
+
+    function renderSharedCard(task) {
+        const container = document.getElementById('sharedCardContent');
+        const logo = document.getElementById('sharedCardLogo');
+        const cachedLogo = localStorage.getItem('cachedLogoUrl');
+        if (cachedLogo) { logo.src = cachedLogo; logo.style.display = 'block'; }
+
+        let html = '';
+
+        // Cover
+        if (task.coverImage) {
+            html += `<div style="width:100%; height:220px; overflow:hidden;">
+                <img src="${task.coverImage}" style="width:100%; height:100%; object-fit:cover;" alt="">
+            </div>`;
+        }
+
+        html += '<div style="padding: 28px;">';
+
+        // Priority + Title
+        const priorityDot = task.priority ? `<span class="priority-dot priority-${task.priority}" style="margin-right:8px; vertical-align:middle;"></span>` : '';
+        html += `<h2 style="margin:0 0 8px; font-size:1.5rem; font-weight:800;">${priorityDot}${escapeHtml(task.title || 'Untitled')}</h2>`;
+
+        // Labels
+        if (task.labels && task.labels.length > 0) {
+            html += '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">';
+            task.labels.forEach(l => {
+                html += `<span class="label-tag ${l.color}">${escapeHtml(l.text)}</span>`;
+            });
+            html += '</div>';
+        }
+
+        // Meta row (due date, location, members)
+        const metaParts = [];
+        if (task.dueDate) {
+            const d = new Date(task.dueDate);
+            metaParts.push('📅 ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+                (task.dueDate.includes('T') ? ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''));
+        }
+        if (task.eventLocation) metaParts.push('📍 ' + escapeHtml(task.eventLocation));
+        if (metaParts.length > 0) {
+            html += `<div style="color:var(--text-muted); font-size:0.9rem; margin-bottom:16px;">${metaParts.join(' &nbsp;•&nbsp; ')}</div>`;
+        }
+
+        // Members
+        if (task.members && task.members.length > 0) {
+            html += '<div style="display:flex; align-items:center; gap:6px; margin-bottom:18px;">';
+            task.members.forEach(m => {
+                html += `<div class="avatar" style="width:28px;height:28px;font-size:0.65rem;" title="${escapeHtml(m)}">${getInitials(m)}</div>`;
+            });
+            html += '</div>';
+        }
+
+        // Description
+        const desc = task.description || task.text || '';
+        if (desc) {
+            let content = desc;
+            if (!content.includes('<') && content.includes('\n')) content = content.replace(/\n/g, '<br>');
+            html += `<div style="font-size:0.95rem; line-height:1.7; color:#e0e0e0; margin-bottom:20px; word-break:break-word;">${content}</div>`;
+        }
+
+        // Custom Fields
+        if (task.customFields && task.customFields.length > 0) {
+            html += '<div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:16px; border-radius:14px; border:1px solid rgba(255,255,255,0.06);">';
+            html += '<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Custom Fields</div>';
+            task.customFields.forEach(cf => {
+                let val = cf.value || '—';
+                if (cf.type === 'datetime-local' && cf.value) {
+                    const d = new Date(cf.value);
+                    val = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                }
+                html += `<div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <span style="color:var(--text-muted); font-size:0.88rem;">${escapeHtml(cf.name)}</span>
+                    <span style="font-size:0.88rem;">${escapeHtml(val)}</span>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        // Checklist
+        if (task.checklist && task.checklist.length > 0) {
+            const done = task.checklist.filter(i => i.done).length;
+            const pct = Math.round((done / task.checklist.length) * 100);
+            html += '<div style="margin-bottom:20px;">';
+            html += `<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:8px;">Checklist (${pct}%)</div>`;
+            html += `<div style="height:4px; background:rgba(255,255,255,0.08); border-radius:4px; margin-bottom:12px; overflow:hidden;">
+                <div style="height:100%; width:${pct}%; background:${pct === 100 ? 'var(--gradient-success)' : '#0A84FF'}; border-radius:4px; transition:width 0.3s;"></div>
+            </div>`;
+            task.checklist.forEach(item => {
+                html += `<div style="display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <span style="color:${item.done ? '#34C759' : 'var(--text-muted)'}; font-size:1rem; flex-shrink:0;">${item.done ? '✓' : '○'}</span>
+                    <span style="font-size:0.9rem; ${item.done ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${escapeHtml(item.text)}</span>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        // Posting Schedule
+        const ps = task.postingSchedule;
+        if (ps && (ps.story || ps.photo || ps.reel)) {
+            html += '<div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:16px; border-radius:14px; border:1px solid rgba(255,255,255,0.06);">';
+            html += '<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Posting Schedule</div>';
+            const formatPS = (val) => { if (!val) return '—'; const d = new Date(val); return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); };
+            if (ps.story) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#BF5AF2; font-weight:700;">Story:</span> ${formatPS(ps.story)}</div>`;
+            if (ps.photo) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#0A84FF; font-weight:700;">Photo:</span> ${formatPS(ps.photo)}</div>`;
+            if (ps.reel) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#34C759; font-weight:700;">Reel:</span> ${formatPS(ps.reel)}</div>`;
+            html += '</div>';
+        }
+
+        // Attachments
+        if (task.attachments && task.attachments.length > 0) {
+            html += '<div style="margin-bottom:20px;">';
+            html += '<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Attachments</div>';
+            task.attachments.forEach(att => {
+                const safeName = escapeHtml(att.name || 'Untitled');
+                const isLink = att.isLink && att.size !== 'Google Drive';
+                const viewUrl = att.viewerUrl || att.url;
+                html += `<a href="${viewUrl}" target="_blank" style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:8px; text-decoration:none; color:inherit; transition:0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+                    <span style="font-size:1.2rem;">${isLink ? '🔗' : '📄'}</span>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:0.88rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeName}</div>
+                        <div style="font-size:0.78rem; color:var(--text-muted);">${att.date || ''}</div>
+                    </div>
+                    <span style="font-size:0.78rem; color:#0A84FF;">${isLink ? 'Open' : 'View'} →</span>
+                </a>`;
+            });
+            html += '</div>';
+        }
+
+        // Comments (read-only)
+        if (task.comments && task.comments.length > 0) {
+            html += '<div style="margin-bottom:10px;">';
+            html += '<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Comments</div>';
+            task.comments.slice().reverse().forEach(c => {
+                html += `<div style="display:flex; gap:10px; margin-bottom:12px; align-items:flex-start;">
+                    <div class="avatar" style="width:28px;height:28px;font-size:0.6rem;flex-shrink:0;">${getInitials(c.user || 'Me')}</div>
+                    <div style="flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px 14px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:700; font-size:0.85rem;">${escapeHtml(c.user || 'Me')}</span>
+                            <span style="color:var(--text-muted); font-size:0.75rem;">${c.time || ''}</span>
+                        </div>
+                        <div style="font-size:0.88rem; line-height:1.5; color:#e0e0e0; white-space:pre-wrap;">${escapeHtml(c.text)}</div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+        }
+
+        html += '</div>'; // close padding div
+        container.innerHTML = html;
     }
 </script>
 </body>
