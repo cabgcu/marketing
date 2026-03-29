@@ -450,9 +450,9 @@
         .checklist-item.done .checklist-text { text-decoration: line-through; color: var(--text-muted); }
         .cl-assign-btn { width: 32px; height: 32px; min-height: 32px; border-radius: 50%; border: 1.5px dashed rgba(255,255,255,0.2); background: rgba(255,255,255,0.03); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; transition: all 0.2s; }
         .cl-assign-btn:hover { border-color: rgba(10,132,255,0.5); color: #0A84FF; background: rgba(10,132,255,0.08); }
-        .cl-assign-btn.assigned { border: none; background: linear-gradient(135deg, #0A84FF, #BF5AF2); border-radius: 50%; width: 32px; height: 32px; min-height: 32px; padding: 0; position: relative; }
-        .cl-assign-avatar { width: 24px; height: 24px; min-width: 24px; min-height: 24px; border-radius: 50%; background: rgba(0,0,0,0.18); color: white; font-size: 0.58rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 24px; box-sizing: border-box; line-height: 1; border: 1px solid rgba(255,255,255,0.2); }
-        .cl-assign-count { position: absolute; right: -5px; bottom: -5px; min-width: 16px; height: 16px; border-radius: 999px; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 0.58rem; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 3px; line-height: 1; }
+        .cl-assign-btn.assigned { border: none; background: linear-gradient(135deg, #0A84FF, #BF5AF2); border-radius: 999px; width: auto; min-width: 40px; padding: 0 6px; gap: 0; overflow: visible; }
+        .cl-assign-avatar { width: 24px; height: 24px; min-width: 24px; min-height: 24px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); color: white; font-size: 0.58rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: 0 0 24px; box-sizing: border-box; line-height: 1; }
+        .cl-assign-more { margin-left: 5px; font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.95); white-space: nowrap; flex-shrink: 0; }
         .cl-assign-picker { position: fixed; z-index: 10001; background: var(--card-bg, #1c1c1e); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 6px; width: 220px; animation: clPickerIn 0.15s ease-out; }
         @keyframes clPickerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         .cl-assign-picker-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 10px 4px; }
@@ -896,7 +896,7 @@
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
             .cl-assign-btn { width: 36px; height: 36px; min-height: 36px; }
-            .cl-assign-btn.assigned { width: 36px; height: 36px; min-height: 36px; }
+            .cl-assign-btn.assigned { min-width: 42px; padding: 0 7px; }
             .cl-assign-avatar { width: 25px; height: 25px; min-width: 25px; min-height: 25px; flex-basis: 25px; }
             .cl-assign-option { padding: 12px 10px; min-height: 44px; }
         }
@@ -1125,10 +1125,6 @@
                 </p>
                 <label class="stat-label">Webhook URL</label>
                 <input type="url" id="googleCalendarWebhook" class="modern-input" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom: 12px;">
-                <label style="display:flex; align-items:center; gap:8px; margin-bottom: 12px; color: var(--text-muted); font-size: 0.85rem;">
-                    <input type="checkbox" id="googleCalendarAutoSync" onchange="saveGoogleCalendarSettings()">
-                    Auto-sync on add/edit/delete changes
-                </label>
                 <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
                     Sync includes task due dates and Story/Photo/Reel posting schedule dates on this workspace.
                 </p>
@@ -1642,7 +1638,6 @@
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
                 if (appData.settings.googleCalendarWebhook === undefined) appData.settings.googleCalendarWebhook = '';
-                if (appData.settings.googleCalendarAutoSync === undefined) appData.settings.googleCalendarAutoSync = false;
                 if (!appData.notifications) appData.notifications = {};
                 if (!appData.notifPrefs) appData.notifPrefs = {};
 
@@ -1720,7 +1715,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', googleCalendarAutoSync: false },
+            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '' },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
@@ -2702,8 +2697,6 @@
 
             const webhookInput = document.getElementById('googleCalendarWebhook');
             if (webhookInput) webhookInput.value = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook : '';
-            const autoSyncInput = document.getElementById('googleCalendarAutoSync');
-            if (autoSyncInput) autoSyncInput.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
             renderUserList();
         }
@@ -2922,25 +2915,12 @@
         await saveData(); showToast("Board settings saved!"); renderTopbar(); applyBoardBackground(); renderSettings();
     }
 
-    let _googleCalendarSyncTimer = null;
-    let _googleCalendarSyncBusy = false;
-
-    function queueGoogleCalendarAutoSync() {
-        if (_googleCalendarSyncBusy) return;
-        clearTimeout(_googleCalendarSyncTimer);
-        _googleCalendarSyncTimer = setTimeout(() => {
-            syncBoardToGoogleCalendar({ silent: true });
-        }, 1800);
-    }
-
     async function saveGoogleCalendarSettings() {
         if (currentUserRole !== 'admin') { showToast('Only admins can change calendar sync settings.'); return; }
         const input = document.getElementById('googleCalendarWebhook');
-        const autoSyncInput = document.getElementById('googleCalendarAutoSync');
         if (!input) return;
         if (!appData.settings) appData.settings = {};
         appData.settings.googleCalendarWebhook = (input.value || '').trim();
-        appData.settings.googleCalendarAutoSync = !!(autoSyncInput && autoSyncInput.checked);
         await saveData();
         showToast('Google Calendar webhook saved.');
     }
@@ -2982,22 +2962,19 @@
             workspaceId: appData.activeBoardId,
             workspaceName: activeBoard ? activeBoard.year : 'Workspace',
             generatedAt: new Date().toISOString(),
-            syncMode: 'full_replace',
             events
         };
     }
 
-    async function syncBoardToGoogleCalendar(options = {}) {
-        const silent = !!options.silent;
+    async function syncBoardToGoogleCalendar() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can sync with Google Calendar.'); return; }
         const webhook = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook.trim() : '';
-        if (!webhook) { if (!silent) showToast('Add a Google Calendar webhook URL in Settings first.'); return; }
+        if (!webhook) { showToast('Add a Google Calendar webhook URL in Settings first.'); return; }
 
         const payload = buildGoogleCalendarSyncEvents();
-        if (!payload.events.length) { if (!silent) showToast('No dated events found to sync.'); return; }
+        if (!payload.events.length) { showToast('No dated events found to sync.'); return; }
 
-        if (_googleCalendarSyncBusy) return;
-        _googleCalendarSyncBusy = true;
-        if (!silent) showToast('Syncing to Google Calendar...');
+        showToast('Syncing to Google Calendar...');
         try {
             const response = await fetch(webhook, {
                 method: 'POST',
@@ -3006,14 +2983,12 @@
             });
             if (!response.ok) {
                 const text = await response.text();
-                if (!silent) showToast('Calendar sync failed: ' + text.slice(0, 80));
+                showToast('Calendar sync failed: ' + text.slice(0, 80));
                 return;
             }
-            if (!silent) showToast(`Synced ${payload.events.length} dates to Google Calendar.`);
+            showToast(`Synced ${payload.events.length} dates to Google Calendar.`);
         } catch (err) {
-            if (!silent) showToast('Calendar sync error: ' + err.message);
-        } finally {
-            _googleCalendarSyncBusy = false;
+            showToast('Calendar sync error: ' + err.message);
         }
     }
 
@@ -4360,8 +4335,24 @@
         currentEditingTask.customFields.push({ id: generateId(), name, type: 'text', value });
     }
 
-    function applyMondayEntriesToCard(entries, sourceUrl = '') {
-        if (!entries || !entries.length) return;
+    async function importMondayFormToCard() {
+        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
+        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
+        if (!raw || !raw.trim()) return;
+
+        const parsed = parseMondaySubmission(raw);
+        if (!parsed) {
+            showToast('Could not parse form results. Paste JSON or key:value lines.');
+            return;
+        }
+
+        const flat = flattenMondayData(parsed);
+        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
+        if (!entries.length) {
+            showToast('No usable fields found in pasted results.');
+            return;
+        }
+
         const titleInput = document.getElementById('taskTitleInput');
         const descInput = document.getElementById('taskContentInput');
         const locationInput = document.getElementById('taskEventLocation');
@@ -4382,129 +4373,13 @@
 
         const existingDesc = (descInput && descInput.innerHTML ? descInput.innerHTML.trim() : '');
         const importedLines = entries.map(([key, value]) => `<strong>${escapeHtml(normalizeMondayFieldName(key))}:</strong> ${escapeHtml(value)}`).join('<br>');
-        const sourceLink = sourceUrl ? `<br><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Source Form</a>` : '';
-        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}${sourceLink}</div>`;
+        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}<br><a href="${mondayFormUrl}" target="_blank" rel="noopener noreferrer">Source Form</a></div>`;
         if (descInput) descInput.innerHTML = existingDesc ? `${existingDesc}<br><br>${importBlock}` : importBlock;
 
         entries.forEach(([key, value]) => upsertTaskCustomField(normalizeMondayFieldName(key), value));
 
         renderCustomFields();
         scheduleAutoSave();
-    }
-
-    async function pullLatestMondaySubmission() {
-        const savedToken = localStorage.getItem('monday_api_token') || '';
-        const token = await showPrompt('Monday API Token', 'Paste your monday API token:', savedToken);
-        if (!token || !token.trim()) return;
-
-        const boardId = await showPrompt('Monday Board ID', 'Enter the board ID that receives this form submissions:', '');
-        if (!boardId || !boardId.trim()) return;
-
-        localStorage.setItem('monday_api_token', token.trim());
-
-        const query = `query ($boardIds: [ID!]) {
-            boards(ids: $boardIds) {
-                items_page(limit: 25, query_params: {order_by: [{column_id: "__creation_log__"}]}) {
-                    items {
-                        id
-                        name
-                        created_at
-                        column_values {
-                            text
-                            column { title }
-                        }
-                    }
-                }
-            }
-        }`;
-
-        const res = await fetch('https://api.monday.com/v2', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': token.trim()
-            },
-            body: JSON.stringify({ query, variables: { boardIds: [boardId.trim()] } })
-        });
-        const data = await res.json();
-        if (!res.ok || data.errors) {
-            const msg = data?.errors?.[0]?.message || 'Failed to pull monday submissions.';
-            showToast(msg);
-            return;
-        }
-
-        const items = (data?.data?.boards?.[0]?.items_page?.items || []).slice().sort((a, b) => {
-            const da = new Date(a.created_at || 0).getTime();
-            const db = new Date(b.created_at || 0).getTime();
-            return db - da;
-        });
-        if (!items.length) {
-            showToast('No submissions found on that board.');
-            return;
-        }
-
-        const selectedItemId = await showSelect(
-            'Choose Submission',
-            'Pick a monday item to import:',
-            items.map(item => ({
-                value: item.id,
-                label: `${item.name || 'Untitled'} (${new Date(item.created_at || Date.now()).toLocaleDateString()})`
-            })),
-            items[0].id
-        );
-        if (!selectedItemId) return;
-
-        const selected = items.find(item => item.id === selectedItemId);
-        if (!selected) return;
-
-        const parsed = {
-            name: selected.name || '',
-            created_at: selected.created_at || '',
-            ...Object.fromEntries((selected.column_values || [])
-                .filter(cv => cv && cv.column && cv.column.title && (cv.text || '').trim() !== '')
-                .map(cv => [cv.column.title, cv.text]))
-        };
-
-        const entries = Object.entries(flattenMondayData(parsed)).filter(([, value]) => (value || '').trim() !== '');
-        if (!entries.length) {
-            showToast('Selected submission has no text values to import.');
-            return;
-        }
-
-        applyMondayEntriesToCard(entries, 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1');
-        showToast(`Imported ${entries.length} fields from Monday.`);
-    }
-
-    async function importMondayFormToCard() {
-        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
-        const method = await showSelect('Import Monday Form', 'How do you want to import?', [
-            { value: 'pull', label: 'Pull latest from monday board' },
-            { value: 'paste', label: 'Paste submission JSON/text' }
-        ], 'pull');
-        if (!method) return;
-
-        if (method === 'pull') {
-            await pullLatestMondaySubmission();
-            return;
-        }
-
-        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
-        if (!raw || !raw.trim()) return;
-
-        const parsed = parseMondaySubmission(raw);
-        if (!parsed) {
-            showToast('Could not parse form results. Paste JSON or key:value lines.');
-            return;
-        }
-
-        const flat = flattenMondayData(parsed);
-        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
-        if (!entries.length) {
-            showToast('No usable fields found in pasted results.');
-            return;
-        }
-
-        applyMondayEntriesToCard(entries, mondayFormUrl);
         showToast(`Imported ${entries.length} fields from Monday form.`);
     }
 
@@ -4858,10 +4733,11 @@
             let assignHtml = '';
             if (registeredUsers.length > 0) {
                 if (assignees.length > 0) {
-                    const primary = assignees[0];
-                    const extraCount = Math.max(0, assignees.length - 1);
-                    const countBadge = extraCount > 0 ? `<span class="cl-assign-count">+${extraCount}</span>` : '';
-                    assignHtml = `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" title="${assignees.join(', ')}"><span class="cl-assign-avatar">${getInitials(primary)}</span>${countBadge}</button>`;
+                    const visibleAssignees = assignees.slice(0, 3);
+                    const hiddenCount = Math.max(0, assignees.length - visibleAssignees.length);
+                    const avatars = visibleAssignees.map((u, i) => `<span class="cl-assign-avatar" style="margin-left:${i > 0 ? '-6px' : '0'};border:2px solid var(--card-bg,#1c1c1e);position:relative;z-index:${visibleAssignees.length - i};" title="${u}">${getInitials(u)}</span>`).join('');
+                    const moreBadge = hiddenCount > 0 ? `<span class="cl-assign-more">+${hiddenCount}</span>` : '';
+                    assignHtml = `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn assigned" title="${assignees.join(', ')}">${avatars}${moreBadge}</button>`;
                 } else {
                     assignHtml = `<button type="button" onclick="showChecklistAssignPicker('${item.id}', this)" class="cl-assign-btn" title="Assign member"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg></button>`;
                 }
