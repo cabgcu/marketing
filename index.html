@@ -2960,10 +2960,12 @@
             if (task.dueDate) {
                 events.push({
                     id: `task-${task.id}-due`,
+                    source: 'event_calendar',
                     title: task.title || 'Untitled Event',
                     start: task.dueDate,
                     location: task.eventLocation || '',
-                    description: (task.description || task.text || '').replace(/<[^>]+>/g, ' ').trim()
+                    description: (task.description || task.text || '').replace(/<[^>]+>/g, ' ').trim(),
+                    taskId: task.id
                 });
             }
 
@@ -2972,15 +2974,22 @@
                 if (!schedule[key]) return;
                 events.push({
                     id: `task-${task.id}-${key}`,
+                    source: 'content_calendar',
                     title: `${task.title || 'Untitled Event'} — ${label} Post`,
                     start: schedule[key],
                     location: task.eventLocation || '',
-                    description: `Content Calendar ${label} slot for ${task.title || 'Untitled Event'}`
+                    description: `Content Calendar ${label} slot for ${task.title || 'Untitled Event'}`,
+                    taskId: task.id
                 });
             });
         });
 
-        return { events };
+        return {
+            workspaceId: appData.activeBoardId,
+            workspaceName: activeBoard ? activeBoard.year : 'Workspace',
+            generatedAt: new Date().toISOString(),
+            events
+        };
     }
 
     async function syncBoardToGoogleCalendar() {
