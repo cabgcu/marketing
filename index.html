@@ -6179,6 +6179,7 @@
 
 <script>
     let dialogResolve = null;
+    let dialogCloseTimer = null;
 
     function showDialog({ title, message, type = 'alert', options = [], defaultValue = '', confirmText = 'OK', danger = false }) {
         return new Promise((resolve) => {
@@ -6247,9 +6248,10 @@
                 });
             }
 
+            if (dialogCloseTimer) { clearTimeout(dialogCloseTimer); dialogCloseTimer = null; }
             overlay.style.display = 'flex';
-            setTimeout(() => { 
-                overlay.style.opacity = '1'; 
+            setTimeout(() => {
+                overlay.style.opacity = '1';
                 box.style.transform = 'translateY(0)';
                 if (type === 'prompt') inputEl.focus();
                 if (type === 'combo') comboInput.focus();
@@ -6258,7 +6260,7 @@
             const closeDialog = (val) => {
                 overlay.style.opacity = '0';
                 box.style.transform = 'translateY(16px)';
-                setTimeout(() => { overlay.style.display = 'none'; }, 200);
+                dialogCloseTimer = setTimeout(() => { overlay.style.display = 'none'; dialogCloseTimer = null; }, 200);
                 
                 btnConfirm.onclick = null;
                 btnCancel.onclick = null;
