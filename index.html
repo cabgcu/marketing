@@ -969,7 +969,7 @@
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
     <div class="login-box frosted" id="login-overlay-email">
-        <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Marketing</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace email to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkEmailStep()">
@@ -977,7 +977,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-password" style="display: none;">
-        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;" id="pwdEmailDisplay"></p>
         <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
@@ -986,6 +986,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-setup" style="display: none;">
+        <img id="login-brand-logo-setup" src="" style="height: 60px; width: auto; display: block; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome!</h1>
         <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
         <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
@@ -1319,6 +1320,7 @@
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
                     <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
+                    <button type="button" class="sidebar-btn" onclick="importMondayFormToCard()">Import Monday Form</button>
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
                     <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
                     <h4 class="stat-label">Actions</h4>
@@ -2622,15 +2624,25 @@
         const logoEl = document.getElementById('brand-logo');
         const loginLogoEl = document.getElementById('login-brand-logo');
         const pwdLogoEl = document.getElementById('login-brand-logo-pwd');
-        if (appData.settings && appData.settings.logoUrl) {
-            if(logoEl) { logoEl.src = appData.settings.logoUrl; logoEl.style.display = 'block'; }
-            if(loginLogoEl) { loginLogoEl.src = appData.settings.logoUrl; loginLogoEl.style.display = 'block'; }
-            if(pwdLogoEl) { pwdLogoEl.src = appData.settings.logoUrl; pwdLogoEl.style.display = 'block'; }
-        } else {
-            if(logoEl) { logoEl.style.display = 'none'; logoEl.src = ''; }
-            if(loginLogoEl) { loginLogoEl.style.display = 'none'; loginLogoEl.src = ''; }
-            if(pwdLogoEl) { pwdLogoEl.style.display = 'none'; pwdLogoEl.src = ''; }
+        const setupLogoEl = document.getElementById('login-brand-logo-setup');
+        const defaultLoginLogo = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="70" viewBox="0 0 160 70"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0A84FF"/><stop offset="100%" stop-color="#BF5AF2"/></linearGradient></defs><rect width="160" height="70" rx="14" fill="url(#g)"/><text x="80" y="45" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="30" font-weight="800" fill="#fff">M</text></svg>`)}`;
+        const loginLogoUrl = (appData.settings && appData.settings.logoUrl) ? appData.settings.logoUrl : defaultLoginLogo;
+
+        if(logoEl) {
+            if (appData.settings && appData.settings.logoUrl) {
+                logoEl.src = appData.settings.logoUrl;
+                logoEl.style.display = 'block';
+            } else {
+                logoEl.style.display = 'none';
+                logoEl.src = '';
+            }
         }
+
+        [loginLogoEl, pwdLogoEl, setupLogoEl].forEach(el => {
+            if (!el) return;
+            el.src = loginLogoUrl;
+            el.style.display = 'block';
+        });
     }
 
     function renderSettings() {
@@ -4155,6 +4167,218 @@
             renderLabels(); 
             scheduleAutoSave();
         }
+    }
+
+    function normalizeMondayFieldName(key = '') {
+        return key
+            .replace(/_/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function parseMondaySubmission(raw = '') {
+        const input = (raw || '').trim();
+        if (!input) return null;
+
+        try {
+            const parsed = JSON.parse(input);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (_) {}
+
+        if (input.includes('=') && input.includes('&')) {
+            const params = new URLSearchParams(input.startsWith('?') ? input.slice(1) : input);
+            const out = {};
+            params.forEach((value, key) => { out[key] = value; });
+            if (Object.keys(out).length) return out;
+        }
+
+        const lineObj = {};
+        input.split('\n').forEach(line => {
+            const idx = line.indexOf(':');
+            if (idx === -1) return;
+            const key = line.slice(0, idx).trim();
+            const value = line.slice(idx + 1).trim();
+            if (key) lineObj[key] = value;
+        });
+        return Object.keys(lineObj).length ? lineObj : null;
+    }
+
+    function flattenMondayData(obj, prefix = '', out = {}) {
+        if (obj == null) return out;
+        if (Array.isArray(obj)) {
+            obj.forEach((item, idx) => flattenMondayData(item, prefix ? `${prefix} ${idx + 1}` : String(idx + 1), out));
+            return out;
+        }
+        if (typeof obj !== 'object') {
+            if (prefix) out[prefix] = String(obj);
+            return out;
+        }
+        Object.entries(obj).forEach(([key, value]) => {
+            const next = prefix ? `${prefix} ${key}` : key;
+            if (value && typeof value === 'object') flattenMondayData(value, next, out);
+            else if (value !== undefined && value !== null && String(value).trim() !== '') out[next] = String(value);
+        });
+        return out;
+    }
+
+    function upsertTaskCustomField(name, value) {
+        if (!name || !value) return;
+        if (!currentEditingTask.customFields) currentEditingTask.customFields = [];
+        const existing = currentEditingTask.customFields.find(f => (f.name || '').toLowerCase() === name.toLowerCase());
+        if (existing) {
+            existing.value = value;
+            return;
+        }
+        currentEditingTask.customFields.push({ id: generateId(), name, type: 'text', value });
+    }
+
+    function applyMondayEntriesToCard(entries, sourceUrl = '') {
+        if (!entries || !entries.length) return;
+        const titleInput = document.getElementById('taskTitleInput');
+        const descInput = document.getElementById('taskContentInput');
+        const locationInput = document.getElementById('taskEventLocation');
+        const dueInput = document.getElementById('taskDueDate');
+
+        const titleEntry = entries.find(([key]) => /(name|title|event|campaign)/i.test(key));
+        if (titleEntry && titleInput && !titleInput.value.trim()) titleInput.value = titleEntry[1];
+
+        const locationEntry = entries.find(([key]) => /(location|venue|address)/i.test(key));
+        if (locationEntry && locationInput && !locationInput.value.trim()) locationInput.value = locationEntry[1];
+
+        const dateEntry = entries.find(([key, value]) => /(date|due|start|deadline)/i.test(key) && !isNaN(Date.parse(value)));
+        if (dateEntry && dueInput && !dueInput.value) {
+            const d = new Date(dateEntry[1]);
+            const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+            dueInput.value = local;
+        }
+
+        const existingDesc = (descInput && descInput.innerHTML ? descInput.innerHTML.trim() : '');
+        const importedLines = entries.map(([key, value]) => `<strong>${escapeHtml(normalizeMondayFieldName(key))}:</strong> ${escapeHtml(value)}`).join('<br>');
+        const sourceLink = sourceUrl ? `<br><a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">Source Form</a>` : '';
+        const importBlock = `<div><strong>Monday Form Submission</strong><br>${importedLines}${sourceLink}</div>`;
+        if (descInput) descInput.innerHTML = existingDesc ? `${existingDesc}<br><br>${importBlock}` : importBlock;
+
+        entries.forEach(([key, value]) => upsertTaskCustomField(normalizeMondayFieldName(key), value));
+
+        renderCustomFields();
+        scheduleAutoSave();
+    }
+
+    async function pullLatestMondaySubmission() {
+        const savedToken = localStorage.getItem('monday_api_token') || '';
+        const token = await showPrompt('Monday API Token', 'Paste your monday API token:', savedToken);
+        if (!token || !token.trim()) return;
+
+        const boardId = await showPrompt('Monday Board ID', 'Enter the board ID that receives this form submissions:', '');
+        if (!boardId || !boardId.trim()) return;
+
+        localStorage.setItem('monday_api_token', token.trim());
+
+        const query = `query ($boardIds: [ID!]) {
+            boards(ids: $boardIds) {
+                items_page(limit: 25, query_params: {order_by: [{column_id: "__creation_log__"}]}) {
+                    items {
+                        id
+                        name
+                        created_at
+                        column_values {
+                            text
+                            column { title }
+                        }
+                    }
+                }
+            }
+        }`;
+
+        const res = await fetch('https://api.monday.com/v2', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token.trim()
+            },
+            body: JSON.stringify({ query, variables: { boardIds: [boardId.trim()] } })
+        });
+        const data = await res.json();
+        if (!res.ok || data.errors) {
+            const msg = data?.errors?.[0]?.message || 'Failed to pull monday submissions.';
+            showToast(msg);
+            return;
+        }
+
+        const items = (data?.data?.boards?.[0]?.items_page?.items || []).slice().sort((a, b) => {
+            const da = new Date(a.created_at || 0).getTime();
+            const db = new Date(b.created_at || 0).getTime();
+            return db - da;
+        });
+        if (!items.length) {
+            showToast('No submissions found on that board.');
+            return;
+        }
+
+        const selectedItemId = await showSelect(
+            'Choose Submission',
+            'Pick a monday item to import:',
+            items.map(item => ({
+                value: item.id,
+                label: `${item.name || 'Untitled'} (${new Date(item.created_at || Date.now()).toLocaleDateString()})`
+            })),
+            items[0].id
+        );
+        if (!selectedItemId) return;
+
+        const selected = items.find(item => item.id === selectedItemId);
+        if (!selected) return;
+
+        const parsed = {
+            name: selected.name || '',
+            created_at: selected.created_at || '',
+            ...Object.fromEntries((selected.column_values || [])
+                .filter(cv => cv && cv.column && cv.column.title && (cv.text || '').trim() !== '')
+                .map(cv => [cv.column.title, cv.text]))
+        };
+
+        const entries = Object.entries(flattenMondayData(parsed)).filter(([, value]) => (value || '').trim() !== '');
+        if (!entries.length) {
+            showToast('Selected submission has no text values to import.');
+            return;
+        }
+
+        applyMondayEntriesToCard(entries, 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1');
+        showToast(`Imported ${entries.length} fields from Monday.`);
+    }
+
+    async function importMondayFormToCard() {
+        const mondayFormUrl = 'https://forms.monday.com/forms/f3f5095b235de3a135b0fdbedaebe27f?r=use1';
+        const method = await showSelect('Import Monday Form', 'How do you want to import?', [
+            { value: 'pull', label: 'Pull latest from monday board' },
+            { value: 'paste', label: 'Paste submission JSON/text' }
+        ], 'pull');
+        if (!method) return;
+
+        if (method === 'pull') {
+            await pullLatestMondaySubmission();
+            return;
+        }
+
+        const raw = await showPrompt('Import Monday Form', 'Paste Monday submission JSON or key:value lines:', '');
+        if (!raw || !raw.trim()) return;
+
+        const parsed = parseMondaySubmission(raw);
+        if (!parsed) {
+            showToast('Could not parse form results. Paste JSON or key:value lines.');
+            return;
+        }
+
+        const flat = flattenMondayData(parsed);
+        const entries = Object.entries(flat).filter(([, value]) => (value || '').trim() !== '');
+        if (!entries.length) {
+            showToast('No usable fields found in pasted results.');
+            return;
+        }
+
+        applyMondayEntriesToCard(entries, mondayFormUrl);
+        showToast(`Imported ${entries.length} fields from Monday form.`);
     }
 
     function renderCustomFields() {
