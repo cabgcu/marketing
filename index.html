@@ -1128,8 +1128,11 @@
                 <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
                     Sync includes task due dates and Story/Photo/Reel posting schedule dates on this workspace.
                 </p>
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; cursor:pointer; color:var(--text-primary); font-size:0.92rem;">
+                    <input type="checkbox" id="googleCalendarAutoSync"> Auto-sync when data changes
+                </label>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveGoogleCalendarSettings()">Save Webhook</button>
+                    <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveGoogleCalendarSettings()">Save Settings</button>
                     <button class="btn-action" style="flex:1; min-width: 200px;" onclick="syncBoardToGoogleCalendar()">Sync to Google Calendar</button>
                 </div>
             </div>
@@ -2697,6 +2700,8 @@
 
             const webhookInput = document.getElementById('googleCalendarWebhook');
             if (webhookInput) webhookInput.value = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook : '';
+            const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
+            if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
             renderUserList();
         }
@@ -2918,11 +2923,32 @@
     async function saveGoogleCalendarSettings() {
         if (currentUserRole !== 'admin') { showToast('Only admins can change calendar sync settings.'); return; }
         const input = document.getElementById('googleCalendarWebhook');
+        const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
         if (!input) return;
         if (!appData.settings) appData.settings = {};
         appData.settings.googleCalendarWebhook = (input.value || '').trim();
+        appData.settings.googleCalendarAutoSync = autoSyncCheckbox ? autoSyncCheckbox.checked : false;
         await saveData();
-        showToast('Google Calendar webhook saved.');
+        showToast('Google Calendar settings saved.');
+    }
+
+    let _calSyncTimer = null;
+    function queueGoogleCalendarAutoSync() {
+        if (_calSyncTimer) clearTimeout(_calSyncTimer);
+        _calSyncTimer = setTimeout(async () => {
+            _calSyncTimer = null;
+            const webhook = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook.trim() : '';
+            if (!webhook) return;
+            const payload = buildGoogleCalendarSyncEvents();
+            if (!payload.events.length) return;
+            try {
+                await fetch(webhook, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) { console.warn('Auto calendar sync failed:', e); }
+        }, 5000);
     }
 
     function buildGoogleCalendarSyncEvents() {
