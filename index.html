@@ -1119,6 +1119,22 @@
             </div>
 
             <div class="settings-card admin-only">
+                <h3 class="section-title">Google Calendar Sync</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+                    Connect a Google Apps Script webhook to push Event Calendar + Content Calendar dates to your team Google Calendar.
+                </p>
+                <label class="stat-label">Webhook URL</label>
+                <input type="url" id="googleCalendarWebhook" class="modern-input" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom: 12px;">
+                <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
+                    Sync includes task due dates and Story/Photo/Reel posting schedule dates on this workspace.
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveGoogleCalendarSettings()">Save Webhook</button>
+                    <button class="btn-action" style="flex:1; min-width: 200px;" onclick="syncBoardToGoogleCalendar()">Sync to Google Calendar</button>
+                </div>
+            </div>
+
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
@@ -1621,6 +1637,7 @@
                 if (!appData.automations) appData.automations = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
+                if (appData.settings.googleCalendarWebhook === undefined) appData.settings.googleCalendarWebhook = '';
                 if (!appData.notifications) appData.notifications = {};
                 if (!appData.notifPrefs) appData.notifPrefs = {};
 
@@ -1698,7 +1715,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [] },
+            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '' },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
@@ -2676,6 +2693,9 @@
                 appIconPreviewText.innerText = (appData.settings && appData.settings.appIconUrl) ? 'Current App Icon active. Select a new file to replace it.' : 'No new file selected';
             }
 
+            const webhookInput = document.getElementById('googleCalendarWebhook');
+            if (webhookInput) webhookInput.value = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook : '';
+
             renderUserList();
         }
     }
@@ -2891,6 +2911,83 @@
             fileInput.value = '';
         }
         await saveData(); showToast("Board settings saved!"); renderTopbar(); applyBoardBackground(); renderSettings();
+    }
+
+    async function saveGoogleCalendarSettings() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can change calendar sync settings.'); return; }
+        const input = document.getElementById('googleCalendarWebhook');
+        if (!input) return;
+        if (!appData.settings) appData.settings = {};
+        appData.settings.googleCalendarWebhook = (input.value || '').trim();
+        await saveData();
+        showToast('Google Calendar webhook saved.');
+    }
+
+    function buildGoogleCalendarSyncEvents() {
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        const tasks = appData.tasks.filter(t => t.boardId === appData.activeBoardId);
+        const events = [];
+
+        tasks.forEach(task => {
+            if (task.dueDate) {
+                events.push({
+                    id: `task-${task.id}-due`,
+                    source: 'event_calendar',
+                    title: task.title || 'Untitled Event',
+                    start: task.dueDate,
+                    location: task.eventLocation || '',
+                    description: (task.description || task.text || '').replace(/<[^>]+>/g, ' ').trim(),
+                    taskId: task.id
+                });
+            }
+
+            const schedule = task.postingSchedule || {};
+            [['story', 'Story'], ['photo', 'Photo'], ['reel', 'Reel']].forEach(([key, label]) => {
+                if (!schedule[key]) return;
+                events.push({
+                    id: `task-${task.id}-${key}`,
+                    source: 'content_calendar',
+                    title: `${task.title || 'Untitled Event'} — ${label} Post`,
+                    start: schedule[key],
+                    location: task.eventLocation || '',
+                    description: `Content Calendar ${label} slot for ${task.title || 'Untitled Event'}`,
+                    taskId: task.id
+                });
+            });
+        });
+
+        return {
+            workspaceId: appData.activeBoardId,
+            workspaceName: activeBoard ? activeBoard.year : 'Workspace',
+            generatedAt: new Date().toISOString(),
+            events
+        };
+    }
+
+    async function syncBoardToGoogleCalendar() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can sync with Google Calendar.'); return; }
+        const webhook = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook.trim() : '';
+        if (!webhook) { showToast('Add a Google Calendar webhook URL in Settings first.'); return; }
+
+        const payload = buildGoogleCalendarSyncEvents();
+        if (!payload.events.length) { showToast('No dated events found to sync.'); return; }
+
+        showToast('Syncing to Google Calendar...');
+        try {
+            const response = await fetch(webhook, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                showToast('Calendar sync failed: ' + text.slice(0, 80));
+                return;
+            }
+            showToast(`Synced ${payload.events.length} dates to Google Calendar.`);
+        } catch (err) {
+            showToast('Calendar sync error: ' + err.message);
+        }
     }
 
     async function deleteCurrentBoard() {
