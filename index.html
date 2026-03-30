@@ -2309,9 +2309,37 @@
                 return;
             }
 
-            const trelloData = JSON.parse(jsonStr);
-            if (!trelloData.boards || !Array.isArray(trelloData.boards)) {
-                showToast('Invalid Trello JSON format. Expected boards array.');
+            let trelloData = JSON.parse(jsonStr);
+
+            // Detect and normalize different Trello export formats
+            if (Array.isArray(trelloData) && trelloData.length > 0) {
+                // Format: [ { id, name, ... } ] - array of boards
+                trelloData = { boards: trelloData, lists: [], cards: [] };
+            } else if (trelloData.id && trelloData.name && !trelloData.boards) {
+                // Format: single board object (Trello standard export)
+                // Could have lists/cards at root level or nested
+                const lists = trelloData.lists || [];
+                const cards = trelloData.cards || [];
+                trelloData = {
+                    boards: [{ id: trelloData.id, name: trelloData.name, desc: trelloData.desc, backgroundImage: trelloData.prefs?.backgroundImage }],
+                    lists,
+                    cards,
+                    checklists: trelloData.checklists || [],
+                    members: trelloData.members || []
+                };
+            } else if (!trelloData.boards) {
+                // Try to detect lists and cards at root level
+                if (trelloData.lists && trelloData.cards) {
+                    trelloData = { boards: [{ id: 'board-' + generateId(), name: 'Imported Board' }], lists: trelloData.lists, cards: trelloData.cards, checklists: trelloData.checklists || [], members: trelloData.members || [] };
+                } else {
+                    showToast('Could not find boards, lists, or cards. JSON structure: ' + Object.keys(trelloData).slice(0, 5).join(', '));
+                    console.error('Full JSON keys:', Object.keys(trelloData));
+                    return;
+                }
+            }
+
+            if (!trelloData.boards || !Array.isArray(trelloData.boards) || trelloData.boards.length === 0) {
+                showToast('No boards found in Trello JSON.');
                 return;
             }
 
