@@ -1497,6 +1497,17 @@
     </div>
 </div>
 
+<!-- Workspace Modal -->
+<div id="workspaceModal" class="modal-overlay" onclick="closeModal(event, 'workspaceModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-modal" onclick="closeModal(null, 'workspaceModal')">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Workspaces</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Switch between different academic years or project workspaces.</p>
+        <div id="workspaceList" style="margin-bottom: 20px;"></div>
+        <button class="btn-action" onclick="openNewWorkspace()" style="width: 100%; padding: 12px; margin-top: 15px;">+ New Workspace</button>
+    </div>
+</div>
+
 <script>
     const SUPABASE_URL = 'https://qcfntvqvcmshbbpcxmgo.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
@@ -6086,7 +6097,7 @@
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal'].forEach(id => {
+            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && m.classList.contains('show')) closeModal(null, id);
             });
