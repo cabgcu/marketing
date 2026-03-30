@@ -2675,15 +2675,12 @@
                 (currentUserEmail || '').toLowerCase()
             ].filter(Boolean).map(x => x.toLowerCase());
 
-            console.log('[Hide Lists] User identifiers:', userIdentifiers);
-
             boardCols = boardCols.filter(col => {
-                // Show if no members assigned (anyone can see)
+                // Hide if no members assigned (hide empty/open lists)
                 if (!col.members || col.members.length === 0) {
-                    console.log(`[Hide Lists] Showing "${col.title}" - no members assigned`);
-                    return true;
+                    return false;
                 }
-                // Show if user is a member - check multiple matching strategies
+                // Show only if user is a member
                 const isMember = col.members.some(m => {
                     const memberLower = m.toLowerCase();
                     return userIdentifiers.some(identifier =>
@@ -2692,7 +2689,6 @@
                         identifier.includes(memberLower)
                     );
                 });
-                console.log(`[Hide Lists] "${col.title}" members: [${col.members.join(', ')}] - User is member: ${isMember}`);
                 return isMember;
             });
         }
