@@ -1516,11 +1516,16 @@
     <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'importModal')">&times;</button>
         <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Import from Trello</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Paste your Trello JSON export below. We'll create a new workspace with all your boards, lists, and cards.</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Upload your Trello JSON export. We'll create a new workspace with all your boards, lists, and cards.</p>
         <label class="stat-label">Workspace Year</label>
         <input type="text" id="importWorkspaceYear" class="modern-input" placeholder="e.g. 2025-2026" value="2025-2026" required style="margin-bottom: 20px;">
-        <label class="stat-label">Trello JSON Export</label>
-        <textarea id="importJsonInput" class="modern-input" placeholder="Paste your Trello JSON here..." style="min-height: 200px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+        <label class="stat-label">Upload JSON File</label>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input type="file" id="importJsonFile" accept=".json" style="flex: 1;" onchange="handleJsonFileUpload(event)">
+            <button type="button" class="btn-outline" onclick="document.getElementById('importJsonFile').click()" style="padding: 8px 15px;">📁 Browse</button>
+        </div>
+        <label class="stat-label">Or Paste JSON</label>
+        <textarea id="importJsonInput" class="modern-input" placeholder="Paste your Trello JSON here..." style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
         <div style="display: flex; gap: 10px;">
             <button class="btn-action" onclick="importTrelloData()" style="flex: 1; padding: 12px;">Import</button>
             <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
@@ -2268,6 +2273,26 @@
     }
 
     let _pendingImportData = null;
+
+    function handleJsonFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target.result;
+                document.getElementById('importJsonInput').value = content;
+                showToast(`✓ Loaded ${file.name} (${(file.size / 1024).toFixed(1)}KB)`);
+            } catch (err) {
+                showToast('Error reading file: ' + err.message);
+            }
+        };
+        reader.onerror = () => {
+            showToast('Error reading file');
+        };
+        reader.readAsText(file);
+    }
 
     function importTrelloData() {
         try {
