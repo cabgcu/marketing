@@ -1191,7 +1191,14 @@
 
             <div class="settings-card">
                 <h3 class="section-title">My Account</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Update your personal password or sign out.</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Update your personal settings and preferences.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.04); border-radius: 12px;">
+                    <div>
+                        <div style="font-weight: 600;">Hide lists I'm not part of</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Show only lists you're assigned to</div>
+                    </div>
+                    <input type="checkbox" id="hideListsToggle" onchange="toggleHideListsPreference()" style="width: 20px; height: 20px; cursor: pointer;">
+                </div>
                 <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF; margin-bottom: 10px;" onclick="changeMyPassword()">Change My Password</button>
                 <button class="btn-outline" style="width: 100%; border-color: #FF3B30; color: #FF3B30;" onclick="logout()">Sign Out</button>
             </div>
@@ -2052,6 +2059,22 @@
         }
     }
 
+    function toggleHideListsPreference() {
+        const checkbox = document.getElementById('hideListsToggle');
+        appData.notifPrefs = appData.notifPrefs || {};
+        appData.notifPrefs.hideUnassignedLists = checkbox.checked;
+        saveData();
+        renderBoard();
+        showToast(checkbox.checked ? 'Hiding lists you\'re not part of' : 'Showing all lists');
+    }
+
+    function initHideListsToggle() {
+        const checkbox = document.getElementById('hideListsToggle');
+        if (checkbox) {
+            checkbox.checked = appData.notifPrefs?.hideUnassignedLists || false;
+        }
+    }
+
     async function saveData() {
         try {
             const { error } = await _supabase.from('app_state').upsert({ id: 1, data: appData });
@@ -2639,7 +2662,18 @@
             container.innerHTML = '<div style="padding: 40px; color: var(--text-muted); text-align:center; width: 100%;">Create a new board to start adding tasks.</div>';
             return;
         }
-        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+        let boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+
+        // Filter columns based on user preference to hide lists they're not part of
+        const hideUnassignedLists = appData.notifPrefs?.hideUnassignedLists;
+        if (hideUnassignedLists && currentUserEmail && currentUserEmail !== 'admin') {
+            boardCols = boardCols.filter(col => {
+                // Show if no members assigned (anyone can see)
+                if (!col.members || col.members.length === 0) return true;
+                // Show if user is a member
+                return col.members.some(m => m.toLowerCase() === (currentUserName || currentUserEmail).toLowerCase());
+            });
+        }
         boardCols.forEach(col => {
             const colEl = document.createElement('div');
             colEl.className = 'kanban-column';
@@ -3076,6 +3110,9 @@
 
             renderUserList();
         }
+
+        // Initialize user preferences
+        initHideListsToggle();
     }
 
     function renderUserList() {
