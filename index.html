@@ -2223,13 +2223,17 @@
             const bg     = isActive ? 'rgba(10,132,255,0.12)' : 'rgba(255,255,255,0.04)';
             const border = isActive ? 'rgba(10,132,255,0.35)' : 'rgba(255,255,255,0.08)';
             const color  = isActive ? '#0A84FF' : '#fff';
-            const deleteBtn = !isActive
+            const isAdmin = currentUserRole === 'admin';
+            const renameBtn = isAdmin
+                ? `<button onclick="event.stopPropagation();renameWorkspace('${b.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.82rem;padding:4px 10px;border-radius:8px;font-family:inherit;">Rename</button>`
+                : '';
+            const deleteBtn = !isActive && isAdmin
                 ? `<button onclick="event.stopPropagation();deleteWorkspace('${b.id}')" style="background:none;border:none;color:#FF3B30;cursor:pointer;font-size:0.82rem;padding:4px 10px;border-radius:8px;font-family:inherit;">Delete</button>`
                 : '';
             return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:14px;cursor:pointer;background:${bg};border:1px solid ${border};margin-bottom:4px;" onclick="switchBoard('${b.id}');closeModal(null,'workspaceModal');">
                 <div style="font-weight:800;font-size:1rem;color:${color};">${isActive ? '✦ ' : ''}${b.year}</div>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="event.stopPropagation();renameWorkspace('${b.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.82rem;padding:4px 10px;border-radius:8px;font-family:inherit;">Rename</button>
+                    ${renameBtn}
                     ${deleteBtn}
                 </div>
             </div>`;
@@ -2237,6 +2241,10 @@
     }
 
     async function openNewWorkspace() {
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can create workspaces');
+            return;
+        }
         const year = await showPrompt('New Workspace', 'Enter the academic year (e.g. 2027-2028):', '');
         if (!year || !year.trim()) return;
         const newId = generateId();
@@ -2253,6 +2261,10 @@
     }
 
     async function renameWorkspace(id) {
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can rename workspaces');
+            return;
+        }
         const b = appData.boards.find(b => b.id === id);
         if (!b) return;
         const newYear = await showPrompt('Rename Workspace', 'Enter new academic year:', b.year);
@@ -2263,6 +2275,10 @@
     }
 
     async function deleteWorkspace(id) {
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can delete workspaces');
+            return;
+        }
         const ok = await showConfirm('Delete Workspace', 'Delete this workspace and all its tasks? This cannot be undone.', 'Delete', true);
         if (!ok) return;
         appData.boards = appData.boards.filter(b => b.id !== id);
@@ -3540,6 +3556,10 @@
 
     function handleNewBoard(e) {
         e.preventDefault();
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can create boards');
+            return;
+        }
         const year = document.getElementById('boardYearInput').value.trim();
         if (year) {
             const newBoardId = generateId();
@@ -3556,6 +3576,10 @@
 
     function handleNewColumn(e) {
         e.preventDefault();
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can create lists');
+            return;
+        }
         const name = document.getElementById('colNameInput').value.trim();
         const assignedTo = document.getElementById('colAssignedInput').value.trim();
         if (name && appData.activeBoardId) {
@@ -3683,6 +3707,10 @@
     }
 
     async function deleteColumn(id) {
+        if (currentUserRole !== 'admin') {
+            showToast('Only admins can delete lists');
+            return;
+        }
         const ok = await showConfirm('Delete List', 'Delete this list and all its tasks? This cannot be undone.', 'Delete', true);
         if (ok) {
             appData.columns = appData.columns.filter(c => c.id !== id);
