@@ -2316,15 +2316,24 @@
                 // Format: [ { id, name, ... } ] - array of boards
                 trelloData = { boards: trelloData, lists: [], cards: [] };
             } else if (trelloData.id && trelloData.name && !trelloData.boards) {
-                // Format: single board object { id, name, lists: [...], cards: [...] }
-                trelloData = { boards: [trelloData], lists: trelloData.lists || [], cards: trelloData.cards || [] };
+                // Format: single board object (Trello standard export)
+                // Could have lists/cards at root level or nested
+                const lists = trelloData.lists || [];
+                const cards = trelloData.cards || [];
+                trelloData = {
+                    boards: [{ id: trelloData.id, name: trelloData.name, desc: trelloData.desc, backgroundImage: trelloData.prefs?.backgroundImage }],
+                    lists,
+                    cards,
+                    checklists: trelloData.checklists || [],
+                    members: trelloData.members || []
+                };
             } else if (!trelloData.boards) {
                 // Try to detect lists and cards at root level
                 if (trelloData.lists && trelloData.cards) {
-                    trelloData = { boards: [{ id: 'board-' + generateId(), name: 'Imported Board' }], lists: trelloData.lists, cards: trelloData.cards };
+                    trelloData = { boards: [{ id: 'board-' + generateId(), name: 'Imported Board' }], lists: trelloData.lists, cards: trelloData.cards, checklists: trelloData.checklists || [], members: trelloData.members || [] };
                 } else {
-                    showToast('Invalid Trello JSON format. Could not detect boards, lists, or cards.');
-                    console.error('JSON structure:', Object.keys(trelloData).slice(0, 10));
+                    showToast('Could not find boards, lists, or cards. JSON structure: ' + Object.keys(trelloData).slice(0, 5).join(', '));
+                    console.error('Full JSON keys:', Object.keys(trelloData));
                     return;
                 }
             }
