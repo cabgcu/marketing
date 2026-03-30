@@ -1528,6 +1528,34 @@
     </div>
 </div>
 
+<!-- Import Summary Modal -->
+<div id="importSummaryModal" class="modal-overlay" onclick="closeModal(event, 'importSummaryModal')">
+    <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <button class="close-modal" onclick="closeModal(null, 'importSummaryModal')">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Import Summary</h2>
+        <div id="importSummaryContent" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-action" onclick="confirmImportTrello()" style="flex: 1; padding: 12px;">✓ Import Now</button>
+            <button class="btn-outline" onclick="closeModal(null, 'importSummaryModal')" style="flex: 1; padding: 12px;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Attachment Storage Modal -->
+<div id="attachmentStorageModal" class="modal-overlay" onclick="closeModal(event, 'attachmentStorageModal')">
+    <div class="modal-content" style="max-width: 700px;" onclick="event.stopPropagation()">
+        <button class="close-modal" onclick="closeModal(null, 'attachmentStorageModal')">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Save Attachments</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Your import includes <span id="attachmentCount">0</span> attachments. Where would you like to store them?</p>
+        <div id="attachmentList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px; background: rgba(255,255,255,0.04); padding: 15px; border-radius: 12px;"></div>
+        <div style="display: flex; gap: 10px; flex-direction: column;">
+            <button class="btn-action" onclick="saveAttachmentsToApp()" style="padding: 12px;">💾 Save to App</button>
+            <button class="btn-outline" onclick="saveAttachmentsToGoogleDrive()" style="padding: 12px;">🚀 Save to Google Drive</button>
+            <button class="btn-outline" onclick="skipAttachmentSave()" style="padding: 12px;">⏭️ Keep Original Links</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const SUPABASE_URL = 'https://qcfntvqvcmshbbpcxmgo.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
@@ -2239,6 +2267,8 @@
         saveData(); renderTopbar(); renderWorkspaceModal(); renderApp();
     }
 
+    let _pendingImportData = null;
+
     function importTrelloData() {
         try {
             const jsonStr = document.getElementById('importJsonInput').value.trim();
@@ -2260,96 +2290,190 @@
                 return;
             }
 
-            // Create new workspace
-            const newBoardId = generateId();
-            appData.boards.push({ id: newBoardId, year, backgroundImage: '' });
+            // Show summary
+            const boards = trelloData.boards?.length || 0;
+            const lists = trelloData.lists?.length || 0;
+            const cards = trelloData.cards?.length || 0;
+            const attachmentCount = trelloData.cards?.reduce((sum, c) => sum + (c.attachments?.length || 0), 0) || 0;
 
-            // Color mapping for Trello labels
-            const colorMap = {
-                'green': '#34C759', 'red': '#FF3B30', 'yellow': '#FFD60A',
-                'orange': '#FF9500', 'blue': '#0A84FF', 'purple': '#BF5AF2',
-                'pink': '#FF2D55', 'lime': '#32ADE6', 'sky': '#5AC8FA',
-                'navy': '#007AFF', 'teal': '#17C0FC', 'cyan': '#50E3C2'
-            };
+            const summaryHtml = `
+                <div style="padding: 15px; background: rgba(10,132,255,0.1); border-radius: 12px; margin-bottom: 15px;">
+                    <h3 style="margin-top: 0; color: #0A84FF;">📊 Import Details</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="border-left: 2px solid #0A84FF; padding-left: 12px;">
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Boards</div>
+                            <div style="font-size: 1.5rem; font-weight: 800;">${boards}</div>
+                        </div>
+                        <div style="border-left: 2px solid #34C759; padding-left: 12px;">
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Lists</div>
+                            <div style="font-size: 1.5rem; font-weight: 800;">${lists}</div>
+                        </div>
+                        <div style="border-left: 2px solid #FF9500; padding-left: 12px;">
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Cards</div>
+                            <div style="font-size: 1.5rem; font-weight: 800;">${cards}</div>
+                        </div>
+                        <div style="border-left: 2px solid #BF5AF2; padding-left: 12px;">
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Attachments</div>
+                            <div style="font-size: 1.5rem; font-weight: 800;">${attachmentCount}</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border-left: 2px solid #34C759; color: var(--text-muted); font-size: 0.9rem;">
+                    ✓ Creating workspace: <strong>${year}</strong><br>
+                    ✓ Labels will be adapted to app colors<br>
+                    ✓ Due dates, descriptions & checklists will be preserved<br>
+                    ${attachmentCount > 0 ? `✓ ${attachmentCount} attachments ready to save` : ''}
+                </div>
+            `;
 
-            // Map Trello board lists to app columns
-            const listMap = {};
-            trelloData.lists?.forEach(list => {
-                const colId = generateId();
-                listMap[list.id] = colId;
-                appData.columns.push({
-                    id: colId,
-                    boardId: newBoardId,
-                    title: list.name,
-                    order: list.pos || 0,
-                    assignedTo: '',
-                    members: []
-                });
-            });
+            document.getElementById('importSummaryContent').innerHTML = summaryHtml;
 
-            // Import cards as tasks
-            trelloData.cards?.forEach(card => {
-                const colId = listMap[card.idList];
-                if (!colId) return;
+            // Store data for confirmation
+            _pendingImportData = { trelloData, year };
 
-                // Map labels to app format
-                const labels = card.labels?.map(label => ({
-                    text: label.name || label.color || 'Label',
-                    color: colorMap[label.color] || label.color || '#0A84FF'
-                })) || [];
-
-                // Map checklist items
-                const checklist = card.idChecklists?.map(checklistId => {
-                    const checklistData = trelloData.checklists?.find(c => c.id === checklistId);
-                    return checklistData?.checkItems?.map(item => ({
-                        id: generateId(),
-                        text: item.name || item.text,
-                        done: item.state === 'complete'
-                    })) || [];
-                }).flat() || [];
-
-                // Parse due date
-                const dueDate = card.due ? new Date(card.due).toISOString().slice(0, 16) : '';
-
-                appData.tasks.push({
-                    id: generateId(),
-                    boardId: newBoardId,
-                    columnId: colId,
-                    title: card.name || 'Untitled',
-                    description: card.desc || '',
-                    text: card.desc || '',
-                    dueDate,
-                    postingSchedule: { story: '', photo: '', reel: '' },
-                    customFields: [],
-                    attachments: card.attachments?.map(att => ({
-                        id: generateId(),
-                        url: att.url,
-                        name: att.name,
-                        isLink: true
-                    })) || [],
-                    coverImage: '',
-                    members: card.idMembers?.map(id => {
-                        const member = trelloData.members?.find(m => m.id === id);
-                        return member?.fullName || member?.username || 'Member';
-                    }) || [],
-                    labels,
-                    checklist,
-                    activity: []
-                });
-            });
-
-            appData.activeBoardId = newBoardId;
-            saveData();
             closeModal(null, 'importModal');
-            renderTopbar();
-            renderApp();
-            showToast(`✓ Imported ${year} with ${trelloData.cards?.length || 0} cards`);
-            document.getElementById('importJsonInput').value = '';
+            openModal('importSummaryModal');
 
         } catch (err) {
             console.error('Import error:', err);
-            showToast('Error importing data: ' + err.message);
+            showToast('Error parsing JSON: ' + err.message);
         }
+    }
+
+    function confirmImportTrello() {
+        if (!_pendingImportData) return;
+
+        const { trelloData, year } = _pendingImportData;
+
+        // Create new workspace
+        const newBoardId = generateId();
+        appData.boards.push({ id: newBoardId, year, backgroundImage: '' });
+
+        // Color mapping for Trello labels
+        const colorMap = {
+            'green': '#34C759', 'red': '#FF3B30', 'yellow': '#FFD60A',
+            'orange': '#FF9500', 'blue': '#0A84FF', 'purple': '#BF5AF2',
+            'pink': '#FF2D55', 'lime': '#32ADE6', 'sky': '#5AC8FA',
+            'navy': '#007AFF', 'teal': '#17C0FC', 'cyan': '#50E3C2'
+        };
+
+        // Map Trello lists to app columns
+        const listMap = {};
+        trelloData.lists?.forEach(list => {
+            const colId = generateId();
+            listMap[list.id] = colId;
+            appData.columns.push({
+                id: colId,
+                boardId: newBoardId,
+                title: list.name,
+                order: list.pos || 0,
+                assignedTo: '',
+                members: []
+            });
+        });
+
+        // Import cards as tasks
+        let attachmentList = [];
+        trelloData.cards?.forEach(card => {
+            const colId = listMap[card.idList];
+            if (!colId) return;
+
+            const labels = card.labels?.map(label => ({
+                text: label.name || label.color || 'Label',
+                color: colorMap[label.color] || label.color || '#0A84FF'
+            })) || [];
+
+            const checklist = card.idChecklists?.map(checklistId => {
+                const checklistData = trelloData.checklists?.find(c => c.id === checklistId);
+                return checklistData?.checkItems?.map(item => ({
+                    id: generateId(),
+                    text: item.name || item.text,
+                    done: item.state === 'complete'
+                })) || [];
+            }).flat() || [];
+
+            const dueDate = card.due ? new Date(card.due).toISOString().slice(0, 16) : '';
+
+            // Track attachments
+            if (card.attachments?.length > 0) {
+                card.attachments.forEach(att => {
+                    attachmentList.push({
+                        cardName: card.name,
+                        fileName: att.name,
+                        url: att.url
+                    });
+                });
+            }
+
+            appData.tasks.push({
+                id: generateId(),
+                boardId: newBoardId,
+                columnId: colId,
+                title: card.name || 'Untitled',
+                description: card.desc || '',
+                text: card.desc || '',
+                dueDate,
+                postingSchedule: { story: '', photo: '', reel: '' },
+                customFields: [],
+                attachments: card.attachments?.map(att => ({
+                    id: generateId(),
+                    url: att.url,
+                    name: att.name,
+                    isLink: true
+                })) || [],
+                coverImage: '',
+                members: card.idMembers?.map(id => {
+                    const member = trelloData.members?.find(m => m.id === id);
+                    return member?.fullName || member?.username || 'Member';
+                }) || [],
+                labels,
+                checklist,
+                activity: []
+            });
+        });
+
+        appData.activeBoardId = newBoardId;
+        saveData();
+        closeModal(null, 'importSummaryModal');
+        renderTopbar();
+        renderApp();
+        document.getElementById('importJsonInput').value = '';
+        _pendingImportData = null;
+
+        // Show attachment options if there are attachments
+        if (attachmentList.length > 0) {
+            showAttachmentOptions(attachmentList);
+        } else {
+            showToast(`✓ Imported ${year} with ${trelloData.cards?.length || 0} cards!`);
+        }
+    }
+
+    function showAttachmentOptions(attachmentList) {
+        document.getElementById('attachmentCount').innerText = attachmentList.length;
+        const listHtml = attachmentList.slice(0, 20).map(att => `
+            <div style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem;">
+                <div style="color: var(--text-muted);">📎 ${att.fileName}</div>
+                <div style="color: #0A84FF; font-size: 0.75rem;">from: ${att.cardName}</div>
+            </div>
+        `).join('') + (attachmentList.length > 20 ? `<div style="padding: 8px; color: var(--text-muted); font-size: 0.85rem;">... and ${attachmentList.length - 20} more</div>` : '');
+
+        document.getElementById('attachmentList').innerHTML = listHtml || '<div style="color: var(--text-muted); text-align: center; padding: 20px;">No attachments</div>';
+        openModal('attachmentStorageModal');
+    }
+
+    function saveAttachmentsToApp() {
+        showToast('Attachments are already linked in your tasks! Use the attachment viewer to access them.');
+        closeModal(null, 'attachmentStorageModal');
+    }
+
+    function saveAttachmentsToGoogleDrive() {
+        showToast('Google Drive integration coming soon. Your Trello links are preserved for now.');
+        closeModal(null, 'attachmentStorageModal');
+    }
+
+    function skipAttachmentSave() {
+        showToast('✓ Import complete! Attachments are linked in your tasks.');
+        closeModal(null, 'attachmentStorageModal');
     }
 
     let selectedCards = new Set();
@@ -6230,7 +6354,7 @@
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal', 'importModal'].forEach(id => {
+            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal', 'importModal', 'importSummaryModal', 'attachmentStorageModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && m.classList.contains('show')) closeModal(null, id);
             });
