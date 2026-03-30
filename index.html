@@ -1167,6 +1167,12 @@
             </div>
 
             <div class="settings-card admin-only">
+                <h3 class="section-title">List Visibility Control</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Choose which lists users can hide when they enable "Hide lists I'm not part of".</p>
+                <div id="listVisibilityContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
@@ -2273,9 +2279,9 @@
         const newId = generateId();
         appData.boards.push({ id: newId, year: year.trim(), backgroundImage: '' });
         appData.columns.push(
-            { id: generateId(), boardId: newId, title: 'Submitted',   order: 0, assignedTo: '', members: [] },
-            { id: generateId(), boardId: newId, title: 'In Progress', order: 1, assignedTo: '', members: [] },
-            { id: generateId(), boardId: newId, title: 'Completed',   order: 2, assignedTo: '', members: [] }
+            { id: generateId(), boardId: newId, title: 'Submitted',   order: 0, assignedTo: '', members: [], hideable: true },
+            { id: generateId(), boardId: newId, title: 'In Progress', order: 1, assignedTo: '', members: [], hideable: true },
+            { id: generateId(), boardId: newId, title: 'Completed',   order: 2, assignedTo: '', members: [], hideable: true }
         );
         appData.activeBoardId = newId;
         saveData(); renderTopbar(); renderWorkspaceModal(); renderApp();
@@ -2460,7 +2466,8 @@
                 title: list.name,
                 order: list.pos || 0,
                 assignedTo: '',
-                members: []
+                members: [],
+                hideable: true
             });
         });
 
@@ -2676,6 +2683,10 @@
             ].filter(Boolean).map(x => x.toLowerCase());
 
             boardCols = boardCols.filter(col => {
+                // Check if admin has disabled hiding for this list
+                const isHideable = col.hideable !== false; // Default to true
+                if (!isHideable) return true; // Always show if admin marked as non-hideable
+
                 // Hide if no members assigned (hide empty/open lists)
                 if (!col.members || col.members.length === 0) {
                     return false;
@@ -3127,6 +3138,7 @@
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
             renderUserList();
+            renderListVisibilityControls();
         }
 
         // Initialize user preferences
@@ -3192,6 +3204,41 @@
                 renderUserList();
                 showToast("Password reset.");
             }
+        }
+    }
+
+    function renderListVisibilityControls() {
+        const container = document.getElementById('listVisibilityContainer');
+        if (!container) return;
+
+        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+
+        if (boardCols.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted); font-style:italic;">No lists in this workspace.</p>';
+            return;
+        }
+
+        container.innerHTML = boardCols.map(col => {
+            const hideable = col.hideable !== false; // Default to true
+            return `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${col.title}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Can be hidden by users</div>
+                    </div>
+                    <input type="checkbox" ${hideable ? 'checked' : ''} onchange="toggleListHideability('${col.id}', this.checked)" style="width: 20px; height: 20px; cursor: pointer;">
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleListHideability(colId, isHideable) {
+        const col = appData.columns.find(c => c.id === colId);
+        if (col) {
+            col.hideable = isHideable;
+            saveData();
+            renderListVisibilityControls();
+            showToast(isHideable ? `"${col.title}" can now be hidden` : `"${col.title}" cannot be hidden`);
         }
     }
 
@@ -3619,9 +3666,9 @@
         if (year) {
             const newBoardId = generateId();
             appData.boards.push({ id: newBoardId, year, backgroundImage: '' });
-            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Submitted',   order: 0, assignedTo: '', members: [] });
-            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'In Progress', order: 1, assignedTo: '', members: [] });
-            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Completed',   order: 2, assignedTo: '', members: [] });
+            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Submitted',   order: 0, assignedTo: '', members: [], hideable: true });
+            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'In Progress', order: 1, assignedTo: '', members: [], hideable: true });
+            appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Completed',   order: 2, assignedTo: '', members: [], hideable: true });
             appData.activeBoardId = newBoardId;
             saveData(); closeModal(null, 'newBoardModal');
             document.getElementById('boardYearInput').value = '';
@@ -3640,7 +3687,7 @@
         if (name && appData.activeBoardId) {
             const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId);
             const newOrder = boardCols.length > 0 ? Math.max(...boardCols.map(c => c.order)) + 1 : 0;
-            appData.columns.push({ id: generateId(), boardId: appData.activeBoardId, title: name, assignedTo: assignedTo, order: newOrder });
+            appData.columns.push({ id: generateId(), boardId: appData.activeBoardId, title: name, assignedTo: assignedTo, order: newOrder, members: [], hideable: true });
             saveData(); closeModal(null, 'colModal');
             document.getElementById('colNameInput').value = '';
             document.getElementById('colAssignedInput').value = '';
