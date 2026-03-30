@@ -2667,11 +2667,33 @@
         // Filter columns based on user preference to hide lists they're not part of
         const hideUnassignedLists = appData.notifPrefs?.hideUnassignedLists;
         if (hideUnassignedLists && currentUserEmail && currentUserEmail !== 'admin') {
+            const userIdentifiers = [
+                currentUserName,
+                currentUserEmail,
+                currentUserEmail.split('@')[0],
+                (currentUserName || '').toLowerCase(),
+                (currentUserEmail || '').toLowerCase()
+            ].filter(Boolean).map(x => x.toLowerCase());
+
+            console.log('[Hide Lists] User identifiers:', userIdentifiers);
+
             boardCols = boardCols.filter(col => {
                 // Show if no members assigned (anyone can see)
-                if (!col.members || col.members.length === 0) return true;
-                // Show if user is a member
-                return col.members.some(m => m.toLowerCase() === (currentUserName || currentUserEmail).toLowerCase());
+                if (!col.members || col.members.length === 0) {
+                    console.log(`[Hide Lists] Showing "${col.title}" - no members assigned`);
+                    return true;
+                }
+                // Show if user is a member - check multiple matching strategies
+                const isMember = col.members.some(m => {
+                    const memberLower = m.toLowerCase();
+                    return userIdentifiers.some(identifier =>
+                        memberLower === identifier ||
+                        memberLower.includes(identifier) ||
+                        identifier.includes(memberLower)
+                    );
+                });
+                console.log(`[Hide Lists] "${col.title}" members: [${col.members.join(', ')}] - User is member: ${isMember}`);
+                return isMember;
             });
         }
         boardCols.forEach(col => {
