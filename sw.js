@@ -4,7 +4,6 @@ const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
 
 self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', (e) => {}); // Required for PWA installability
 
 self.addEventListener('push', (e) => {
     // iOS REQUIRES showing a notification from every push event.
