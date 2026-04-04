@@ -1476,7 +1476,12 @@
             <select id="copyTaskBoardSelect" class="modern-input" style="margin-bottom: 20px; font-size:16px;" required></select>
 
             <label class="stat-label">Select List</label>
-            <select id="copyTaskColSelect" class="modern-input" style="margin-bottom: 25px; font-size:16px;" required></select>
+            <select id="copyTaskColSelect" class="modern-input" style="margin-bottom: 20px; font-size:16px;" required></select>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 25px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <input type="checkbox" id="copyTaskAttachmentsCheckbox" checked style="cursor: pointer;">
+                <label for="copyTaskAttachmentsCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Re-upload files to Google Drive</label>
+            </div>
 
             <div style="display: flex; gap: 10px;">
                 <button type="submit" class="btn-action" style="flex: 1; padding: 12px;">Copy Card</button>
@@ -6319,10 +6324,11 @@
         openModal('copyTaskModal');
     }
 
-    function confirmCopyTask() {
+    async function confirmCopyTask() {
         const taskId = document.getElementById('copyTaskId').value;
         const destBoardId = document.getElementById('copyTaskBoardSelect').value;
         const destColId = document.getElementById('copyTaskColSelect').value;
+        const copyAttachmentsCb = document.getElementById('copyTaskAttachmentsCheckbox');
 
         const task = appData.tasks.find(t => t.id === taskId);
         const destCol = appData.columns.find(c => c.id === destColId);
@@ -6332,6 +6338,9 @@
             return;
         }
 
+        showToast("Copying card...");
+        closeModal(null, 'copyTaskModal');
+
         // Create a deep copy of the task with a new ID
         const newTask = JSON.parse(JSON.stringify(task));
         newTask.id = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -6339,12 +6348,81 @@
         newTask.columnId = destColId;
         newTask.title = (newTask.title || 'Untitled') + ' (Copy)';
 
+        // Re-upload attachments if checkbox is checked
+        if (copyAttachmentsCb && copyAttachmentsCb.checked && newTask.attachments && newTask.attachments.length > 0) {
+            newTask.attachments = await copyAttachments(newTask.attachments);
+        } else {
+            newTask.attachments = [];
+        }
+
         appData.tasks.push(newTask);
         saveData();
         renderApp();
-        closeModal(null, 'copyTaskModal');
         closeModal(null, 'taskModal');
-        showToast('Task copied to ' + destCol.title + '!');
+        showToast('Card copied to ' + destCol.title + '!');
+    }
+
+    async function copyAttachments(attachments) {
+        const newAttachments = [];
+        for (const att of attachments) {
+            try {
+                // Skip external links, only copy files
+                if (att.isLink) {
+                    newAttachments.push(att);
+                    continue;
+                }
+
+                // Download the file from Google Drive
+                const fileUrl = att.url || att.viewerUrl;
+                if (!fileUrl) continue;
+
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    console.warn("Failed to download attachment:", att.name);
+                    continue;
+                }
+
+                const blob = await response.blob();
+                const reader = new FileReader();
+
+                await new Promise((resolve) => {
+                    reader.onload = async function(e) {
+                        const base64Data = e.target.result.split(',')[1];
+                        try {
+                            const uploadResponse = await fetch(GAS_UPLOAD_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify({
+                                    filename: att.name,
+                                    mimeType: att.mimeType || blob.type,
+                                    base64: base64Data
+                                })
+                            });
+                            const result = await uploadResponse.json();
+                            if (result.success) {
+                                newAttachments.push({
+                                    id: generateId(),
+                                    name: result.name,
+                                    url: toDirectDriveUrl(result.url),
+                                    viewerUrl: result.url,
+                                    size: att.size,
+                                    mimeType: att.mimeType || blob.type,
+                                    isLink: false,
+                                    date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
+                                });
+                            }
+                        } catch (err) {
+                            console.warn("Failed to re-upload attachment:", att.name, err);
+                        }
+                        resolve();
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            } catch (err) {
+                console.warn("Error copying attachment:", att.name, err);
+            }
+        }
+        return newAttachments;
     }
 
     function archiveTask() {
