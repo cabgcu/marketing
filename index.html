@@ -2497,7 +2497,7 @@
         const bgContainer = document.getElementById('bg-container');
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (activeBoard && activeBoard.backgroundImage) {
-            bgContainer.style.backgroundImage = `linear-gradient(rgba(5, 5, 5, 0.6), rgba(5, 5, 5, 0.8)), url('${activeBoard.backgroundImage}')`;
+            bgContainer.style.backgroundImage = `linear-gradient(rgba(5, 5, 5, 0.3), rgba(5, 5, 5, 0.5)), url('${activeBoard.backgroundImage}')`;
         } else {
             bgContainer.style.backgroundImage = `radial-gradient(circle at 5% 5%, rgba(10, 132, 255, 0.12) 0%, transparent 45%), radial-gradient(circle at 95% 95%, rgba(191, 90, 242, 0.12) 0%, transparent 45%)`;
         }
