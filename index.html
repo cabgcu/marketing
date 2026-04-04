@@ -1234,6 +1234,7 @@
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
                     <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday()">Fetch Now</button>
+                    <button class="btn-outline" style="flex:1; min-width: 200px; border-color:rgba(255,152,0,0.4); color:#FF9500;" onclick="clearMondayImportHistory()">Refresh Old Imports</button>
                 </div>
             </div>
 
@@ -4016,6 +4017,25 @@
         showToast(`Monday.com settings saved for "${activeBoard.name || 'Workspace'}"! Cards will auto-pull on page reload.`);
     }
 
+    async function clearMondayImportHistory() {
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard) return;
+
+        const ok = await showConfirm(
+            'Re-import Old Submissions?',
+            `This will clear the import history for "${activeBoard.name || 'Workspace'}" and allow re-importing all previous submissions with the new mapping. Continue?`,
+            'Yes, Refresh',
+            true
+        );
+
+        if (ok) {
+            if (!activeBoard.settings) activeBoard.settings = {};
+            activeBoard.settings.mondayImportedIds = [];
+            await saveData();
+            showToast('Import history cleared! Click "Fetch Now" to re-import with updated field mapping.');
+        }
+    }
+
     function findTeamColumnId(items, teamName) {
         // Scan through items to find which column contains the team name
         for (const item of items) {
@@ -4135,76 +4155,97 @@
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard) return false;
 
-        // Smart adaptive mapping - intelligently extract data from any column structure
-        const dataMap = {};
-        const usedFieldIds = new Set();
-
-        item.column_values.forEach(cv => {
-            const fieldValue = cv.text || cv.value || '';
-
-            if (fieldValue) {
-                // Use column ID as fallback - Monday.com uses IDs like "status", "date", "text123", etc.
-                const fieldName = (cv.id || 'field').toLowerCase().trim();
-                dataMap[fieldName] = { value: fieldValue, type: '', id: cv.id };
-                usedFieldIds.add(cv.id);
-            }
-        });
-
-        // Smart field detection - match by keywords and field type
-        const findField = (keywords, fieldType = null) => {
-            return Object.entries(dataMap).find(([name, data]) => {
-                const matchesKeyword = keywords.some(k => name.includes(k.toLowerCase()));
-                const matchesType = !fieldType || data.type.toLowerCase().includes(fieldType.toLowerCase());
-                return matchesKeyword && matchesType;
-            });
+        // Field ID mapping for your specific Monday.com form
+        const FIELD_IDS = {
+            eventName: 'mkv54kad',      // Text - Event Name
+            date: 'Datezzqtpb3x',       // Date field
+            time: 'mkv8jajm',           // Text - Time (7pm, 7:00pm, etc)
+            description: 'mkv5467b',    // Long text - Description
+            location: 'mkv5brpa',       // Text - Location
+            submittedBy: 'mkv8ebee',    // Text - Who submitted
+            email: 'mkv8x9x',           // Email - Their email
+            inspiration: 'mkv5hqye'     // File - Design inspiration (attachment)
         };
 
-        // Extract commonly used fields intelligently
-        const descMatch = findField(['description', 'details', 'brief', 'summary', 'about']);
-        const dateMatch = findField(['date', 'time', 'when', 'scheduled', 'due'], 'date');
-        const locationMatch = findField(['location', 'place', 'venue', 'address', 'where']);
-        const priorityMatch = findField(['priority', 'level', 'importance', 'urgency']);
+        // Extract data by field ID
+        const fieldData = {};
+        const attachments = [];
+
+        item.column_values.forEach(cv => {
+            fieldData[cv.id] = { text: cv.text, value: cv.value };
+        });
+
+        // Get the values using field IDs
+        const eventName = fieldData[FIELD_IDS.eventName]?.text || item.name || 'Untitled';
+        const eventDate = fieldData[FIELD_IDS.date]?.text || '';
+        const eventTime = fieldData[FIELD_IDS.time]?.text || '';
+        const descriptionText = fieldData[FIELD_IDS.description]?.text || '';
+        const locationText = fieldData[FIELD_IDS.location]?.text || '';
+        const submittedByText = fieldData[FIELD_IDS.submittedBy]?.text || '';
+        const emailText = fieldData[FIELD_IDS.email]?.text || '';
+        const inspirationValue = fieldData[FIELD_IDS.inspiration]?.value;
+
+        // Parse inspiration JSON for file attachment
+        if (inspirationValue) {
+            try {
+                const inspirationData = JSON.parse(inspirationValue);
+                if (inspirationData.files && Array.isArray(inspirationData.files)) {
+                    inspirationData.files.forEach(file => {
+                        if (file.url) {
+                            attachments.push({
+                                id: generateId(),
+                                name: file.name || 'Design Inspiration',
+                                url: file.url,
+                                isLink: false
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                // If it's just a URL string
+                if (inspirationValue && typeof inspirationValue === 'string' && inspirationValue.includes('http')) {
+                    attachments.push({
+                        id: generateId(),
+                        name: 'Design Inspiration',
+                        url: inspirationValue,
+                        isLink: true
+                    });
+                }
+            }
+        }
+
+        // Build description with submitter metadata
+        let fullDescription = descriptionText;
+        const metaLines = [];
+        if (submittedByText) metaLines.push(`📝 Submitted by: ${submittedByText}`);
+        if (emailText) metaLines.push(`📧 Contact: ${emailText}`);
+        if (metaLines.length > 0) {
+            fullDescription = fullDescription ? `${fullDescription}\n\n${metaLines.join('\n')}` : metaLines.join('\n');
+        }
 
         const taskId = generateId();
-        const listId = appData.settings?.mondayDefaultListId || 'group_1';
+        const listId = activeBoard.settings?.mondayDefaultListId || 'group_1';
         const column = appData.columns.find(c => c.boardId === appData.activeBoardId && c.id === listId)
                       || appData.columns.find(c => c.boardId === appData.activeBoardId && c.order === 0);
 
         const newTask = {
             id: taskId,
-            title: item.name || 'Untitled',
-            text: descMatch?.[1]?.value || '',
+            title: eventName,
+            text: fullDescription,
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: dateMatch?.[1]?.value || '',
-            eventLocation: locationMatch?.[1]?.value || '',
-            priority: priorityMatch?.[1]?.value || '',
-            members: [],
+            dueDate: eventDate || '',
+            eventLocation: locationText || '',
+            eventTime: eventTime || '',  // Store time separately
+            priority: '',
+            members: submittedByText ? [{ name: submittedByText, email: emailText }] : [],
             labels: [],
             status: 'open',
             createdAt: new Date().toISOString(),
             customFields: [],
+            attachments: attachments,
             _mondayId: item.id  // Track original Monday.com ID to prevent re-imports
         };
-
-        // Add all remaining fields as custom fields - capture everything!
-        const mappedFieldIds = new Set([
-            descMatch?.[1]?.id,
-            dateMatch?.[1]?.id,
-            locationMatch?.[1]?.id,
-            priorityMatch?.[1]?.id
-        ].filter(Boolean));
-
-        Object.entries(dataMap).forEach(([fieldName, data]) => {
-            if (!mappedFieldIds.has(data.id) && data.value) {
-                newTask.customFields.push({
-                    id: generateId(),
-                    name: fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/_/g, ' '),
-                    type: 'text',
-                    value: data.value
-                });
-            }
-        });
 
         appData.tasks.push(newTask);
         return true;
