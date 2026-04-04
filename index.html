@@ -418,6 +418,10 @@
 
         @media (max-width: 900px) {
             .settings-card.admin-only { display: none; }
+            #view-settings { padding-left: 16px; padding-right: 16px; }
+            .settings-wrapper { padding-top: 8px; }
+            .settings-wrapper > h2 { padding-left: 4px; padding-right: 4px; }
+            .settings-card { padding: 20px; }
         }
 
         .modal-overlay { 
@@ -4117,6 +4121,8 @@
     function addNotificationFor(targetUsers, type, title, body, taskId, actorName) {
         const targets = (targetUsers || []).filter(u => u && u !== actorName);
         if (targets.length === 0) return;
+        // Respect global admin notification settings — if admin disabled this type, skip entirely
+        if (!isNotifEnabled(type)) return;
         ensureNotifStructures();
         const remoteTargets = [];
         targets.forEach(userName => {
@@ -4674,6 +4680,8 @@
                 const eventDate = new Date(task.dueDate);
                 const diffMs = eventDate.getTime() - now.getTime();
                 if (diffMs > 0 && diffMs <= 30 * 60 * 1000) {
+                    // Respect global admin notification settings
+                    if (!isNotifEnabled('due')) { soonShown[task.id] = true; return; }
                     // Notify current user locally
                     const timeStr = eventDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     addNotification('due', 'Starting soon: ' + (task.title || 'Untitled'), 'Event starts at ' + timeStr, task.id);
