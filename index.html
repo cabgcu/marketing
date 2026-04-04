@@ -1845,7 +1845,7 @@
     }
 
     function getUserProfilePictureByName(name) {
-        if (!name || !appData.settings?.users) return '';
+        if (!name || typeof name !== 'string' || !appData.settings?.users) return '';
         // Match admin
         if (name === 'Admin' || name === 'admin') {
             return appData.settings?.adminProfilePicture || '';
@@ -4329,7 +4329,7 @@
             eventLocation: locationText || '',
             eventTime: eventTime || '',  // Store time separately
             priority: '',
-            members: submittedByText ? [submittedByText] : [],  // Members should be array of strings
+            members: [],  // Don't add members - store info in description instead
             labels: [],
             status: 'open',
             createdAt: new Date().toISOString(),
