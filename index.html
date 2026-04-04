@@ -1959,14 +1959,14 @@
                     if (board.settings.mondayDefaultListId === undefined) board.settings.mondayDefaultListId = globalMondayList || 'group_1';
                     if (!board.settings.mondayImportedIds) board.settings.mondayImportedIds = globalMondayIds || [];
                     // Initialize field ID mappings with defaults
-                    if (!board.settings.fieldEventName) board.settings.fieldEventName = 'mkv54kad';
-                    if (!board.settings.fieldDate) board.settings.fieldDate = 'Datezzqtpb3x';
-                    if (!board.settings.fieldTime) board.settings.fieldTime = 'mkv8jajm';
-                    if (!board.settings.fieldDescription) board.settings.fieldDescription = 'mkv5467b';
-                    if (!board.settings.fieldLocation) board.settings.fieldLocation = 'mkv5brpa';
-                    if (!board.settings.fieldSubmittedBy) board.settings.fieldSubmittedBy = 'mkv8ebee';
-                    if (!board.settings.fieldEmail) board.settings.fieldEmail = 'mkv8x9x';
-                    if (!board.settings.fieldInspiration) board.settings.fieldInspiration = 'mkv5hqye';
+                    if (!board.settings.fieldEventName) board.settings.fieldEventName = 'text_mkv54kad';
+                    if (!board.settings.fieldDate) board.settings.fieldDate = 'datezzqtpb3x';
+                    if (!board.settings.fieldTime) board.settings.fieldTime = 'text_mkv8jajm';
+                    if (!board.settings.fieldDescription) board.settings.fieldDescription = 'long_text_mkv5467b';
+                    if (!board.settings.fieldLocation) board.settings.fieldLocation = 'text_mkv5brpa';
+                    if (!board.settings.fieldSubmittedBy) board.settings.fieldSubmittedBy = 'text_mkv8ebee';
+                    if (!board.settings.fieldEmail) board.settings.fieldEmail = 'email_mkv8x9x';
+                    if (!board.settings.fieldInspiration) board.settings.fieldInspiration = 'file_mkv5hqye';
                 });
 
                 // Clean up legacy global Monday settings
@@ -2068,7 +2068,7 @@
             settings: { password: 'Marketing49!', users: [] },
             notifications: {},
             notifPrefs: {},
-            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [], fieldEventName: 'mkv54kad', fieldDate: 'Datezzqtpb3x', fieldTime: 'mkv8jajm', fieldDescription: 'mkv5467b', fieldLocation: 'mkv5brpa', fieldSubmittedBy: 'mkv8ebee', fieldEmail: 'mkv8x9x', fieldInspiration: 'mkv5hqye' } }],
+            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [], fieldEventName: 'text_mkv54kad', fieldDate: 'datezzqtpb3x', fieldTime: 'text_mkv8jajm', fieldDescription: 'long_text_mkv5467b', fieldLocation: 'text_mkv5brpa', fieldSubmittedBy: 'text_mkv8ebee', fieldEmail: 'email_mkv8x9x', fieldInspiration: 'file_mkv5hqye' } }],
             columns: [
                 { id: colBacklog, boardId: defaultBoardId, title: 'Backlog', order: 0, assignedTo: '' },
                 { id: colInProgress, boardId: defaultBoardId, title: 'In Progress', order: 1, assignedTo: '' },
@@ -3783,14 +3783,14 @@
             if (mondayListInput) mondayListInput.value = boardSettings.mondayDefaultListId || 'group_1';
 
             // Load field ID mappings
-            document.getElementById('fieldEventName').value = boardSettings.fieldEventName || 'mkv54kad';
-            document.getElementById('fieldDate').value = boardSettings.fieldDate || 'Datezzqtpb3x';
-            document.getElementById('fieldTime').value = boardSettings.fieldTime || 'mkv8jajm';
-            document.getElementById('fieldDescription').value = boardSettings.fieldDescription || 'mkv5467b';
-            document.getElementById('fieldLocation').value = boardSettings.fieldLocation || 'mkv5brpa';
-            document.getElementById('fieldSubmittedBy').value = boardSettings.fieldSubmittedBy || 'mkv8ebee';
-            document.getElementById('fieldEmail').value = boardSettings.fieldEmail || 'mkv8x9x';
-            document.getElementById('fieldInspiration').value = boardSettings.fieldInspiration || 'mkv5hqye';
+            document.getElementById('fieldEventName').value = boardSettings.fieldEventName || 'text_mkv54kad';
+            document.getElementById('fieldDate').value = boardSettings.fieldDate || 'datezzqtpb3x';
+            document.getElementById('fieldTime').value = boardSettings.fieldTime || 'text_mkv8jajm';
+            document.getElementById('fieldDescription').value = boardSettings.fieldDescription || 'long_text_mkv5467b';
+            document.getElementById('fieldLocation').value = boardSettings.fieldLocation || 'text_mkv5brpa';
+            document.getElementById('fieldSubmittedBy').value = boardSettings.fieldSubmittedBy || 'text_mkv8ebee';
+            document.getElementById('fieldEmail').value = boardSettings.fieldEmail || 'email_mkv8x9x';
+            document.getElementById('fieldInspiration').value = boardSettings.fieldInspiration || 'file_mkv5hqye';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -4226,14 +4226,14 @@
 
         // Get field ID mapping from board settings
         const FIELD_IDS = {
-            eventName: activeBoard.settings?.fieldEventName || 'mkv54kad',
-            date: activeBoard.settings?.fieldDate || 'Datezzqtpb3x',
-            time: activeBoard.settings?.fieldTime || 'mkv8jajm',
-            description: activeBoard.settings?.fieldDescription || 'mkv5467b',
-            location: activeBoard.settings?.fieldLocation || 'mkv5brpa',
-            submittedBy: activeBoard.settings?.fieldSubmittedBy || 'mkv8ebee',
-            email: activeBoard.settings?.fieldEmail || 'mkv8x9x',
-            inspiration: activeBoard.settings?.fieldInspiration || 'mkv5hqye'
+            eventName: activeBoard.settings?.fieldEventName || 'text_mkv54kad',
+            date: activeBoard.settings?.fieldDate || 'datezzqtpb3x',
+            time: activeBoard.settings?.fieldTime || 'text_mkv8jajm',
+            description: activeBoard.settings?.fieldDescription || 'long_text_mkv5467b',
+            location: activeBoard.settings?.fieldLocation || 'text_mkv5brpa',
+            submittedBy: activeBoard.settings?.fieldSubmittedBy || 'text_mkv8ebee',
+            email: activeBoard.settings?.fieldEmail || 'email_mkv8x9x',
+            inspiration: activeBoard.settings?.fieldInspiration || 'file_mkv5hqye'
         };
 
         // Extract data by field ID - handle field IDs with or without type prefix
@@ -4647,14 +4647,14 @@
                     mondayTeamName: 'CAB',
                     mondayDefaultListId: 'group_1',
                     mondayImportedIds: [],
-                    fieldEventName: 'mkv54kad',
-                    fieldDate: 'Datezzqtpb3x',
-                    fieldTime: 'mkv8jajm',
-                    fieldDescription: 'mkv5467b',
-                    fieldLocation: 'mkv5brpa',
-                    fieldSubmittedBy: 'mkv8ebee',
-                    fieldEmail: 'mkv8x9x',
-                    fieldInspiration: 'mkv5hqye'
+                    fieldEventName: 'text_mkv54kad',
+                    fieldDate: 'datezzqtpb3x',
+                    fieldTime: 'text_mkv8jajm',
+                    fieldDescription: 'long_text_mkv5467b',
+                    fieldLocation: 'text_mkv5brpa',
+                    fieldSubmittedBy: 'text_mkv8ebee',
+                    fieldEmail: 'email_mkv8x9x',
+                    fieldInspiration: 'file_mkv5hqye'
                 }
             });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Submitted',   order: 0, assignedTo: '', members: [], hideable: true });
