@@ -2926,6 +2926,24 @@
         closeModal(null, 'attachmentStorageModal');
     }
 
+    function stripMarkdown(text) {
+        if (!text) return '';
+        return text
+            // Remove markdown headers (# ## ### etc)
+            .replace(/^#+\s+/gm, '')
+            // Remove bold (**text**)
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            // Remove italic (*text* or _text_)
+            .replace(/[*_](.*?)[*_]/g, '$1')
+            // Convert markdown links [text](url) to plain text
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+            // Remove HTML entities like "‌"
+            .replace(/&#\d+;/g, '')
+            .replace(/&[a-z]+;/g, '')
+            // Clean up extra whitespace
+            .trim();
+    }
+
     function importTrelloCard(cardJson) {
         try {
             const card = typeof cardJson === 'string' ? JSON.parse(cardJson) : cardJson;
@@ -2962,8 +2980,8 @@
                 boardId: appData.activeBoardId,
                 columnId: boardColumns[0].id, // Add to first column by default
                 title: card.name || 'Untitled',
-                description: card.desc || '',
-                text: card.desc || '',
+                description: stripMarkdown(card.desc || ''),
+                text: stripMarkdown(card.desc || ''),
                 dueDate: card.due ? new Date(card.due).toISOString().split('T')[0] : '',
                 priority: '',
                 members: card.idMembers && Array.isArray(card.idMembers) ? card.idMembers.map(id => 'Member') : [],
