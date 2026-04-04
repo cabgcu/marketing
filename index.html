@@ -4362,6 +4362,18 @@
         const parsedTime = timeMatch ? timeMatch[1].trim() : eventTime;
         const parsedLocation = locationMatch ? locationMatch[1].trim() : locationText;
 
+        // Format dueDate for datetime-local input (needs YYYY-MM-DDTHH:mm format)
+        // If we have just a date, append default time of 00:00
+        let formattedDueDate = '';
+        if (parsedDate) {
+            // Check if date is just YYYY-MM-DD format
+            if (parsedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                formattedDueDate = parsedDate + 'T00:00';
+            } else {
+                formattedDueDate = parsedDate;
+            }
+        }
+
         const taskId = generateId();
         const listId = activeBoard.settings?.mondayDefaultListId || 'group_1';
         const column = appData.columns.find(c => c.boardId === appData.activeBoardId && c.id === listId)
@@ -4373,7 +4385,7 @@
             text: fullDescription,
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: parsedDate || '',  // Use parsed date from description
+            dueDate: formattedDueDate || '',  // Use parsed date from description (formatted for datetime-local)
             eventLocation: parsedLocation || '',  // Use parsed location from description
             eventTime: parsedTime || '',  // Use parsed time from description
             priority: '',
