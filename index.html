@@ -3299,15 +3299,33 @@
         const reuploadAttachments = document.getElementById('importCSVAttachmentsCheckbox').checked;
         const skipArchived = document.getElementById('importCSVSkipArchivedCheckbox').checked;
         const targetColumnId = document.getElementById('importCSVListSelect').value || null;
-        const lines = csvInput.split('\n').map(l => l.trim()).filter(l => l);
+
+        // Split by newlines, but respect quoted fields
+        const lines = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < csvInput.length; i++) {
+            const char = csvInput[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+                current += char;
+            } else if (char === '\n' && !inQuotes) {
+                if (current.trim()) lines.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        if (current.trim()) lines.push(current);
 
         if (lines.length < 1) {
             showToast('CSV is empty');
             return;
         }
 
-        // Parse header - handle Trello export format
-        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+        // Parse header
+        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
         const nameIdx = headers.indexOf('card name');
         const descIdx = headers.indexOf('card description');
         const dueIdx = headers.indexOf('due date');
@@ -3317,9 +3335,15 @@
         const archivedIdx = headers.indexOf('archived');
 
         if (nameIdx === -1) {
-            showToast('CSV must have "Card Name" column');
+            showToast('CSV must have "Card Name" column. Headers found: ' + headers.slice(0, 5).join(', '));
             return;
         }
+
+        const colorMap = {
+            'lime_dark': '#34C759', 'green': '#34C759', 'red': '#FF3B30', 'yellow': '#FFD60A',
+            'orange': '#FF9500', 'blue': '#0A84FF', 'purple': '#BF5AF2',
+            'pink': '#FF2D55', 'sky': '#5AC8FA', 'navy': '#007AFF', 'teal': '#17C0FC'
+        };
 
         const cards = [];
         for (let i = 1; i < lines.length; i++) {
@@ -3340,24 +3364,32 @@
                 idMembers: []
             };
 
-            // Parse members (semicolon-separated in Trello export)
+            // Parse members (comma-separated)
             if (membersIdx >= 0 && values[membersIdx]) {
                 card.idMembers = values[membersIdx]
-                    .split(';').map(m => m.trim()).filter(m => m);
+                    .split(',').map(m => m.trim()).filter(m => m);
             }
 
-            // Parse labels (semicolon-separated in Trello export)
+            // Parse labels - they come as "Name (color)" format
             if (labelsIdx >= 0 && values[labelsIdx]) {
                 card.labels = values[labelsIdx]
-                    .split(';').map(l => l.trim())
-                    .filter(l => l)
-                    .map(l => ({ name: l, color: 'blue' }));
+                    .split(',').map(l => {
+                        const trimmed = l.trim();
+                        // Extract color from parentheses
+                        const colorMatch = trimmed.match(/\(([^)]+)\)/);
+                        const color = colorMatch ? colorMatch[1] : 'blue';
+                        const name = trimmed.replace(/\s*\([^)]*\)\s*$/, '').trim();
+                        return {
+                            name: name || trimmed,
+                            color: colorMap[color] || '#0A84FF'
+                        };
+                    }).filter(l => l.name);
             }
 
-            // Parse attachment URLs (semicolon-separated in Trello export)
+            // Parse attachment URLs (comma-separated)
             if (attachmentsIdx >= 0 && values[attachmentsIdx]) {
                 card.attachments = values[attachmentsIdx]
-                    .split(';').map(url => {
+                    .split(',').map(url => {
                         const trimmedUrl = url.trim();
                         if (!trimmedUrl) return null;
                         return {
