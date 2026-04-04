@@ -4346,31 +4346,25 @@
             inspirationUrl = inspirationText;
         }
 
-        // Build a formatted description with all data
-        // Format: key: value so we can parse it later
+        // Build a clean formatted description (metadata goes in structured fields, not description)
         const descriptionParts = [];
-
-        if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
-        if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
-        if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
 
         // Add the main description
         if (descriptionText) {
-            descriptionParts.push('');
-            descriptionParts.push(`📝 Details:\n${descriptionText}`);
+            descriptionParts.push(descriptionText);
         }
 
         // Add submitter info
         if (submittedByText || emailText) {
-            descriptionParts.push('');
-            if (submittedByText) descriptionParts.push(`👤 Submitted by: ${submittedByText}`);
-            if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
+            if (descriptionParts.length > 0) descriptionParts.push('');
+            if (submittedByText) descriptionParts.push(`Submitted by: ${submittedByText}`);
+            if (emailText) descriptionParts.push(`Email: ${emailText}`);
         }
 
         // Add inspiration/design file link if present
         if (inspirationUrl) {
-            descriptionParts.push('');
-            descriptionParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
+            if (descriptionParts.length > 0) descriptionParts.push('');
+            descriptionParts.push(`Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
         }
 
         const fullDescription = descriptionParts.join('\n');
@@ -4381,17 +4375,37 @@
         const timeMatch = fullDescription.match(/⏰ Time:\s*([^\n]+)/);
         const locationMatch = fullDescription.match(/📍 Location:\s*([^\n]+)/);
 
+        // Helper to parse time string like "7pm", "6:30pm", "3 pm" etc. into HH:mm format
+        const parseTimeString = (timeStr) => {
+            if (!timeStr || typeof timeStr !== 'string') return '00:00';
+            const lower = timeStr.toLowerCase().trim();
+            // Match patterns like "7pm", "7:30pm", "7 pm", "7:30 pm"
+            const match = lower.match(/(\d{1,2})(?::(\d{2}))?\s*([ap]m)/);
+            if (!match) return '00:00';
+
+            let hours = parseInt(match[1]);
+            const minutes = match[2] ? parseInt(match[2]) : 0;
+            const meridiem = match[3];
+
+            // Convert to 24-hour format
+            if (meridiem === 'pm' && hours !== 12) hours += 12;
+            if (meridiem === 'am' && hours === 12) hours = 0;
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        };
+
         const parsedDate = dateMatch ? dateMatch[1] : eventDate;
         const parsedTime = timeMatch ? timeMatch[1].trim() : eventTime;
         const parsedLocation = locationMatch ? locationMatch[1].trim() : locationText;
 
         // Format dueDate for datetime-local input (needs YYYY-MM-DDTHH:mm format)
-        // If we have just a date, append default time of 00:00
         let formattedDueDate = '';
         if (parsedDate) {
             // Check if date is just YYYY-MM-DD format
             if (parsedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                formattedDueDate = parsedDate + 'T00:00';
+                // Try to parse the time and combine with date
+                const timeHHmm = parsedTime ? parseTimeString(parsedTime) : '00:00';
+                formattedDueDate = parsedDate + 'T' + timeHHmm;
             } else {
                 formattedDueDate = parsedDate;
             }
