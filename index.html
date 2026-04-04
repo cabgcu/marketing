@@ -1218,20 +1218,17 @@
             <div class="settings-card admin-only">
                 <h3 class="section-title">Monday.com Integration</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
-                    Connect to Monday.com to automatically pull CAB team submissions and create cards in your workspace.
+                    Pull new CAB team submissions from Monday.com. Cards are created once and never updated, even if Monday.com data changes.
                 </p>
                 <label class="stat-label">Monday.com API Token</label>
                 <input type="password" id="mondayApiToken" class="modern-input" placeholder="Paste your Monday.com API token" style="margin-bottom: 12px;">
                 <label class="stat-label">Monday.com Board ID</label>
                 <input type="text" id="mondayBoardId" class="modern-input" placeholder="e.g. 1234567890" style="margin-bottom: 12px;">
-                <label class="stat-label">Default List ID</label>
+                <label class="stat-label">Default List for New Cards</label>
                 <input type="text" id="mondayDefaultListId" class="modern-input" placeholder="e.g. group_name or list_1" value="group_1" style="margin-bottom: 12px;">
                 <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
-                    Automatically creates cards for submissions where Team = "CAB" with data formatted to match your card structure.
+                    Only NEW submissions with Team = "CAB" will be imported. Pull automatically on page reload or click "Fetch Now" anytime.
                 </p>
-                <label style="display:flex; align-items:center; gap:8px; margin-bottom:14px; cursor:pointer; color:var(--text-primary); font-size:0.92rem;">
-                    <input type="checkbox" id="mondayAutoSync"> Enable auto-pull every 5 minutes
-                </label>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
                     <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday()">Fetch Now</button>
@@ -1907,6 +1904,7 @@
                 if (appData.settings.mondayApiToken === undefined) appData.settings.mondayApiToken = '';
                 if (appData.settings.mondayBoardId === undefined) appData.settings.mondayBoardId = '';
                 if (appData.settings.mondayDefaultListId === undefined) appData.settings.mondayDefaultListId = 'group_1';
+                if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
                 if (!appData.notifications) appData.notifications = {};
                 if (!appData.notifPrefs) appData.notifPrefs = {};
 
@@ -1983,9 +1981,10 @@
         applyBoardBackground();
         updatePWAManifest();
 
-        // Start Monday.com auto-sync if enabled
-        if (appData.settings?.mondayAutoSync && appData.settings?.mondayApiToken && appData.settings?.mondayBoardId) {
-            queueMondayComAutoSync();
+        // Auto-pull new CAB submissions from Monday.com on page load
+        if (appData.settings?.mondayApiToken && appData.settings?.mondayBoardId) {
+            // Silent pull - don't show toast to avoid spam on every reload
+            fetchAndCreateCardsFromMonday().catch(err => console.warn('Auto-pull skipped:', err));
         }
     }
 
@@ -1995,7 +1994,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', mondayApiToken: '', mondayBoardId: '', mondayDefaultListId: 'group_1' },
+            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', mondayApiToken: '', mondayBoardId: '', mondayDefaultListId: 'group_1', mondayImportedIds: [] },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
@@ -3708,8 +3707,6 @@
             if (mondayBoardInput) mondayBoardInput.value = (appData.settings && appData.settings.mondayBoardId) ? appData.settings.mondayBoardId : '';
             const mondayListInput = document.getElementById('mondayDefaultListId');
             if (mondayListInput) mondayListInput.value = (appData.settings && appData.settings.mondayDefaultListId) ? appData.settings.mondayDefaultListId : 'group_1';
-            const mondaySyncCheckbox = document.getElementById('mondayAutoSync');
-            if (mondaySyncCheckbox) mondaySyncCheckbox.checked = (appData.settings && appData.settings.mondayAutoSync) || false;
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -3977,18 +3974,14 @@
         const tokenInput = document.getElementById('mondayApiToken');
         const boardInput = document.getElementById('mondayBoardId');
         const listInput = document.getElementById('mondayDefaultListId');
-        const autoSyncCheckbox = document.getElementById('mondayAutoSync');
         if (!tokenInput || !boardInput) return;
         if (!appData.settings) appData.settings = {};
         appData.settings.mondayApiToken = (tokenInput.value || '').trim();
         appData.settings.mondayBoardId = (boardInput.value || '').trim();
         appData.settings.mondayDefaultListId = (listInput.value || '').trim() || 'group_1';
-        appData.settings.mondayAutoSync = autoSyncCheckbox ? autoSyncCheckbox.checked : false;
+        if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
         await saveData();
-        showToast('Monday.com settings saved!');
-        if (appData.settings.mondayAutoSync) {
-            queueMondayComAutoSync();
-        }
+        showToast('Monday.com settings saved! Cards will auto-pull on page reload.');
     }
 
     async function fetchAndCreateCardsFromMonday() {
@@ -3997,7 +3990,7 @@
             return;
         }
 
-        showToast('Fetching data from Monday.com...');
+        showToast('Pulling new CAB submissions from Monday.com...');
         try {
             const token = appData.settings.mondayApiToken;
             const boardId = parseInt(appData.settings.mondayBoardId);
@@ -4046,20 +4039,27 @@
                 return teamColumn && teamColumn.text?.toUpperCase().includes('CAB');
             });
 
-            if (cabItems.length === 0) {
+            // Initialize imported IDs tracking if needed
+            if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
+
+            // Filter to only NEW items (not previously imported)
+            const newItems = cabItems.filter(item => !appData.settings.mondayImportedIds.includes(item.id));
+
+            if (newItems.length === 0) {
                 showToast('No new CAB submissions found.');
                 return;
             }
 
             let createdCount = 0;
-            for (const item of cabItems) {
+            for (const item of newItems) {
                 if (await createCardFromMondayItem(item)) {
+                    appData.settings.mondayImportedIds.push(item.id);
                     createdCount++;
                 }
             }
 
             await saveData();
-            showToast(`Created ${createdCount} card(s) from Monday.com!`);
+            showToast(`✅ Created ${createdCount} new card(s) from Monday.com!`);
         } catch (error) {
             console.error('Monday.com fetch error:', error);
             showToast('Error fetching from Monday.com: ' + error.message);
@@ -4076,10 +4076,6 @@
             const titleLower = (cv.title || '').toLowerCase();
             dataMap[titleLower] = cv.text || cv.value || '';
         });
-
-        // Check if card already exists (by title)
-        const existingTask = appData.tasks.find(t => t.title?.toLowerCase() === item.name.toLowerCase() && t.boardId === appData.activeBoardId);
-        if (existingTask) return false;
 
         const taskId = generateId();
         const listId = appData.settings?.mondayDefaultListId || 'group_1';
@@ -4099,7 +4095,8 @@
             labels: [],
             status: 'open',
             createdAt: new Date().toISOString(),
-            customFields: []
+            customFields: [],
+            _mondayId: item.id  // Track original Monday.com ID to prevent re-imports
         };
 
         // Add remaining fields as custom fields
@@ -4117,18 +4114,6 @@
 
         appData.tasks.push(newTask);
         return true;
-    }
-
-    let _mondaySyncTimer = null;
-    function queueMondayComAutoSync() {
-        if (_mondaySyncTimer) clearTimeout(_mondaySyncTimer);
-        _mondaySyncTimer = setTimeout(async () => {
-            _mondaySyncTimer = null;
-            if (appData.settings?.mondayAutoSync) {
-                await fetchAndCreateCardsFromMonday();
-                queueMondayComAutoSync(); // Schedule next sync
-            }
-        }, 5 * 60 * 1000); // 5 minutes
     }
 
     async function saveGoogleCalendarSettings() {
