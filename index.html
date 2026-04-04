@@ -1402,6 +1402,7 @@
                                 <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                     <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
+                                    <input type="text" id="taskEventTime" placeholder="e.g. 6pm" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 80px; font-size: 16px;">
                                     <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
                                 </div>
                             </div>
@@ -4283,7 +4284,9 @@
         const locationText = getFieldValue(FIELD_IDS.location)?.text || '';
         const submittedByText = getFieldValue(FIELD_IDS.submittedBy)?.text || '';
         const emailText = getFieldValue(FIELD_IDS.email)?.text || '';
-        const inspirationValue = getFieldValue(FIELD_IDS.inspiration)?.value;
+        const inspirationField = getFieldValue(FIELD_IDS.inspiration) || {};
+        const inspirationValue = inspirationField.value;
+        const inspirationText = inspirationField.text;
 
         // DEBUG: Log field mapping to console
         console.log('🔍 Monday.com Field Mapping Debug:', {
@@ -4295,11 +4298,13 @@
                 eventTime,
                 descriptionText: descriptionText.substring(0, 50) + '...',
                 locationText,
-                submittedByText
+                submittedByText,
+                inspirationText
             }
         });
 
-        // Parse inspiration JSON for file attachment
+        // Parse inspiration JSON for file attachment (try .value first, then .text)
+        let inspirationUrl = null;
         if (inspirationValue) {
             try {
                 const inspirationData = JSON.parse(inspirationValue);
@@ -4312,11 +4317,12 @@
                                 url: file.url,
                                 isLink: false
                             });
+                            if (!inspirationUrl) inspirationUrl = file.url;
                         }
                     });
                 }
             } catch (e) {
-                // If it's just a URL string
+                // If it's just a URL string in value
                 if (inspirationValue && typeof inspirationValue === 'string' && inspirationValue.includes('http')) {
                     attachments.push({
                         id: generateId(),
@@ -4324,8 +4330,20 @@
                         url: inspirationValue,
                         isLink: true
                     });
+                    inspirationUrl = inspirationValue;
                 }
             }
+        }
+
+        // Also check .text field for direct URL (Monday.com file field sometimes stores URL in text)
+        if (!inspirationUrl && inspirationText && typeof inspirationText === 'string' && inspirationText.includes('http')) {
+            attachments.push({
+                id: generateId(),
+                name: 'Design Inspiration',
+                url: inspirationText,
+                isLink: true
+            });
+            inspirationUrl = inspirationText;
         }
 
         // Build a formatted description with all data
@@ -4349,6 +4367,12 @@
             if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
         }
 
+        // Add inspiration/design file link if present
+        if (inspirationUrl) {
+            descriptionParts.push('');
+            descriptionParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
+        }
+
         const fullDescription = descriptionParts.join('\n');
 
         // Parse description to extract date, time, location
@@ -4361,6 +4385,18 @@
         const parsedTime = timeMatch ? timeMatch[1].trim() : eventTime;
         const parsedLocation = locationMatch ? locationMatch[1].trim() : locationText;
 
+        // Format dueDate for datetime-local input (needs YYYY-MM-DDTHH:mm format)
+        // If we have just a date, append default time of 00:00
+        let formattedDueDate = '';
+        if (parsedDate) {
+            // Check if date is just YYYY-MM-DD format
+            if (parsedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                formattedDueDate = parsedDate + 'T00:00';
+            } else {
+                formattedDueDate = parsedDate;
+            }
+        }
+
         const taskId = generateId();
         const listId = activeBoard.settings?.mondayDefaultListId || 'group_1';
         const column = appData.columns.find(c => c.boardId === appData.activeBoardId && c.id === listId)
@@ -4372,7 +4408,7 @@
             text: fullDescription,
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: parsedDate || '',  // Use parsed date from description
+            dueDate: formattedDueDate || '',  // Use parsed date from description (formatted for datetime-local)
             eventLocation: parsedLocation || '',  // Use parsed location from description
             eventTime: parsedTime || '',  // Use parsed time from description
             priority: '',
@@ -5678,6 +5714,7 @@
 
             dueEl.value = task.dueDate || '';
             document.getElementById('taskEventLocation').value = task.eventLocation || '';
+            document.getElementById('taskEventTime').value = task.eventTime || '';
             document.getElementById('taskPriority').value = task.priority || '';
             if (task.postingSchedule) { postStory.value = task.postingSchedule.story || ''; postPhoto.value = task.postingSchedule.photo || ''; postReel.value = task.postingSchedule.reel || ''; }
             else { postStory.value = ''; postPhoto.value = ''; postReel.value = ''; }
@@ -5691,9 +5728,9 @@
             renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments();
         } else {
             currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: '', photo: '', reel: '' } };
-            titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
+            titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskEventTime').value = ''; document.getElementById('taskPriority').value = '';
             postStory.value = ''; postPhoto.value = ''; postReel.value = '';
-            
+
             postStory.type = 'text'; postPhoto.type = 'text'; postReel.type = 'text';
 
             coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none';
@@ -7124,6 +7161,7 @@
         const dueDate = document.getElementById('taskDueDate').value;
         const postingObj = { story: document.getElementById('postStory').value, photo: document.getElementById('postPhoto').value, reel: document.getElementById('postReel').value };
         const eventLocation = document.getElementById('taskEventLocation').value.trim();
+        const eventTime = document.getElementById('taskEventTime').value.trim();
         const priority = document.getElementById('taskPriority').value;
         const newPos = parseInt(document.getElementById('settingTaskPosition').value);
         const prevPriority = taskId ? (appData.tasks.find(t => t.id === taskId)?.priority || '') : '';
@@ -7134,7 +7172,7 @@
                 const task = appData.tasks[taskIndex];
                 const oldColId = task.columnId;
                 
-                appData.tasks[taskIndex] = { ...task, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: currentEditingTask.comments || [] };
+                appData.tasks[taskIndex] = { ...task, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, eventTime, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: currentEditingTask.comments || [] };
                 
                 const colTasks = appData.tasks.filter(t => t.columnId === colId);
                 const actualCurrentPos = colTasks.findIndex(t => t.id === taskId);
@@ -7156,7 +7194,7 @@
                 processAutomations(appData.tasks[taskIndex], 'task_saved');
             }
         } else {
-            const newTask = { id: generateId(), boardId: appData.activeBoardId, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: [] };
+            const newTask = { id: generateId(), boardId: appData.activeBoardId, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, eventTime, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: [] };
             processAutomations(newTask, 'card_created');
             processAutomations(newTask, 'task_saved');
             appData.tasks.push(newTask);
