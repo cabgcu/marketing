@@ -407,11 +407,11 @@
         .settings-card { background: rgba(20,20,20,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
 
         .user-profile-section { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 20px; margin-bottom: 20px; }
-        .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 600; color: white; border: 3px solid rgba(255,255,255,0.2); overflow: hidden; position: relative; }
-        .user-profile-picture img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .user-profile-picture span { position: absolute; width: 100%; height: 100%; }
-        .user-profile-picture.has-image img { z-index: 2; }
-        .user-profile-picture.has-image span { z-index: 1; }
+        .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 600; color: white; border: 3px solid rgba(255,255,255,0.2); overflow: hidden; position: relative; flex-shrink: 0; }
+        .user-profile-picture img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; display: none; z-index: 2; }
+        .user-profile-picture span { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1; }
+        .user-profile-picture.has-image img { display: block; }
+        .user-profile-picture.has-image span { display: none; }
         .user-profile-info { text-align: center; }
         .user-profile-info .user-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
         .user-profile-info .user-email { font-size: 0.9rem; color: var(--text-muted); }
@@ -1122,8 +1122,8 @@
             <div class="settings-card" id="userProfileCard">
                 <div class="user-profile-section">
                     <div id="userProfilePicture" class="user-profile-picture">
-                        <img id="userProfileImage" src="" alt="Profile">
-                        <span id="userProfileInitial" style="position: absolute; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;"></span>
+                        <img id="userProfileImage" alt="">
+                        <span id="userProfileInitial"></span>
                     </div>
                     <div class="user-profile-info">
                         <div class="user-name" id="userProfileName">Loading...</div>
@@ -2254,19 +2254,17 @@
             initialEl.textContent = initial;
 
             if (user?.profilePicture) {
-                imageEl.src = user.profilePicture;
                 imageEl.onload = () => {
                     pictureEl.classList.add('has-image');
-                    initialEl.style.display = 'none';
                 };
                 imageEl.onerror = () => {
                     pictureEl.classList.remove('has-image');
-                    initialEl.style.display = 'flex';
+                    imageEl.removeAttribute('src');
                 };
+                imageEl.src = user.profilePicture;
             } else {
-                imageEl.src = '';
+                imageEl.removeAttribute('src');
                 pictureEl.classList.remove('has-image');
-                initialEl.style.display = 'flex';
             }
         }
     }
