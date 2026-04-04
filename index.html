@@ -1640,6 +1640,12 @@
             </div>
             <label class="stat-label">Or Paste JSON</label>
             <textarea id="importJsonInput" class="modern-input" placeholder="Paste your Trello JSON here..." style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <input type="checkbox" id="importWorkspaceAttachmentsCheckbox" checked style="cursor: pointer;">
+                <label for="importWorkspaceAttachmentsCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Re-upload attachments to Google Drive</label>
+            </div>
+
             <div style="display: flex; gap: 10px;">
                 <button class="btn-action" onclick="importTrelloData()" style="flex: 1; padding: 12px;">Import Workspace</button>
                 <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
@@ -1652,6 +1658,12 @@
             <label class="stat-label">Paste Card JSON</label>
             <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">Paste a single Trello card or an array of cards</p>
             <textarea id="importCardsInput" class="modern-input" placeholder="Paste Trello card JSON here..." style="min-height: 200px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <input type="checkbox" id="importCardsAttachmentsCheckbox" checked style="cursor: pointer;">
+                <label for="importCardsAttachmentsCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Re-upload attachments to Google Drive</label>
+            </div>
+
             <div style="display: flex; gap: 10px;">
                 <button class="btn-action" onclick="importCardsFromJson()" style="flex: 1; padding: 12px;">Add Cards</button>
                 <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
@@ -2803,7 +2815,8 @@
             document.getElementById('importSummaryContent').innerHTML = summaryHtml;
 
             // Store data for confirmation
-            _pendingImportData = { trelloData, year };
+            const reuploadAttachments = document.getElementById('importWorkspaceAttachmentsCheckbox').checked;
+            _pendingImportData = { trelloData, year, reuploadAttachments };
 
             closeModal(null, 'importModal');
             openModal('importSummaryModal');
@@ -2814,10 +2827,10 @@
         }
     }
 
-    function confirmImportTrello() {
+    async function confirmImportTrello() {
         if (!_pendingImportData) return;
 
-        const { trelloData, year } = _pendingImportData;
+        const { trelloData, year, reuploadAttachments } = _pendingImportData;
 
         // Create new workspace
         const newBoardId = generateId();
@@ -2849,9 +2862,9 @@
 
         // Import cards as tasks
         let attachmentList = [];
-        trelloData.cards?.forEach(card => {
+        for (const card of trelloData.cards || []) {
             const colId = listMap[card.idList];
-            if (!colId) return;
+            if (!colId) continue;
 
             const labels = card.labels?.map(label => ({
                 text: label.name || label.color || 'Label',
@@ -2869,15 +2882,33 @@
 
             const dueDate = card.due ? new Date(card.due).toISOString().slice(0, 16) : '';
 
-            // Track attachments
+            // Process attachments
+            let attachments = [];
             if (card.attachments?.length > 0) {
-                card.attachments.forEach(att => {
-                    attachmentList.push({
-                        cardName: card.name,
-                        fileName: att.name,
-                        url: att.url
+                if (reuploadAttachments) {
+                    attachments = await reuploadTrelloAttachments(card.attachments);
+                } else {
+                    attachments = card.attachments.map(att => ({
+                        id: generateId(),
+                        url: att.url,
+                        name: att.name,
+                        viewerUrl: att.url,
+                        size: att.bytes ? (att.bytes / 1024 / 1024).toFixed(2) : '0',
+                        mimeType: att.mimeType || '',
+                        isLink: true,
+                        date: new Date().toLocaleDateString()
+                    }));
+                }
+
+                if (!reuploadAttachments) {
+                    card.attachments.forEach(att => {
+                        attachmentList.push({
+                            cardName: card.name,
+                            fileName: att.name,
+                            url: att.url
+                        });
                     });
-                });
+                }
             }
 
             appData.tasks.push({
@@ -2890,12 +2921,7 @@
                 dueDate,
                 postingSchedule: { story: '', photo: '', reel: '' },
                 customFields: [],
-                attachments: card.attachments?.map(att => ({
-                    id: generateId(),
-                    url: att.url,
-                    name: att.name,
-                    isLink: true
-                })) || [],
+                attachments: attachments,
                 coverImage: '',
                 members: card.idMembers?.map(id => {
                     const member = trelloData.members?.find(m => m.id === id);
@@ -2905,7 +2931,7 @@
                 checklist,
                 activity: []
             });
-        });
+        }
 
         appData.activeBoardId = newBoardId;
         saveData();
@@ -2969,7 +2995,7 @@
             .trim();
     }
 
-    function importTrelloCard(cardJson) {
+    async function importTrelloCard(cardJson, reuploadAttachments = false) {
         try {
             const card = typeof cardJson === 'string' ? JSON.parse(cardJson) : cardJson;
 
@@ -2999,6 +3025,27 @@
                 'lime_dark': '#34C759', 'gray': '#A0A0A0'
             };
 
+            // Process attachments
+            let attachments = [];
+            if (card.attachments && Array.isArray(card.attachments)) {
+                if (reuploadAttachments) {
+                    // Re-upload attachments to Google Drive
+                    attachments = await reuploadTrelloAttachments(card.attachments);
+                } else {
+                    // Just copy the Trello URLs as links
+                    attachments = card.attachments.map(att => ({
+                        id: generateId(),
+                        name: att.name || 'Attachment',
+                        url: att.url || '',
+                        viewerUrl: att.url || '',
+                        size: att.bytes ? (att.bytes / 1024 / 1024).toFixed(2) : '0',
+                        mimeType: att.mimeType || '',
+                        isLink: true,
+                        date: new Date().toLocaleDateString()
+                    }));
+                }
+            }
+
             // Create new task from Trello card
             const newTask = {
                 id: generateId(),
@@ -3014,16 +3061,7 @@
                     text: label.name || label.color || 'Label',
                     color: colorMap[label.color] || label.color || '#0A84FF'
                 })) : [],
-                attachments: card.attachments && Array.isArray(card.attachments) ? card.attachments.map(att => ({
-                    id: generateId(),
-                    name: att.name || 'Attachment',
-                    url: att.url || '',
-                    viewerUrl: att.url || '',
-                    size: att.bytes ? (att.bytes / 1024 / 1024).toFixed(2) : '0',
-                    mimeType: att.mimeType || '',
-                    isLink: true,
-                    date: new Date().toLocaleDateString()
-                })) : [],
+                attachments: attachments,
                 coverImage: card.cover?.idAttachment ? (card.cover.scaled?.[card.cover.scaled.length - 1]?.url || '') : '',
                 checklist: card.idChecklists && Array.isArray(card.idChecklists) ? card.idChecklists.map(checklistId => {
                     const checklist = card.checklists?.find(c => c.id === checklistId);
@@ -3054,7 +3092,62 @@
         }
     }
 
-    function importTrelloCardBatch(cardsJson) {
+    async function reuploadTrelloAttachments(attachments) {
+        const newAttachments = [];
+        for (const att of attachments) {
+            try {
+                if (!att.url) continue;
+
+                const response = await fetch(att.url);
+                if (!response.ok) {
+                    console.warn("Failed to download Trello attachment:", att.name);
+                    continue;
+                }
+
+                const blob = await response.blob();
+                const reader = new FileReader();
+
+                await new Promise((resolve) => {
+                    reader.onload = async function(e) {
+                        const base64Data = e.target.result.split(',')[1];
+                        try {
+                            const uploadResponse = await fetch(GAS_UPLOAD_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify({
+                                    filename: att.name || 'Attachment',
+                                    mimeType: att.mimeType || blob.type,
+                                    base64: base64Data
+                                })
+                            });
+                            const result = await uploadResponse.json();
+                            if (result.success) {
+                                newAttachments.push({
+                                    id: generateId(),
+                                    name: result.name,
+                                    url: toDirectDriveUrl(result.url),
+                                    viewerUrl: result.url,
+                                    size: att.bytes ? (att.bytes / 1024 / 1024).toFixed(2) : '0',
+                                    mimeType: att.mimeType || blob.type,
+                                    isLink: false,
+                                    date: new Date().toLocaleDateString()
+                                });
+                            }
+                        } catch (err) {
+                            console.warn("Failed to re-upload Trello attachment:", att.name, err);
+                        }
+                        resolve();
+                    };
+                    reader.readAsDataURL(blob);
+                });
+            } catch (err) {
+                console.warn("Error reprocessing Trello attachment:", att.name, err);
+            }
+        }
+        return newAttachments;
+    }
+
+    async function importTrelloCardBatch(cardsJson, reuploadAttachments = false) {
         try {
             let cards = typeof cardsJson === 'string' ? JSON.parse(cardsJson) : cardsJson;
             if (!Array.isArray(cards)) cards = [cards];
@@ -3062,11 +3155,11 @@
             let imported = 0;
             let failed = 0;
 
-            cards.forEach(card => {
-                const result = importTrelloCard(card);
+            for (const card of cards) {
+                const result = await importTrelloCard(card, reuploadAttachments);
                 if (result) imported++;
                 else failed++;
-            });
+            }
 
             saveData();
             renderBoard();
@@ -3098,14 +3191,15 @@
         }
     }
 
-    function importCardsFromJson() {
+    async function importCardsFromJson() {
         const jsonInput = document.getElementById('importCardsInput').value.trim();
         if (!jsonInput) {
             showToast('Please paste card JSON');
             return;
         }
 
-        const result = importTrelloCardBatch(jsonInput);
+        const reuploadAttachments = document.getElementById('importCardsAttachmentsCheckbox').checked;
+        const result = await importTrelloCardBatch(jsonInput, reuploadAttachments);
         if (result.imported > 0) {
             document.getElementById('importCardsInput').value = '';
             closeModal(null, 'importModal');
