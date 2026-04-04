@@ -407,7 +407,10 @@
         .settings-card { background: rgba(20,20,20,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
 
         .user-profile-section { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 20px; margin-bottom: 20px; }
-        .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; object-fit: cover; border: 3px solid rgba(255,255,255,0.2); }
+        .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 600; color: white; border: 3px solid rgba(255,255,255,0.2); overflow: hidden; }
+        .user-profile-picture img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .user-profile-picture.has-image img { display: block; }
+        .user-profile-picture.has-image::before { display: none; }
         .user-profile-info { text-align: center; }
         .user-profile-info .user-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
         .user-profile-info .user-email { font-size: 0.9rem; color: var(--text-muted); }
@@ -1115,9 +1118,11 @@
             <h2 style="margin-top:0; font-weight:800;" id="settingsTitle">Settings</h2>
 
             <!-- User Profile Section (Mobile-friendly, visible to all users) -->
-            <div class="settings-card" style="background: rgba(255,255,255,0.08);" id="userProfileCard">
+            <div class="settings-card" id="userProfileCard">
                 <div class="user-profile-section">
-                    <img id="userProfilePicture" class="user-profile-picture" alt="Profile">
+                    <div id="userProfilePicture" class="user-profile-picture">
+                        <img id="userProfileImage" src="" alt="Profile">
+                    </div>
                     <div class="user-profile-info">
                         <div class="user-name" id="userProfileName">Loading...</div>
                         <div class="user-email" id="userProfileEmail"></div>
@@ -2058,12 +2063,14 @@
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         try {
+                            const base64Data = e.target.result.split(',')[1];
                             const response = await fetch(GAS_UPLOAD_URL, {
                                 method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                                 body: JSON.stringify({
-                                    fileName: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
-                                    fileData: e.target.result,
-                                    mimeType: setupProfilePictureFile.type
+                                    filename: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
+                                    mimeType: setupProfilePictureFile.type,
+                                    base64: base64Data
                                 })
                             });
                             const result = await response.json();
@@ -2193,12 +2200,14 @@
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
+                    const base64Data = e.target.result.split(',')[1];
                     const response = await fetch(GAS_UPLOAD_URL, {
                         method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
-                            fileName: `profile-${currentUserEmail}-${Date.now()}.${file.name.split('.').pop()}`,
-                            fileData: e.target.result,
-                            mimeType: file.type
+                            filename: `profile-${currentUserEmail}-${Date.now()}.${file.name.split('.').pop()}`,
+                            mimeType: file.type,
+                            base64: base64Data
                         })
                     });
                     const result = await response.json();
@@ -2232,16 +2241,18 @@
         const nameEl = document.getElementById('userProfileName');
         const emailEl = document.getElementById('userProfileEmail');
         const pictureEl = document.getElementById('userProfilePicture');
+        const imageEl = document.getElementById('userProfileImage');
 
         if (nameEl) nameEl.textContent = currentUserName || currentUserEmail;
         if (emailEl) emailEl.textContent = currentUserEmail;
 
-        if (pictureEl) {
+        if (pictureEl && imageEl) {
             if (user?.profilePicture) {
-                pictureEl.src = user.profilePicture;
-                pictureEl.style.backgroundImage = 'none';
+                imageEl.src = user.profilePicture;
+                pictureEl.classList.add('has-image');
             } else {
-                pictureEl.src = '';
+                imageEl.src = '';
+                pictureEl.classList.remove('has-image');
                 const initial = (currentUserName || currentUserEmail).charAt(0).toUpperCase();
                 pictureEl.textContent = initial;
             }
