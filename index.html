@@ -4308,8 +4308,8 @@
         // Build description with submitter metadata
         let fullDescription = descriptionText;
         const metaLines = [];
-        if (submittedByText) metaLines.push(`📝 Submitted by: ${submittedByText}`);
-        if (emailText) metaLines.push(`📧 Contact: ${emailText}`);
+        if (submittedByText) metaLines.push(`👤 Submitted by: ${submittedByText}`);
+        if (emailText) metaLines.push(`📧 Email: ${emailText}`);
         if (metaLines.length > 0) {
             fullDescription = fullDescription ? `${fullDescription}\n\n${metaLines.join('\n')}` : metaLines.join('\n');
         }
@@ -4329,7 +4329,7 @@
             eventLocation: locationText || '',
             eventTime: eventTime || '',  // Store time separately
             priority: '',
-            members: submittedByText ? [{ name: submittedByText, email: emailText }] : [],
+            members: submittedByText ? [submittedByText] : [],  // Members should be array of strings
             labels: [],
             status: 'open',
             createdAt: new Date().toISOString(),
