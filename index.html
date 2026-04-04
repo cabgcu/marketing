@@ -2058,12 +2058,14 @@
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         try {
+                            const base64Data = e.target.result.split(',')[1];
                             const response = await fetch(GAS_UPLOAD_URL, {
                                 method: 'POST',
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                                 body: JSON.stringify({
-                                    fileName: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
-                                    fileData: e.target.result,
-                                    mimeType: setupProfilePictureFile.type
+                                    filename: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
+                                    mimeType: setupProfilePictureFile.type,
+                                    base64: base64Data
                                 })
                             });
                             const result = await response.json();
@@ -2193,12 +2195,14 @@
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
+                    const base64Data = e.target.result.split(',')[1];
                     const response = await fetch(GAS_UPLOAD_URL, {
                         method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
-                            fileName: `profile-${currentUserEmail}-${Date.now()}.${file.name.split('.').pop()}`,
-                            fileData: e.target.result,
-                            mimeType: file.type
+                            filename: `profile-${currentUserEmail}-${Date.now()}.${file.name.split('.').pop()}`,
+                            mimeType: file.type,
+                            base64: base64Data
                         })
                     });
                     const result = await response.json();
