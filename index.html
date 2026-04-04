@@ -4345,25 +4345,33 @@
             inspirationUrl = inspirationText;
         }
 
-        // Build a clean formatted description (metadata goes in structured fields, not description)
+        // Build a well-formatted description with spacing and emoji headers
         const descriptionParts = [];
 
-        // Add the main description
+        // Add event metadata at the top with spacing
+        if (eventName) descriptionParts.push(`📌 Event: ${eventName}`);
+        if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
+        if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
+        if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
+
+        // Add the main description in its own section
         if (descriptionText) {
+            descriptionParts.push('');
+            descriptionParts.push(`📝 Details:`);
             descriptionParts.push(descriptionText);
         }
 
-        // Add submitter info
+        // Add submitter info in its own section
         if (submittedByText || emailText) {
-            if (descriptionParts.length > 0) descriptionParts.push('');
-            if (submittedByText) descriptionParts.push(`Submitted by: ${submittedByText}`);
-            if (emailText) descriptionParts.push(`Email: ${emailText}`);
+            descriptionParts.push('');
+            if (submittedByText) descriptionParts.push(`👤 Submitted by: ${submittedByText}`);
+            if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
         }
 
-        // Add inspiration/design file link if present
+        // Add inspiration/design file link in its own section
         if (inspirationUrl) {
-            if (descriptionParts.length > 0) descriptionParts.push('');
-            descriptionParts.push(`Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
+            descriptionParts.push('');
+            descriptionParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
         }
 
         const fullDescription = descriptionParts.join('\n');
