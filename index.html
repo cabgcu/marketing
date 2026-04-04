@@ -1597,19 +1597,40 @@
     <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'importModal')">&times;</button>
         <h2 style="margin-top:0; margin-bottom:10px; font-weight: 800;">Import from Trello</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Upload your Trello JSON export. We'll create a new workspace with all your boards, lists, and cards.</p>
-        <label class="stat-label">Workspace Year</label>
-        <input type="text" id="importWorkspaceYear" class="modern-input" placeholder="e.g. 2025-2026" value="2025-2026" required style="margin-bottom: 20px;">
-        <label class="stat-label">Upload JSON File</label>
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="file" id="importJsonFile" accept=".json" style="flex: 1;" onchange="handleJsonFileUpload(event)">
-            <button type="button" class="btn-outline" onclick="document.getElementById('importJsonFile').click()" style="padding: 8px 15px;">📁 Browse</button>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+            <button class="btn-outline" id="importTabWorkspace" onclick="switchImportTab('workspace')" style="flex: 1; border-bottom: 2px solid #0A84FF; border-radius: 0;">New Workspace</button>
+            <button class="btn-outline" id="importTabCards" onclick="switchImportTab('cards')" style="flex: 1; border-bottom: none; border-radius: 0;">Add Cards</button>
         </div>
-        <label class="stat-label">Or Paste JSON</label>
-        <textarea id="importJsonInput" class="modern-input" placeholder="Paste your Trello JSON here..." style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-action" onclick="importTrelloData()" style="flex: 1; padding: 12px;">Import</button>
-            <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
+
+        <!-- Workspace Import Tab -->
+        <div id="importWorkspaceTab" style="display: block;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Upload your Trello JSON export. We'll create a new workspace with all your boards, lists, and cards.</p>
+            <label class="stat-label">Workspace Year</label>
+            <input type="text" id="importWorkspaceYear" class="modern-input" placeholder="e.g. 2025-2026" value="2025-2026" required style="margin-bottom: 20px;">
+            <label class="stat-label">Upload JSON File</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="file" id="importJsonFile" accept=".json" style="flex: 1;" onchange="handleJsonFileUpload(event)">
+                <button type="button" class="btn-outline" onclick="document.getElementById('importJsonFile').click()" style="padding: 8px 15px;">📁 Browse</button>
+            </div>
+            <label class="stat-label">Or Paste JSON</label>
+            <textarea id="importJsonInput" class="modern-input" placeholder="Paste your Trello JSON here..." style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-action" onclick="importTrelloData()" style="flex: 1; padding: 12px;">Import Workspace</button>
+                <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Cards Import Tab -->
+        <div id="importCardsTab" style="display: none;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Add individual Trello cards to your current workspace. Cards will be added to the first list.</p>
+            <label class="stat-label">Paste Card JSON</label>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">Paste a single Trello card or an array of cards</p>
+            <textarea id="importCardsInput" class="modern-input" placeholder="Paste Trello card JSON here..." style="min-height: 200px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-action" onclick="importCardsFromJson()" style="flex: 1; padding: 12px;">Add Cards</button>
+                <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
+            </div>
         </div>
     </div>
 </div>
@@ -2903,6 +2924,149 @@
     function skipAttachmentSave() {
         showToast('✓ Import complete! Attachments are linked in your tasks.');
         closeModal(null, 'attachmentStorageModal');
+    }
+
+    function importTrelloCard(cardJson) {
+        try {
+            const card = typeof cardJson === 'string' ? JSON.parse(cardJson) : cardJson;
+
+            if (!card.name && !card.id) {
+                showToast('Invalid Trello card format');
+                return null;
+            }
+
+            const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+            if (!activeBoard) {
+                showToast('Please select a workspace first');
+                return null;
+            }
+
+            const boardColumns = appData.columns.filter(c => c.boardId === appData.activeBoardId);
+            if (boardColumns.length === 0) {
+                showToast('No lists/columns in this workspace');
+                return null;
+            }
+
+            // Color mapping for Trello labels
+            const colorMap = {
+                'green': '#34C759', 'red': '#FF3B30', 'yellow': '#FFD60A',
+                'orange': '#FF9500', 'blue': '#0A84FF', 'purple': '#BF5AF2',
+                'pink': '#FF2D55', 'lime': '#32ADE6', 'sky': '#5AC8FA',
+                'navy': '#007AFF', 'teal': '#17C0FC', 'cyan': '#50E3C2',
+                'lime_dark': '#34C759', 'gray': '#A0A0A0'
+            };
+
+            // Create new task from Trello card
+            const newTask = {
+                id: generateId(),
+                boardId: appData.activeBoardId,
+                columnId: boardColumns[0].id, // Add to first column by default
+                title: card.name || 'Untitled',
+                description: card.desc || '',
+                text: card.desc || '',
+                dueDate: card.due ? new Date(card.due).toISOString().split('T')[0] : '',
+                priority: '',
+                members: card.idMembers && Array.isArray(card.idMembers) ? card.idMembers.map(id => 'Member') : [],
+                labels: card.labels && Array.isArray(card.labels) ? card.labels.map(label => ({
+                    text: label.name || label.color || 'Label',
+                    color: colorMap[label.color] || label.color || '#0A84FF'
+                })) : [],
+                attachments: card.attachments && Array.isArray(card.attachments) ? card.attachments.map(att => ({
+                    id: generateId(),
+                    name: att.name || 'Attachment',
+                    url: att.url || '',
+                    viewerUrl: att.url || '',
+                    size: att.bytes ? (att.bytes / 1024 / 1024).toFixed(2) : '0',
+                    mimeType: att.mimeType || '',
+                    isLink: true,
+                    date: new Date().toLocaleDateString()
+                })) : [],
+                coverImage: card.cover?.idAttachment ? (card.cover.scaled?.[card.cover.scaled.length - 1]?.url || '') : '',
+                checklist: card.idChecklists && Array.isArray(card.idChecklists) ? card.idChecklists.map(checklistId => {
+                    const checklist = card.checklists?.find(c => c.id === checklistId);
+                    return checklist?.checkItems?.map(item => ({
+                        id: generateId(),
+                        text: item.name || item.text || '',
+                        done: item.state === 'complete'
+                    })) || [];
+                }).flat() : [],
+                comments: card.comments && Array.isArray(card.comments) ? card.comments.map(comment => ({
+                    id: generateId(),
+                    user: comment.memberCreator?.fullName || comment.memberCreator?.username || 'User',
+                    text: comment.data?.text || '',
+                    time: new Date(comment.date).toLocaleString()
+                })) : [],
+                activity: [],
+                completedAt: card.dateCompleted ? new Date(card.dateCompleted).toISOString() : null
+            };
+
+            appData.tasks.push(newTask);
+            saveData();
+
+            return newTask;
+        } catch (err) {
+            console.error('Card import error:', err);
+            showToast('Error importing card: ' + err.message);
+            return null;
+        }
+    }
+
+    function importTrelloCardBatch(cardsJson) {
+        try {
+            let cards = typeof cardsJson === 'string' ? JSON.parse(cardsJson) : cardsJson;
+            if (!Array.isArray(cards)) cards = [cards];
+
+            let imported = 0;
+            let failed = 0;
+
+            cards.forEach(card => {
+                const result = importTrelloCard(card);
+                if (result) imported++;
+                else failed++;
+            });
+
+            saveData();
+            renderBoard();
+            showToast(`✓ Imported ${imported} cards${failed > 0 ? ` (${failed} failed)` : ''}!`);
+
+            return { imported, failed };
+        } catch (err) {
+            showToast('Error importing cards: ' + err.message);
+            return { imported: 0, failed: 1 };
+        }
+    }
+
+    function switchImportTab(tab) {
+        const wsTab = document.getElementById('importWorkspaceTab');
+        const cardsTab = document.getElementById('importCardsTab');
+        const wsBtn = document.getElementById('importTabWorkspace');
+        const cardsBtn = document.getElementById('importTabCards');
+
+        if (tab === 'workspace') {
+            wsTab.style.display = 'block';
+            cardsTab.style.display = 'none';
+            wsBtn.style.borderBottom = '2px solid #0A84FF';
+            cardsBtn.style.borderBottom = 'none';
+        } else {
+            wsTab.style.display = 'none';
+            cardsTab.style.display = 'block';
+            wsBtn.style.borderBottom = 'none';
+            cardsBtn.style.borderBottom = '2px solid #0A84FF';
+        }
+    }
+
+    function importCardsFromJson() {
+        const jsonInput = document.getElementById('importCardsInput').value.trim();
+        if (!jsonInput) {
+            showToast('Please paste card JSON');
+            return;
+        }
+
+        const result = importTrelloCardBatch(jsonInput);
+        if (result.imported > 0) {
+            document.getElementById('importCardsInput').value = '';
+            closeModal(null, 'importModal');
+        }
     }
 
     let selectedCards = new Set();
