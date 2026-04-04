@@ -1626,6 +1626,7 @@
         <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
             <button class="btn-outline" id="importTabWorkspace" onclick="switchImportTab('workspace')" style="flex: 1; border-bottom: 2px solid #0A84FF; border-radius: 0;">New Workspace</button>
             <button class="btn-outline" id="importTabCards" onclick="switchImportTab('cards')" style="flex: 1; border-bottom: none; border-radius: 0;">Add Cards</button>
+            <button class="btn-outline" id="importTabCSV" onclick="switchImportTab('csv')" style="flex: 1; border-bottom: none; border-radius: 0;">CSV Import</button>
         </div>
 
         <!-- Workspace Import Tab -->
@@ -1666,6 +1667,29 @@
 
             <div style="display: flex; gap: 10px;">
                 <button class="btn-action" onclick="importCardsFromJson()" style="flex: 1; padding: 12px;">Add Cards</button>
+                <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- CSV Import Tab -->
+        <div id="importCSVTab" style="display: none;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Import cards from CSV. Required columns: title. Optional: description, dueDate, priority, members, labels, attachmentUrl</p>
+            <label class="stat-label">Upload CSV File</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="file" id="importCSVFile" accept=".csv" style="flex: 1;" onchange="handleCSVFileUpload(event)">
+                <button type="button" class="btn-outline" onclick="document.getElementById('importCSVFile').click()" style="padding: 8px 15px;">📁 Browse</button>
+            </div>
+            <label class="stat-label">Or Paste CSV</label>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">One card per row. Headers: title, description, dueDate, priority, members, labels, attachmentUrl</p>
+            <textarea id="importCSVInput" class="modern-input" placeholder="title,description,dueDate,priority&#10;My Task,Task description,2025-12-31,high" style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <input type="checkbox" id="importCSVAttachmentsCheckbox" checked style="cursor: pointer;">
+                <label for="importCSVAttachmentsCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Re-upload attachments to Google Drive</label>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-action" onclick="importCardsFromCSV()" style="flex: 1; padding: 12px;">Import Cards</button>
                 <button class="btn-outline" onclick="closeModal(null, 'importModal')" style="flex: 1; padding: 12px;">Cancel</button>
             </div>
         </div>
@@ -3175,18 +3199,28 @@
     function switchImportTab(tab) {
         const wsTab = document.getElementById('importWorkspaceTab');
         const cardsTab = document.getElementById('importCardsTab');
+        const csvTab = document.getElementById('importCSVTab');
         const wsBtn = document.getElementById('importTabWorkspace');
         const cardsBtn = document.getElementById('importTabCards');
+        const csvBtn = document.getElementById('importTabCSV');
 
+        // Hide all tabs
+        wsTab.style.display = 'none';
+        cardsTab.style.display = 'none';
+        csvTab.style.display = 'none';
+        wsBtn.style.borderBottom = 'none';
+        cardsBtn.style.borderBottom = 'none';
+        csvBtn.style.borderBottom = 'none';
+
+        // Show selected tab
         if (tab === 'workspace') {
             wsTab.style.display = 'block';
-            cardsTab.style.display = 'none';
             wsBtn.style.borderBottom = '2px solid #0A84FF';
-            cardsBtn.style.borderBottom = 'none';
+        } else if (tab === 'csv') {
+            csvTab.style.display = 'block';
+            csvBtn.style.borderBottom = '2px solid #0A84FF';
         } else {
-            wsTab.style.display = 'none';
             cardsTab.style.display = 'block';
-            wsBtn.style.borderBottom = 'none';
             cardsBtn.style.borderBottom = '2px solid #0A84FF';
         }
     }
@@ -3204,6 +3238,127 @@
             document.getElementById('importCardsInput').value = '';
             closeModal(null, 'importModal');
         }
+    }
+
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let insideQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                insideQuotes = !insideQuotes;
+            } else if (char === ',' && !insideQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    async function importCardsFromCSV() {
+        const csvInput = document.getElementById('importCSVInput').value.trim();
+        if (!csvInput) {
+            showToast('Please paste or upload CSV data');
+            return;
+        }
+
+        const reuploadAttachments = document.getElementById('importCSVAttachmentsCheckbox').checked;
+        const lines = csvInput.split('\n').map(l => l.trim()).filter(l => l);
+
+        if (lines.length < 1) {
+            showToast('CSV is empty');
+            return;
+        }
+
+        // Parse header
+        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+        const titleIdx = headers.indexOf('title');
+
+        if (titleIdx === -1) {
+            showToast('CSV must have a "title" column');
+            return;
+        }
+
+        const cards = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = parseCSVLine(lines[i]);
+            const card = {
+                name: values[titleIdx] || 'Untitled',
+                desc: values[headers.indexOf('description')] || '',
+                due: values[headers.indexOf('duedate')] || '',
+                labels: [],
+                attachments: [],
+                idMembers: []
+            };
+
+            // Parse priority
+            const priorityVal = values[headers.indexOf('priority')];
+            if (priorityVal) {
+                card.priority = priorityVal.toLowerCase().includes('high') ? 'high' :
+                               priorityVal.toLowerCase().includes('med') ? 'med' : 'low';
+            }
+
+            // Parse members (comma-separated)
+            const membersVal = values[headers.indexOf('members')];
+            if (membersVal) {
+                card.idMembers = membersVal.split(',').map(m => m.trim()).filter(m => m);
+            }
+
+            // Parse labels (comma-separated)
+            const labelsVal = values[headers.indexOf('labels')];
+            if (labelsVal) {
+                card.labels = labelsVal.split(',').map(l => ({ name: l.trim(), color: 'blue' })).filter(l => l.name);
+            }
+
+            // Parse attachment URLs (comma-separated)
+            const attachmentsVal = values[headers.indexOf('attachmenturl')];
+            if (attachmentsVal) {
+                card.attachments = attachmentsVal.split(',').map(url => ({
+                    url: url.trim(),
+                    name: url.trim().split('/').pop() || 'Attachment'
+                })).filter(a => a.url);
+            }
+
+            cards.push(card);
+        }
+
+        if (cards.length === 0) {
+            showToast('No valid cards found in CSV');
+            return;
+        }
+
+        showToast(`Importing ${cards.length} cards...`);
+        let imported = 0;
+        let failed = 0;
+
+        for (const card of cards) {
+            const result = await importTrelloCard(card, reuploadAttachments);
+            if (result) imported++;
+            else failed++;
+        }
+
+        saveData();
+        renderApp();
+        document.getElementById('importCSVInput').value = '';
+        closeModal(null, 'importModal');
+        showToast(`Imported ${imported} cards${failed > 0 ? ', ' + failed + ' failed' : ''}`);
+    }
+
+    function handleCSVFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('importCSVInput').value = e.target.result;
+        };
+        reader.readAsText(file);
+        event.target.value = '';
     }
 
     let selectedCards = new Set();
