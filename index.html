@@ -1466,6 +1466,26 @@
     </div>
 </div>
 
+<div id="copyTaskModal" class="modal-overlay" onclick="closeModal(event, 'copyTaskModal')">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-modal" onclick="closeModal(null, 'copyTaskModal')">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:20px; font-weight: 800;">Copy Card to Another Workspace</h2>
+        <form onsubmit="event.preventDefault(); confirmCopyTask();">
+            <input type="hidden" id="copyTaskId">
+            <label class="stat-label">Select Workspace</label>
+            <select id="copyTaskBoardSelect" class="modern-input" style="margin-bottom: 20px; font-size:16px;" required></select>
+
+            <label class="stat-label">Select List</label>
+            <select id="copyTaskColSelect" class="modern-input" style="margin-bottom: 25px; font-size:16px;" required></select>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-action" style="flex: 1; padding: 12px;">Copy Card</button>
+                <button type="button" class="btn-outline" style="flex: 1; padding: 12px;" onclick="closeModal(null, 'copyTaskModal')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="colModal" class="modal-overlay" onclick="closeModal(event, 'colModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'colModal')">&times;</button>
@@ -6262,7 +6282,70 @@
         }
     }
 
-    function copyTask() { showToast("Task copied to clipboard!"); }
+    function copyTask() {
+        const taskId = document.getElementById('taskModalTaskId').value;
+        if (!taskId) {
+            showToast("Cannot copy an unsaved task.");
+            return;
+        }
+
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) {
+            showToast("Task not found.");
+            return;
+        }
+
+        // Populate the copy modal with available boards and columns
+        const copyBoardSelect = document.getElementById('copyTaskBoardSelect');
+        const copyColSelect = document.getElementById('copyTaskColSelect');
+
+        copyBoardSelect.innerHTML = appData.boards.map(b =>
+            `<option value="${b.id}" ${b.id === appData.activeBoardId ? 'selected' : ''}>${b.year}</option>`
+        ).join('');
+
+        // When board selection changes, update columns
+        copyBoardSelect.onchange = () => {
+            const selectedBoardId = copyBoardSelect.value;
+            const boardCols = appData.columns.filter(c => c.boardId === selectedBoardId).sort((a, b) => a.order - b.order);
+            copyColSelect.innerHTML = boardCols.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+        };
+
+        // Trigger initial column population
+        copyBoardSelect.dispatchEvent(new Event('change'));
+
+        // Store the task ID for the copy operation
+        document.getElementById('copyTaskId').value = taskId;
+
+        openModal('copyTaskModal');
+    }
+
+    function confirmCopyTask() {
+        const taskId = document.getElementById('copyTaskId').value;
+        const destBoardId = document.getElementById('copyTaskBoardSelect').value;
+        const destColId = document.getElementById('copyTaskColSelect').value;
+
+        const task = appData.tasks.find(t => t.id === taskId);
+        const destCol = appData.columns.find(c => c.id === destColId);
+
+        if (!task || !destCol) {
+            showToast("Invalid selection.");
+            return;
+        }
+
+        // Create a deep copy of the task with a new ID
+        const newTask = JSON.parse(JSON.stringify(task));
+        newTask.id = 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        newTask.boardId = destBoardId;
+        newTask.columnId = destColId;
+        newTask.title = (newTask.title || 'Untitled') + ' (Copy)';
+
+        appData.tasks.push(newTask);
+        saveData();
+        renderApp();
+        closeModal(null, 'copyTaskModal');
+        closeModal(null, 'taskModal');
+        showToast('Task copied to ' + destCol.title + '!');
+    }
 
     function archiveTask() {
         const taskId = document.getElementById('taskModalTaskId').value;
