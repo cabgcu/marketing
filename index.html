@@ -4285,6 +4285,20 @@
         const emailText = getFieldValue(FIELD_IDS.email)?.text || '';
         const inspirationValue = getFieldValue(FIELD_IDS.inspiration)?.value;
 
+        // DEBUG: Log field mapping to console
+        console.log('🔍 Monday.com Field Mapping Debug:', {
+            'Field IDs Config': FIELD_IDS,
+            'Available Fields in Data': Object.keys(fieldData),
+            'Extracted Values': {
+                eventName,
+                eventDate,
+                eventTime,
+                descriptionText: descriptionText.substring(0, 50) + '...',
+                locationText,
+                submittedByText
+            }
+        });
+
         // Parse inspiration JSON for file attachment
         if (inspirationValue) {
             try {
