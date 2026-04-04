@@ -4002,16 +4002,20 @@
             const token = appData.settings.mondayApiToken;
             const boardId = parseInt(appData.settings.mondayBoardId);
 
-            // GraphQL query to fetch items with "Team" column
+            // GraphQL query to fetch board fields and items
             const query = `{
                 boards(ids: [${boardId}]) {
+                    fields {
+                        id
+                        title
+                        type
+                    }
                     items_page {
                         items {
                             id
                             name
                             column_values {
                                 id
-                                title
                                 text
                                 value
                             }
@@ -4040,10 +4044,25 @@
                 return;
             }
 
-            const items = data.data?.boards?.[0]?.items_page?.items || [];
+            const boardData = data.data?.boards?.[0];
+            if (!boardData) {
+                showToast('Board not found. Check your Board ID.');
+                return;
+            }
+
+            const items = boardData.items_page?.items || [];
+            const fields = boardData.fields || [];
+
+            // Find the Team column ID
+            const teamField = fields.find(f => f.title?.toLowerCase().includes('team'));
+            if (!teamField) {
+                showToast('Team column not found in Monday.com board.');
+                return;
+            }
+
             const teamName = (appData.settings?.mondayTeamName || 'CAB').toUpperCase();
             const teamItems = items.filter(item => {
-                const teamColumn = item.column_values.find(cv => cv.title?.toLowerCase().includes('team'));
+                const teamColumn = item.column_values.find(cv => cv.id === teamField.id);
                 return teamColumn && teamColumn.text?.toUpperCase().includes(teamName);
             });
 
@@ -4060,7 +4079,7 @@
 
             let createdCount = 0;
             for (const item of newItems) {
-                if (await createCardFromMondayItem(item)) {
+                if (await createCardFromMondayItem(item, fields)) {
                     appData.settings.mondayImportedIds.push(item.id);
                     createdCount++;
                 }
@@ -4074,16 +4093,40 @@
         }
     }
 
-    async function createCardFromMondayItem(item) {
+    async function createCardFromMondayItem(item, fields = []) {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard) return false;
 
-        // Map Monday.com columns to card structure
+        // Smart adaptive mapping - intelligently extract data from any column structure
         const dataMap = {};
+        const usedFieldIds = new Set();
+
         item.column_values.forEach(cv => {
-            const titleLower = (cv.title || '').toLowerCase();
-            dataMap[titleLower] = cv.text || cv.value || '';
+            const field = fields.find(f => f.id === cv.id);
+            const fieldName = (field?.title || cv.id).toLowerCase().trim();
+            const fieldType = field?.type || '';
+            const fieldValue = cv.text || cv.value || '';
+
+            if (fieldValue) {
+                dataMap[fieldName] = { value: fieldValue, type: fieldType, id: cv.id };
+                usedFieldIds.add(cv.id);
+            }
         });
+
+        // Smart field detection - match by keywords and field type
+        const findField = (keywords, fieldType = null) => {
+            return Object.entries(dataMap).find(([name, data]) => {
+                const matchesKeyword = keywords.some(k => name.includes(k.toLowerCase()));
+                const matchesType = !fieldType || data.type.toLowerCase().includes(fieldType.toLowerCase());
+                return matchesKeyword && matchesType;
+            });
+        };
+
+        // Extract commonly used fields intelligently
+        const descMatch = findField(['description', 'details', 'brief', 'summary', 'about']);
+        const dateMatch = findField(['date', 'time', 'when', 'scheduled', 'due'], 'date');
+        const locationMatch = findField(['location', 'place', 'venue', 'address', 'where']);
+        const priorityMatch = findField(['priority', 'level', 'importance', 'urgency']);
 
         const taskId = generateId();
         const listId = appData.settings?.mondayDefaultListId || 'group_1';
@@ -4093,12 +4136,12 @@
         const newTask = {
             id: taskId,
             title: item.name || 'Untitled',
-            text: dataMap['description'] || dataMap['details'] || '',
+            text: descMatch?.[1]?.value || '',
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: dataMap['date'] || dataMap['event date'] || '',
-            eventLocation: dataMap['location'] || dataMap['event location'] || '',
-            priority: dataMap['priority'] || '',
+            dueDate: dateMatch?.[1]?.value || '',
+            eventLocation: locationMatch?.[1]?.value || '',
+            priority: priorityMatch?.[1]?.value || '',
             members: [],
             labels: [],
             status: 'open',
@@ -4107,15 +4150,21 @@
             _mondayId: item.id  // Track original Monday.com ID to prevent re-imports
         };
 
-        // Add remaining fields as custom fields
-        const mappedFields = ['description', 'details', 'date', 'event date', 'location', 'event location', 'priority'];
-        Object.entries(dataMap).forEach(([key, value]) => {
-            if (!mappedFields.includes(key) && value) {
+        // Add all remaining fields as custom fields - capture everything!
+        const mappedFieldIds = new Set([
+            descMatch?.[1]?.id,
+            dateMatch?.[1]?.id,
+            locationMatch?.[1]?.id,
+            priorityMatch?.[1]?.id
+        ].filter(Boolean));
+
+        Object.entries(dataMap).forEach(([fieldName, data]) => {
+            if (!mappedFieldIds.has(data.id) && data.value) {
                 newTask.customFields.push({
                     id: generateId(),
-                    name: key.charAt(0).toUpperCase() + key.slice(1),
+                    name: fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/_/g, ' '),
                     type: 'text',
-                    value: value
+                    value: data.value
                 });
             }
         });
