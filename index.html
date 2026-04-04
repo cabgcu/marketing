@@ -4016,6 +4016,18 @@
         showToast(`Monday.com settings saved for "${activeBoard.name || 'Workspace'}"! Cards will auto-pull on page reload.`);
     }
 
+    function findTeamColumnId(items, teamName) {
+        // Scan through items to find which column contains the team name
+        for (const item of items) {
+            for (const cv of item.column_values) {
+                if (cv.text?.toUpperCase().includes(teamName)) {
+                    return cv.id; // Found it!
+                }
+            }
+        }
+        return null;
+    }
+
     async function fetchAndCreateCardsFromMonday() {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard || !activeBoard.settings || !activeBoard.settings.mondayApiToken || !activeBoard.settings.mondayBoardId) {
@@ -4028,15 +4040,10 @@
             const token = activeBoard.settings.mondayApiToken;
             const boardId = parseInt(activeBoard.settings.mondayBoardId);
 
-            // GraphQL query to fetch board fields and items
+            // GraphQL query to fetch board items (fields come from column_values metadata)
             const query = `{
                 boards(ids: [${boardId}]) {
-                    fields {
-                        id
-                        title
-                        type
-                    }
-                    items_page {
+                    items_page(limit: 100) {
                         items {
                             id
                             name
@@ -4077,18 +4084,23 @@
             }
 
             const items = boardData.items_page?.items || [];
-            const fields = boardData.fields || [];
 
-            // Find the Team column ID
-            const teamField = fields.find(f => f.title?.toLowerCase().includes('team'));
-            if (!teamField) {
-                showToast('Team column not found in Monday.com board.');
+            if (items.length === 0) {
+                showToast('No items found in Monday.com board.');
                 return;
             }
 
+            // Smart detection: Find the Team column by looking for team names in the data
             const teamName = (activeBoard.settings?.mondayTeamName || 'CAB').toUpperCase();
+            const teamColumnId = findTeamColumnId(items, teamName);
+
+            if (!teamColumnId) {
+                showToast(`Could not find a column containing team "${teamName}". Check your form structure.`);
+                return;
+            }
+
             const teamItems = items.filter(item => {
-                const teamColumn = item.column_values.find(cv => cv.id === teamField.id);
+                const teamColumn = item.column_values.find(cv => cv.id === teamColumnId);
                 return teamColumn && teamColumn.text?.toUpperCase().includes(teamName);
             });
 
@@ -4105,7 +4117,7 @@
 
             let createdCount = 0;
             for (const item of newItems) {
-                if (await createCardFromMondayItem(item, fields)) {
+                if (await createCardFromMondayItem(item)) {
                     activeBoard.settings.mondayImportedIds.push(item.id);
                     createdCount++;
                 }
@@ -4119,7 +4131,7 @@
         }
     }
 
-    async function createCardFromMondayItem(item, fields = []) {
+    async function createCardFromMondayItem(item) {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard) return false;
 
@@ -4128,13 +4140,12 @@
         const usedFieldIds = new Set();
 
         item.column_values.forEach(cv => {
-            const field = fields.find(f => f.id === cv.id);
-            const fieldName = (field?.title || cv.id).toLowerCase().trim();
-            const fieldType = field?.type || '';
             const fieldValue = cv.text || cv.value || '';
 
             if (fieldValue) {
-                dataMap[fieldName] = { value: fieldValue, type: fieldType, id: cv.id };
+                // Use column ID as fallback - Monday.com uses IDs like "status", "date", "text123", etc.
+                const fieldName = (cv.id || 'field').toLowerCase().trim();
+                dataMap[fieldName] = { value: fieldValue, type: '', id: cv.id };
                 usedFieldIds.add(cv.id);
             }
         });
