@@ -2596,6 +2596,7 @@
         saveData();
         renderUserProfile();
         if (typeof renderTopbar === 'function') renderTopbar();
+        if (typeof applyBoardBackground === 'function') applyBoardBackground();
         if (typeof renderBoard === 'function') renderBoard();
         showToast('Switched to ' + (appData.boards.find(b => b.id === id)?.year || 'workspace'));
         renderMobileWorkspaceList();
@@ -3984,7 +3985,7 @@
         saveData(); renderBoard();
     }
 
-    function switchBoard(id) { if (!id) return; appData.activeBoardId = id; saveData(); renderTopbar(); renderApp(); }
+    function switchBoard(id) { if (!id) return; appData.activeBoardId = id; saveData(); renderTopbar(); applyBoardBackground(); renderApp(); }
 
     function handleNewBoard(e) {
         e.preventDefault();
