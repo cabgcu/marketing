@@ -2227,19 +2227,33 @@
             return;
         }
 
-        const user = appData.settings.users.find(u => u.email === currentUserEmail);
-        if (user) {
-            user.profilePicture = toDirectDriveUrl(uploadResult.url);
-            saveData();
-            renderUserProfile();
-            showToast('Profile picture updated successfully!');
+        const newPictureUrl = toDirectDriveUrl(uploadResult.url);
+        if (currentUserRole === 'admin') {
+            if (!appData.settings) appData.settings = {};
+            appData.settings.adminProfilePicture = newPictureUrl;
+        } else {
+            const user = appData.settings.users.find(u => u.email === currentUserEmail);
+            if (user) {
+                user.profilePicture = newPictureUrl;
+            }
         }
+        await saveData();
+        renderUserProfile();
+        showToast('Profile picture updated successfully!');
+    }
+
+    function getCurrentUserProfilePicture() {
+        if (currentUserRole === 'admin') {
+            return appData.settings?.adminProfilePicture || '';
+        }
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        return user?.profilePicture || '';
     }
 
     function renderUserProfile() {
         if (!currentUserEmail) return;
 
-        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        const profilePicture = getCurrentUserProfilePicture();
         const nameEl = document.getElementById('userProfileName');
         const emailEl = document.getElementById('userProfileEmail');
         const pictureEl = document.getElementById('userProfilePicture');
@@ -2253,7 +2267,7 @@
             const initial = (currentUserName || currentUserEmail).charAt(0).toUpperCase();
             initialEl.textContent = initial;
 
-            if (user?.profilePicture) {
+            if (profilePicture) {
                 imageEl.onload = () => {
                     pictureEl.classList.add('has-image');
                 };
@@ -2261,7 +2275,7 @@
                     pictureEl.classList.remove('has-image');
                     imageEl.removeAttribute('src');
                 };
-                imageEl.src = user.profilePicture;
+                imageEl.src = profilePicture;
             } else {
                 imageEl.removeAttribute('src');
                 pictureEl.classList.remove('has-image');
