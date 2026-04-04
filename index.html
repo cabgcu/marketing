@@ -908,6 +908,11 @@
             .cl-assign-btn.assigned { min-width: 42px; padding: 0 7px; }
             .cl-assign-avatar { width: 25px; height: 25px; min-width: 25px; min-height: 25px; flex-basis: 25px; }
             .cl-assign-option { padding: 12px 10px; min-height: 44px; }
+
+            /* Mobile Settings Adjustments */
+            .settings-wrapper { max-width: 100%; }
+            .settings-card { padding: 20px; margin-bottom: 15px; }
+            #profilePicturePreview { width: 70px; height: 70px; }
         }
         /* @mention autocomplete dropdown */
         .mention-dropdown {
@@ -1023,6 +1028,15 @@
         <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
         <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
         <input type="text" id="setupName" class="modern-input" placeholder="Your Full Name" style="margin-bottom: 10px; text-align: center;">
+
+        <div style="margin: 15px 0; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div id="setupProfilePicPreview" style="width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 2rem;">👤</div>
+            <label class="btn-outline" style="margin: 0; cursor: pointer; font-size: 0.85rem;">
+                Add Profile Picture
+                <input type="file" id="setupProfilePictureFile" accept="image/*" style="display: none;" onchange="previewSetupProfilePicture(event)">
+            </label>
+        </div>
+
         <input type="password" id="newPassword1" class="modern-input" placeholder="New Password" style="margin-bottom: 10px; text-align: center;">
         <input type="password" id="newPassword2" class="modern-input" placeholder="Confirm Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') createNewPassword()">
         <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">Save &amp; Enter</button>
@@ -1198,7 +1212,26 @@
             <div class="settings-card">
                 <h3 class="section-title">My Account</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Update your personal settings and preferences.</p>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.04); border-radius: 12px;">
+
+                <div style="margin-bottom: 25px;">
+                    <label class="stat-label">Profile Picture</label>
+                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <div id="profilePicturePreview" style="width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; flex-shrink: 0; overflow: hidden;">
+                            👤
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1;">
+                            <label class="btn-outline" style="margin: 0; cursor: pointer; text-align: center;">
+                                Upload Picture
+                                <input type="file" id="profilePictureFile" accept="image/*" style="display: none;" onchange="previewProfilePicture(event)">
+                            </label>
+                            <button class="btn-outline" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearProfilePicture()">Remove Picture</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 25px 0;">
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.04); border-radius: 12px; flex-wrap: wrap;">
                     <div>
                         <div style="font-weight: 600;">Hide lists I'm not part of</div>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Show only lists you're assigned to</div>
@@ -1961,6 +1994,12 @@
     function closeLoginOverlay() {
         document.getElementById('login-overlay').style.opacity = '0';
         setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
+        // Clear setup fields
+        document.getElementById('setupName').value = '';
+        document.getElementById('newPassword1').value = '';
+        document.getElementById('newPassword2').value = '';
+        document.getElementById('setupProfilePictureFile').value = '';
+        document.getElementById('setupProfilePicPreview').innerHTML = '👤';
         // Reload cleared notification IDs for the now-logged-in user
         _loadClearedIds();
         renderApp();
@@ -1974,16 +2013,26 @@
         const name = document.getElementById('setupName').value.trim();
         const pass1 = document.getElementById('newPassword1').value;
         const pass2 = document.getElementById('newPassword2').value;
-        
+
         if (!name) { showToast("Please enter your full name."); return; }
         if (pass1 !== pass2) { showToast("Passwords do not match!"); return; }
         if (pass1.length < 6) { showToast("Password must be at least 6 characters."); return; }
-        
+
         const email = document.getElementById('setupEmailDisplay').innerText;
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
         if (user) {
             user.name = name;
             user.password = pass1;
+
+            // Store profile picture if one was uploaded during signup
+            const setupPreview = document.getElementById('setupProfilePicPreview');
+            if (setupPreview && setupPreview.innerHTML.includes('<img')) {
+                const img = setupPreview.querySelector('img');
+                if (img && img.src) {
+                    user.profilePicture = img.src;
+                }
+            }
+
             saveData();
             isAuthenticated = true;
             currentUserRole = 'user';
@@ -2003,6 +2052,8 @@
         document.getElementById('setupName').value = '';
         document.getElementById('newPassword1').value = '';
         document.getElementById('newPassword2').value = '';
+        document.getElementById('setupProfilePictureFile').value = '';
+        document.getElementById('setupProfilePicPreview').innerHTML = '👤';
     }
 
     function logout() {
@@ -2078,6 +2129,96 @@
         const checkbox = document.getElementById('hideListsToggle');
         if (checkbox) {
             checkbox.checked = appData.notifPrefs?.hideUnassignedLists || false;
+        }
+    }
+
+    function previewProfilePicture(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('File is too large. Maximum size is 2MB.');
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imageData = e.target.result;
+            const preview = document.getElementById('profilePicturePreview');
+            if (preview) {
+                preview.innerHTML = `<img src="${imageData}" style="width:100%; height:100%; object-fit:cover;">`;
+                preview.dataset.newImage = imageData;
+            }
+            saveProfilePicture(imageData);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function previewSetupProfilePicture(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('File is too large. Maximum size is 2MB.');
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imageData = e.target.result;
+            const preview = document.getElementById('setupProfilePicPreview');
+            if (preview) {
+                preview.innerHTML = `<img src="${imageData}" style="width:100%; height:100%; object-fit:cover;">`;
+            }
+            showToast('Profile picture selected!');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function saveProfilePicture(imageData) {
+        if (!appData.settings.users) appData.settings.users = [];
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        if (user) {
+            user.profilePicture = imageData;
+            saveData();
+            showToast('Profile picture updated successfully.');
+        }
+    }
+
+    function clearProfilePicture() {
+        const preview = document.getElementById('profilePicturePreview');
+        const fileInput = document.getElementById('profilePictureFile');
+
+        if (preview) {
+            preview.innerHTML = '👤';
+            preview.dataset.newImage = '';
+        }
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        if (!appData.settings.users) appData.settings.users = [];
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        if (user) {
+            user.profilePicture = null;
+            saveData();
+            showToast('Profile picture removed.');
+        }
+    }
+
+    function initProfilePicture() {
+        const preview = document.getElementById('profilePicturePreview');
+        if (!preview) return;
+
+        if (!appData.settings.users) appData.settings.users = [];
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+
+        if (user && user.profilePicture) {
+            preview.innerHTML = `<img src="${user.profilePicture}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else {
+            preview.innerHTML = '👤';
         }
     }
 
@@ -3143,6 +3284,7 @@
 
         // Initialize user preferences
         initHideListsToggle();
+        initProfilePicture();
     }
 
     function renderUserList() {
