@@ -1676,8 +1676,8 @@
             <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Import cards from Trello CSV export. Supports standard Trello export format.</p>
             <label class="stat-label">Upload CSV File</label>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="file" id="importCSVFile" accept=".csv" style="flex: 1;" onchange="handleCSVFileUpload(event)">
-                <button type="button" class="btn-outline" onclick="document.getElementById('importCSVFile').click()" style="padding: 8px 15px;">📁 Browse</button>
+                <input type="file" id="importCSVFile" accept=".csv" style="display: none;" onchange="handleCSVFileUpload(event)">
+                <button type="button" class="btn-outline" onclick="document.getElementById('importCSVFile').click()" style="flex: 1; padding: 12px;">📁 Choose File</button>
             </div>
             <label class="stat-label">Select List</label>
             <select id="importCSVListSelect" class="modern-input" style="margin-bottom: 20px; font-size:16px;">
