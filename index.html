@@ -4328,14 +4328,38 @@
             }
         }
 
-        // Build description with submitter metadata
-        let fullDescription = descriptionText;
-        const metaLines = [];
-        if (submittedByText) metaLines.push(`👤 Submitted by: ${submittedByText}`);
-        if (emailText) metaLines.push(`📧 Email: ${emailText}`);
-        if (metaLines.length > 0) {
-            fullDescription = fullDescription ? `${fullDescription}\n\n${metaLines.join('\n')}` : metaLines.join('\n');
+        // Build a formatted description with all data
+        // Format: key: value so we can parse it later
+        const descriptionParts = [];
+
+        if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
+        if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
+        if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
+
+        // Add the main description
+        if (descriptionText) {
+            descriptionParts.push('');
+            descriptionParts.push(`📝 Details:\n${descriptionText}`);
         }
+
+        // Add submitter info
+        if (submittedByText || emailText) {
+            descriptionParts.push('');
+            if (submittedByText) descriptionParts.push(`👤 Submitted by: ${submittedByText}`);
+            if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
+        }
+
+        const fullDescription = descriptionParts.join('\n');
+
+        // Parse description to extract date, time, location
+        // This allows them to be edited in the description and still populate the fields
+        const dateMatch = fullDescription.match(/📅 Date:\s*(\d{4}-\d{2}-\d{2})/);
+        const timeMatch = fullDescription.match(/⏰ Time:\s*([^\n]+)/);
+        const locationMatch = fullDescription.match(/📍 Location:\s*([^\n]+)/);
+
+        const parsedDate = dateMatch ? dateMatch[1] : eventDate;
+        const parsedTime = timeMatch ? timeMatch[1].trim() : eventTime;
+        const parsedLocation = locationMatch ? locationMatch[1].trim() : locationText;
 
         const taskId = generateId();
         const listId = activeBoard.settings?.mondayDefaultListId || 'group_1';
@@ -4348,9 +4372,9 @@
             text: fullDescription,
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: eventDate || '',
-            eventLocation: locationText || '',
-            eventTime: eventTime || '',  // Store time separately
+            dueDate: parsedDate || '',  // Use parsed date from description
+            eventLocation: parsedLocation || '',  // Use parsed location from description
+            eventTime: parsedTime || '',  // Use parsed time from description
             priority: '',
             members: [],  // Don't add members - store info in description instead
             labels: [],
