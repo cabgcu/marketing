@@ -570,8 +570,8 @@
         }
 
         .modal-cover {
-            width: calc(100% + 60px);
-            margin: -30px -30px 20px -30px;
+            width: 100vw;
+            margin: -30px -30px 20px calc(-50vw + 50%);
             height: 220px;
             background-size: cover;
             background-position: center;
@@ -932,10 +932,10 @@
             }
 
             .modal-grid {
-                padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px !important;
+                padding: 0 20px calc(40px + env(safe-area-inset-bottom)) 20px !important;
                 grid-template-columns: 1fr !important;
                 gap: 0 !important;
-                margin-top: 120px !important;
+                margin-top: 0 !important;
             }
 
             .modal-main {
@@ -958,7 +958,7 @@
             #modalTabDetails > div > div { max-width: 100%; }
             #taskDueDate { min-width: 0 !important; width: 100%; } 
 
-            .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
+            .modal-cover { margin: 0; width: 100vw; margin-left: calc(-50vw + 50%); border-radius: 32px 32px 0 0; height: 180px; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
 
             .attachment-item { flex-wrap: wrap; gap: 8px; }
@@ -1364,10 +1364,12 @@
             </div>
             <input type="hidden" id="taskModalColId">
             <input type="hidden" id="taskModalTaskId">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 5px;">
-                <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modern-input" style="font-size: 1.6rem !important; font-weight: 800; padding: 8px 0; background: transparent; border-color: transparent; border-bottom: 1px solid transparent; border-radius: 0; transition: 0.2s;" placeholder="Task Name" required onfocus="this.style.borderBottomColor='var(--glass-border)'" onblur="this.style.borderBottomColor='transparent'">
+            <div style="padding: 0 30px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 5px; padding-top: 30px;">
+                    <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modern-input" style="font-size: 1.6rem !important; font-weight: 800; padding: 8px 0; background: transparent; border-color: transparent; border-bottom: 1px solid transparent; border-radius: 0; transition: 0.2s;" placeholder="Task Name" required onfocus="this.style.borderBottomColor='var(--glass-border)'" onblur="this.style.borderBottomColor='transparent'">
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 25px;">in list <span id="taskModalListName" style="text-decoration: underline; color: #fff;">List Name</span></p>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 25px;">in list <span id="taskModalListName" style="text-decoration: underline; color: #fff;">List Name</span></p>
             <div class="modal-grid">
                 <div class="modal-main">
                     <div id="modalTabDetails">
