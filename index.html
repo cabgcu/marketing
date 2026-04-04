@@ -1673,19 +1673,25 @@
 
         <!-- CSV Import Tab -->
         <div id="importCSVTab" style="display: none;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Import cards from CSV. Required columns: title. Optional: description, dueDate, priority, members, labels, attachmentUrl</p>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Import cards from Trello CSV export. Supports standard Trello export format.</p>
             <label class="stat-label">Upload CSV File</label>
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="file" id="importCSVFile" accept=".csv" style="flex: 1;" onchange="handleCSVFileUpload(event)">
                 <button type="button" class="btn-outline" onclick="document.getElementById('importCSVFile').click()" style="padding: 8px 15px;">📁 Browse</button>
             </div>
-            <label class="stat-label">Or Paste CSV</label>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 10px;">One card per row. Headers: title, description, dueDate, priority, members, labels, attachmentUrl</p>
-            <textarea id="importCSVInput" class="modern-input" placeholder="title,description,dueDate,priority&#10;My Task,Task description,2025-12-31,high" style="min-height: 150px; font-family: monospace; font-size: 12px; margin-bottom: 20px;"></textarea>
+            <label class="stat-label">Select List</label>
+            <select id="importCSVListSelect" class="modern-input" style="margin-bottom: 20px; font-size:16px;">
+                <option value="">Cards will be added to first list</option>
+            </select>
 
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
                 <input type="checkbox" id="importCSVAttachmentsCheckbox" checked style="cursor: pointer;">
                 <label for="importCSVAttachmentsCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Re-upload attachments to Google Drive</label>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <input type="checkbox" id="importCSVSkipArchivedCheckbox" checked style="cursor: pointer;">
+                <label for="importCSVSkipArchivedCheckbox" style="cursor: pointer; margin: 0; flex: 1; font-size: 0.95rem;">Skip archived cards</label>
             </div>
 
             <div style="display: flex; gap: 10px;">
@@ -3019,7 +3025,7 @@
             .trim();
     }
 
-    async function importTrelloCard(cardJson, reuploadAttachments = false) {
+    async function importTrelloCard(cardJson, reuploadAttachments = false, targetColumnId = null) {
         try {
             const card = typeof cardJson === 'string' ? JSON.parse(cardJson) : cardJson;
 
@@ -3039,6 +3045,10 @@
                 showToast('No lists/columns in this workspace');
                 return null;
             }
+
+            // Use target column if specified, otherwise use first column
+            const targetCol = targetColumnId ? boardColumns.find(c => c.id === targetColumnId) : boardColumns[0];
+            const colId = targetCol ? targetCol.id : boardColumns[0].id;
 
             // Color mapping for Trello labels
             const colorMap = {
@@ -3074,7 +3084,7 @@
             const newTask = {
                 id: generateId(),
                 boardId: appData.activeBoardId,
-                columnId: boardColumns[0].id, // Add to first column by default
+                columnId: colId,
                 title: card.name || 'Untitled',
                 description: stripMarkdown(card.desc || ''),
                 text: stripMarkdown(card.desc || ''),
@@ -3219,6 +3229,11 @@
         } else if (tab === 'csv') {
             csvTab.style.display = 'block';
             csvBtn.style.borderBottom = '2px solid #0A84FF';
+            // Populate list dropdown
+            const listSelect = document.getElementById('importCSVListSelect');
+            const cols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
+            listSelect.innerHTML = '<option value="">Cards will be added to first list</option>' +
+                cols.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
         } else {
             cardsTab.style.display = 'block';
             cardsBtn.style.borderBottom = '2px solid #0A84FF';
@@ -3261,13 +3276,30 @@
     }
 
     async function importCardsFromCSV() {
-        const csvInput = document.getElementById('importCSVInput').value.trim();
-        if (!csvInput) {
-            showToast('Please paste or upload CSV data');
+        const csvFile = document.getElementById('importCSVFile').files[0];
+
+        if (!csvFile) {
+            showToast('Please upload a CSV file');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const csvInput = e.target.result;
+            await processCSVImport(csvInput);
+        };
+        reader.readAsText(csvFile);
+    }
+
+    async function processCSVImport(csvInput) {
+        if (!csvInput.trim()) {
+            showToast('CSV is empty');
             return;
         }
 
         const reuploadAttachments = document.getElementById('importCSVAttachmentsCheckbox').checked;
+        const skipArchived = document.getElementById('importCSVSkipArchivedCheckbox').checked;
+        const targetColumnId = document.getElementById('importCSVListSelect').value || null;
         const lines = csvInput.split('\n').map(l => l.trim()).filter(l => l);
 
         if (lines.length < 1) {
@@ -3275,53 +3307,65 @@
             return;
         }
 
-        // Parse header
+        // Parse header - handle Trello export format
         const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
-        const titleIdx = headers.indexOf('title');
+        const nameIdx = headers.indexOf('card name');
+        const descIdx = headers.indexOf('card description');
+        const dueIdx = headers.indexOf('due date');
+        const labelsIdx = headers.indexOf('labels');
+        const membersIdx = headers.indexOf('members');
+        const attachmentsIdx = headers.indexOf('attachment links');
+        const archivedIdx = headers.indexOf('archived');
 
-        if (titleIdx === -1) {
-            showToast('CSV must have a "title" column');
+        if (nameIdx === -1) {
+            showToast('CSV must have "Card Name" column');
             return;
         }
 
         const cards = [];
         for (let i = 1; i < lines.length; i++) {
             const values = parseCSVLine(lines[i]);
+
+            // Skip archived cards if checkbox is set
+            if (skipArchived && archivedIdx >= 0) {
+                const archived = values[archivedIdx]?.toLowerCase() === 'true' || values[archivedIdx]?.toLowerCase() === 'yes';
+                if (archived) continue;
+            }
+
             const card = {
-                name: values[titleIdx] || 'Untitled',
-                desc: values[headers.indexOf('description')] || '',
-                due: values[headers.indexOf('duedate')] || '',
+                name: values[nameIdx] || 'Untitled',
+                desc: descIdx >= 0 ? values[descIdx] || '' : '',
+                due: dueIdx >= 0 ? values[dueIdx] || '' : '',
                 labels: [],
                 attachments: [],
                 idMembers: []
             };
 
-            // Parse priority
-            const priorityVal = values[headers.indexOf('priority')];
-            if (priorityVal) {
-                card.priority = priorityVal.toLowerCase().includes('high') ? 'high' :
-                               priorityVal.toLowerCase().includes('med') ? 'med' : 'low';
+            // Parse members (semicolon-separated in Trello export)
+            if (membersIdx >= 0 && values[membersIdx]) {
+                card.idMembers = values[membersIdx]
+                    .split(';').map(m => m.trim()).filter(m => m);
             }
 
-            // Parse members (comma-separated)
-            const membersVal = values[headers.indexOf('members')];
-            if (membersVal) {
-                card.idMembers = membersVal.split(',').map(m => m.trim()).filter(m => m);
+            // Parse labels (semicolon-separated in Trello export)
+            if (labelsIdx >= 0 && values[labelsIdx]) {
+                card.labels = values[labelsIdx]
+                    .split(';').map(l => l.trim())
+                    .filter(l => l)
+                    .map(l => ({ name: l, color: 'blue' }));
             }
 
-            // Parse labels (comma-separated)
-            const labelsVal = values[headers.indexOf('labels')];
-            if (labelsVal) {
-                card.labels = labelsVal.split(',').map(l => ({ name: l.trim(), color: 'blue' })).filter(l => l.name);
-            }
-
-            // Parse attachment URLs (comma-separated)
-            const attachmentsVal = values[headers.indexOf('attachmenturl')];
-            if (attachmentsVal) {
-                card.attachments = attachmentsVal.split(',').map(url => ({
-                    url: url.trim(),
-                    name: url.trim().split('/').pop() || 'Attachment'
-                })).filter(a => a.url);
+            // Parse attachment URLs (semicolon-separated in Trello export)
+            if (attachmentsIdx >= 0 && values[attachmentsIdx]) {
+                card.attachments = values[attachmentsIdx]
+                    .split(';').map(url => {
+                        const trimmedUrl = url.trim();
+                        if (!trimmedUrl) return null;
+                        return {
+                            url: trimmedUrl,
+                            name: trimmedUrl.split('/').pop() || 'Attachment'
+                        };
+                    }).filter(a => a);
             }
 
             cards.push(card);
@@ -3337,14 +3381,14 @@
         let failed = 0;
 
         for (const card of cards) {
-            const result = await importTrelloCard(card, reuploadAttachments);
+            const result = await importTrelloCard(card, reuploadAttachments, targetColumnId);
             if (result) imported++;
             else failed++;
         }
 
         saveData();
         renderApp();
-        document.getElementById('importCSVInput').value = '';
+        document.getElementById('importCSVFile').value = '';
         closeModal(null, 'importModal');
         showToast(`Imported ${imported} cards${failed > 0 ? ', ' + failed + ' failed' : ''}`);
     }
