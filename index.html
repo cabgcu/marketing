@@ -4244,21 +4244,30 @@
             fieldData[cv.id] = { text: cv.text, value: cv.value };
         });
 
-        // Helper to find field value with or without prefix
+        // Helper to find field value with or without prefix (case-insensitive)
         const getFieldValue = (fieldId) => {
-            // Try exact match first
-            if (fieldData[fieldId]) return fieldData[fieldId];
+            if (!fieldId) return null;
+            const lowerFieldId = fieldId.toLowerCase();
 
-            // Try with common prefixes
-            const prefixes = ['text_', 'long_text_', 'email_', 'file_', 'date_', 'color_', 'multiple_person_'];
-            for (const prefix of prefixes) {
-                const fullId = prefix + fieldId;
-                if (fieldData[fullId]) return fieldData[fullId];
+            // Try exact match first (case-insensitive)
+            for (const key in fieldData) {
+                if (key.toLowerCase() === lowerFieldId) return fieldData[key];
             }
 
-            // Try without any prefix (for IDs that already have it)
+            // Try with common prefixes (case-insensitive)
+            const prefixes = ['text_', 'long_text_', 'email_', 'file_', 'date_', 'color_', 'multiple_person_'];
+            for (const prefix of prefixes) {
+                for (const key in fieldData) {
+                    if (key.toLowerCase() === (prefix + lowerFieldId)) {
+                        return fieldData[key];
+                    }
+                }
+            }
+
+            // Try suffix matching (case-insensitive)
             for (const key in fieldData) {
-                if (key.endsWith('_' + fieldId) || key === fieldId) {
+                const lowerKey = key.toLowerCase();
+                if (lowerKey.endsWith('_' + lowerFieldId)) {
                     return fieldData[key];
                 }
             }
