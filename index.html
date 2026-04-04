@@ -4236,7 +4236,7 @@
             inspiration: activeBoard.settings?.fieldInspiration || 'mkv5hqye'
         };
 
-        // Extract data by field ID
+        // Extract data by field ID - handle field IDs with or without type prefix
         const fieldData = {};
         const attachments = [];
 
@@ -4244,15 +4244,37 @@
             fieldData[cv.id] = { text: cv.text, value: cv.value };
         });
 
+        // Helper to find field value with or without prefix
+        const getFieldValue = (fieldId) => {
+            // Try exact match first
+            if (fieldData[fieldId]) return fieldData[fieldId];
+
+            // Try with common prefixes
+            const prefixes = ['text_', 'long_text_', 'email_', 'file_', 'date_', 'color_', 'multiple_person_'];
+            for (const prefix of prefixes) {
+                const fullId = prefix + fieldId;
+                if (fieldData[fullId]) return fieldData[fullId];
+            }
+
+            // Try without any prefix (for IDs that already have it)
+            for (const key in fieldData) {
+                if (key.endsWith('_' + fieldId) || key === fieldId) {
+                    return fieldData[key];
+                }
+            }
+
+            return null;
+        };
+
         // Get the values using field IDs
-        const eventName = fieldData[FIELD_IDS.eventName]?.text || item.name || 'Untitled';
-        const eventDate = fieldData[FIELD_IDS.date]?.text || '';
-        const eventTime = fieldData[FIELD_IDS.time]?.text || '';
-        const descriptionText = fieldData[FIELD_IDS.description]?.text || '';
-        const locationText = fieldData[FIELD_IDS.location]?.text || '';
-        const submittedByText = fieldData[FIELD_IDS.submittedBy]?.text || '';
-        const emailText = fieldData[FIELD_IDS.email]?.text || '';
-        const inspirationValue = fieldData[FIELD_IDS.inspiration]?.value;
+        const eventName = getFieldValue(FIELD_IDS.eventName)?.text || item.name || 'Untitled';
+        const eventDate = getFieldValue(FIELD_IDS.date)?.text || '';
+        const eventTime = getFieldValue(FIELD_IDS.time)?.text || '';
+        const descriptionText = getFieldValue(FIELD_IDS.description)?.text || '';
+        const locationText = getFieldValue(FIELD_IDS.location)?.text || '';
+        const submittedByText = getFieldValue(FIELD_IDS.submittedBy)?.text || '';
+        const emailText = getFieldValue(FIELD_IDS.email)?.text || '';
+        const inspirationValue = getFieldValue(FIELD_IDS.inspiration)?.value;
 
         // Parse inspiration JSON for file attachment
         if (inspirationValue) {
