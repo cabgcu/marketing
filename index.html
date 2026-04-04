@@ -1218,16 +1218,18 @@
             <div class="settings-card admin-only">
                 <h3 class="section-title">Monday.com Integration</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
-                    Pull new CAB team submissions from Monday.com. Cards are created once and never updated, even if Monday.com data changes.
+                    Pull new team submissions from Monday.com. Cards are created once and never updated, even if Monday.com data changes.
                 </p>
                 <label class="stat-label">Monday.com API Token</label>
                 <input type="password" id="mondayApiToken" class="modern-input" placeholder="Paste your Monday.com API token" style="margin-bottom: 12px;">
                 <label class="stat-label">Monday.com Board ID</label>
                 <input type="text" id="mondayBoardId" class="modern-input" placeholder="e.g. 1234567890" style="margin-bottom: 12px;">
+                <label class="stat-label">Team Name to Search For</label>
+                <input type="text" id="mondayTeamName" class="modern-input" placeholder="e.g. CAB" value="CAB" style="margin-bottom: 12px;">
                 <label class="stat-label">Default List for New Cards</label>
                 <input type="text" id="mondayDefaultListId" class="modern-input" placeholder="e.g. group_name or list_1" value="group_1" style="margin-bottom: 12px;">
                 <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
-                    Only NEW submissions with Team = "CAB" will be imported. Pull automatically on page reload or click "Fetch Now" anytime.
+                    Only NEW submissions matching the Team Name will be imported. Pull automatically on page reload or click "Fetch Now" anytime.
                 </p>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
@@ -1903,6 +1905,7 @@
                 if (appData.settings.googleCalendarWebhook === undefined) appData.settings.googleCalendarWebhook = '';
                 if (appData.settings.mondayApiToken === undefined) appData.settings.mondayApiToken = '';
                 if (appData.settings.mondayBoardId === undefined) appData.settings.mondayBoardId = '';
+                if (appData.settings.mondayTeamName === undefined) appData.settings.mondayTeamName = 'CAB';
                 if (appData.settings.mondayDefaultListId === undefined) appData.settings.mondayDefaultListId = 'group_1';
                 if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
                 if (!appData.notifications) appData.notifications = {};
@@ -1994,7 +1997,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', mondayApiToken: '', mondayBoardId: '', mondayDefaultListId: 'group_1', mondayImportedIds: [] },
+            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
@@ -3705,6 +3708,8 @@
             if (mondayTokenInput) mondayTokenInput.value = (appData.settings && appData.settings.mondayApiToken) ? appData.settings.mondayApiToken : '';
             const mondayBoardInput = document.getElementById('mondayBoardId');
             if (mondayBoardInput) mondayBoardInput.value = (appData.settings && appData.settings.mondayBoardId) ? appData.settings.mondayBoardId : '';
+            const mondayTeamInput = document.getElementById('mondayTeamName');
+            if (mondayTeamInput) mondayTeamInput.value = (appData.settings && appData.settings.mondayTeamName) ? appData.settings.mondayTeamName : 'CAB';
             const mondayListInput = document.getElementById('mondayDefaultListId');
             if (mondayListInput) mondayListInput.value = (appData.settings && appData.settings.mondayDefaultListId) ? appData.settings.mondayDefaultListId : 'group_1';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
@@ -3973,11 +3978,13 @@
         if (currentUserRole !== 'admin') { showToast('Only admins can change Monday.com settings.'); return; }
         const tokenInput = document.getElementById('mondayApiToken');
         const boardInput = document.getElementById('mondayBoardId');
+        const teamInput = document.getElementById('mondayTeamName');
         const listInput = document.getElementById('mondayDefaultListId');
-        if (!tokenInput || !boardInput) return;
+        if (!tokenInput || !boardInput || !teamInput) return;
         if (!appData.settings) appData.settings = {};
         appData.settings.mondayApiToken = (tokenInput.value || '').trim();
         appData.settings.mondayBoardId = (boardInput.value || '').trim();
+        appData.settings.mondayTeamName = (teamInput.value || '').trim() || 'CAB';
         appData.settings.mondayDefaultListId = (listInput.value || '').trim() || 'group_1';
         if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
         await saveData();
@@ -4034,19 +4041,20 @@
             }
 
             const items = data.data?.boards?.[0]?.items_page?.items || [];
-            const cabItems = items.filter(item => {
+            const teamName = (appData.settings?.mondayTeamName || 'CAB').toUpperCase();
+            const teamItems = items.filter(item => {
                 const teamColumn = item.column_values.find(cv => cv.title?.toLowerCase().includes('team'));
-                return teamColumn && teamColumn.text?.toUpperCase().includes('CAB');
+                return teamColumn && teamColumn.text?.toUpperCase().includes(teamName);
             });
 
             // Initialize imported IDs tracking if needed
             if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
 
             // Filter to only NEW items (not previously imported)
-            const newItems = cabItems.filter(item => !appData.settings.mondayImportedIds.includes(item.id));
+            const newItems = teamItems.filter(item => !appData.settings.mondayImportedIds.includes(item.id));
 
             if (newItems.length === 0) {
-                showToast('No new CAB submissions found.');
+                showToast(`No new ${teamName} submissions found.`);
                 return;
             }
 
