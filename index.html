@@ -1902,12 +1902,30 @@
                 if (!appData.automations) appData.automations = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
-                if (appData.settings.googleCalendarWebhook === undefined) appData.settings.googleCalendarWebhook = '';
-                if (appData.settings.mondayApiToken === undefined) appData.settings.mondayApiToken = '';
-                if (appData.settings.mondayBoardId === undefined) appData.settings.mondayBoardId = '';
-                if (appData.settings.mondayTeamName === undefined) appData.settings.mondayTeamName = 'CAB';
-                if (appData.settings.mondayDefaultListId === undefined) appData.settings.mondayDefaultListId = 'group_1';
-                if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
+
+                // Migrate per-board settings if they exist globally (legacy)
+                const globalMondayToken = appData.settings.mondayApiToken;
+                const globalMondayBoard = appData.settings.mondayBoardId;
+                const globalMondayTeam = appData.settings.mondayTeamName;
+                const globalMondayList = appData.settings.mondayDefaultListId;
+                const globalMondayIds = appData.settings.mondayImportedIds;
+
+                // Initialize board-specific settings
+                appData.boards.forEach(board => {
+                    if (!board.settings) board.settings = {};
+                    if (board.settings.mondayApiToken === undefined) board.settings.mondayApiToken = globalMondayToken || '';
+                    if (board.settings.mondayBoardId === undefined) board.settings.mondayBoardId = globalMondayBoard || '';
+                    if (board.settings.mondayTeamName === undefined) board.settings.mondayTeamName = globalMondayTeam || 'CAB';
+                    if (board.settings.mondayDefaultListId === undefined) board.settings.mondayDefaultListId = globalMondayList || 'group_1';
+                    if (!board.settings.mondayImportedIds) board.settings.mondayImportedIds = globalMondayIds || [];
+                });
+
+                // Clean up legacy global Monday settings
+                delete appData.settings.mondayApiToken;
+                delete appData.settings.mondayBoardId;
+                delete appData.settings.mondayTeamName;
+                delete appData.settings.mondayDefaultListId;
+                delete appData.settings.mondayImportedIds;
                 if (!appData.notifications) appData.notifications = {};
                 if (!appData.notifPrefs) appData.notifPrefs = {};
 
@@ -1984,8 +2002,9 @@
         applyBoardBackground();
         updatePWAManifest();
 
-        // Auto-pull new CAB submissions from Monday.com on page load
-        if (appData.settings?.mondayApiToken && appData.settings?.mondayBoardId) {
+        // Auto-pull new submissions from Monday.com on page load
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (activeBoard?.settings?.mondayApiToken && activeBoard?.settings?.mondayBoardId) {
             // Silent pull - don't show toast to avoid spam on every reload
             fetchAndCreateCardsFromMonday().catch(err => console.warn('Auto-pull skipped:', err));
         }
@@ -1997,10 +2016,10 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [], googleCalendarWebhook: '', mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] },
+            settings: { password: 'Marketing49!', users: [] },
             notifications: {},
             notifPrefs: {},
-            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '' }],
+            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] } }],
             columns: [
                 { id: colBacklog, boardId: defaultBoardId, title: 'Backlog', order: 0, assignedTo: '' },
                 { id: colInProgress, boardId: defaultBoardId, title: 'In Progress', order: 1, assignedTo: '' },
@@ -3703,15 +3722,16 @@
             const webhookInput = document.getElementById('googleCalendarWebhook');
             if (webhookInput) webhookInput.value = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook : '';
 
-            // Load Monday.com settings
+            // Load Monday.com settings for active board
+            const boardSettings = appData.boards.find(b => b.id === appData.activeBoardId)?.settings || {};
             const mondayTokenInput = document.getElementById('mondayApiToken');
-            if (mondayTokenInput) mondayTokenInput.value = (appData.settings && appData.settings.mondayApiToken) ? appData.settings.mondayApiToken : '';
+            if (mondayTokenInput) mondayTokenInput.value = boardSettings.mondayApiToken || '';
             const mondayBoardInput = document.getElementById('mondayBoardId');
-            if (mondayBoardInput) mondayBoardInput.value = (appData.settings && appData.settings.mondayBoardId) ? appData.settings.mondayBoardId : '';
+            if (mondayBoardInput) mondayBoardInput.value = boardSettings.mondayBoardId || '';
             const mondayTeamInput = document.getElementById('mondayTeamName');
-            if (mondayTeamInput) mondayTeamInput.value = (appData.settings && appData.settings.mondayTeamName) ? appData.settings.mondayTeamName : 'CAB';
+            if (mondayTeamInput) mondayTeamInput.value = boardSettings.mondayTeamName || 'CAB';
             const mondayListInput = document.getElementById('mondayDefaultListId');
-            if (mondayListInput) mondayListInput.value = (appData.settings && appData.settings.mondayDefaultListId) ? appData.settings.mondayDefaultListId : 'group_1';
+            if (mondayListInput) mondayListInput.value = boardSettings.mondayDefaultListId || 'group_1';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -3976,31 +3996,37 @@
 
     async function saveMondaySettings() {
         if (currentUserRole !== 'admin') { showToast('Only admins can change Monday.com settings.'); return; }
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard) { showToast('No active workspace selected.'); return; }
+
         const tokenInput = document.getElementById('mondayApiToken');
         const boardInput = document.getElementById('mondayBoardId');
         const teamInput = document.getElementById('mondayTeamName');
         const listInput = document.getElementById('mondayDefaultListId');
         if (!tokenInput || !boardInput || !teamInput) return;
-        if (!appData.settings) appData.settings = {};
-        appData.settings.mondayApiToken = (tokenInput.value || '').trim();
-        appData.settings.mondayBoardId = (boardInput.value || '').trim();
-        appData.settings.mondayTeamName = (teamInput.value || '').trim() || 'CAB';
-        appData.settings.mondayDefaultListId = (listInput.value || '').trim() || 'group_1';
-        if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
+
+        if (!activeBoard.settings) activeBoard.settings = {};
+        activeBoard.settings.mondayApiToken = (tokenInput.value || '').trim();
+        activeBoard.settings.mondayBoardId = (boardInput.value || '').trim();
+        activeBoard.settings.mondayTeamName = (teamInput.value || '').trim() || 'CAB';
+        activeBoard.settings.mondayDefaultListId = (listInput.value || '').trim() || 'group_1';
+        if (!activeBoard.settings.mondayImportedIds) activeBoard.settings.mondayImportedIds = [];
+
         await saveData();
-        showToast('Monday.com settings saved! Cards will auto-pull on page reload.');
+        showToast(`Monday.com settings saved for "${activeBoard.name || 'Workspace'}"! Cards will auto-pull on page reload.`);
     }
 
     async function fetchAndCreateCardsFromMonday() {
-        if (!appData.settings || !appData.settings.mondayApiToken || !appData.settings.mondayBoardId) {
-            showToast('Please configure Monday.com API token and Board ID first.');
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard || !activeBoard.settings || !activeBoard.settings.mondayApiToken || !activeBoard.settings.mondayBoardId) {
+            showToast('Please configure Monday.com API token and Board ID for this workspace first.');
             return;
         }
 
-        showToast('Pulling new CAB submissions from Monday.com...');
+        showToast(`Pulling new submissions from Monday.com for "${activeBoard.name || 'Workspace'}"...`);
         try {
-            const token = appData.settings.mondayApiToken;
-            const boardId = parseInt(appData.settings.mondayBoardId);
+            const token = activeBoard.settings.mondayApiToken;
+            const boardId = parseInt(activeBoard.settings.mondayBoardId);
 
             // GraphQL query to fetch board fields and items
             const query = `{
@@ -4060,17 +4086,17 @@
                 return;
             }
 
-            const teamName = (appData.settings?.mondayTeamName || 'CAB').toUpperCase();
+            const teamName = (activeBoard.settings?.mondayTeamName || 'CAB').toUpperCase();
             const teamItems = items.filter(item => {
                 const teamColumn = item.column_values.find(cv => cv.id === teamField.id);
                 return teamColumn && teamColumn.text?.toUpperCase().includes(teamName);
             });
 
             // Initialize imported IDs tracking if needed
-            if (!appData.settings.mondayImportedIds) appData.settings.mondayImportedIds = [];
+            if (!activeBoard.settings.mondayImportedIds) activeBoard.settings.mondayImportedIds = [];
 
             // Filter to only NEW items (not previously imported)
-            const newItems = teamItems.filter(item => !appData.settings.mondayImportedIds.includes(item.id));
+            const newItems = teamItems.filter(item => !activeBoard.settings.mondayImportedIds.includes(item.id));
 
             if (newItems.length === 0) {
                 showToast(`No new ${teamName} submissions found.`);
@@ -4080,7 +4106,7 @@
             let createdCount = 0;
             for (const item of newItems) {
                 if (await createCardFromMondayItem(item, fields)) {
-                    appData.settings.mondayImportedIds.push(item.id);
+                    activeBoard.settings.mondayImportedIds.push(item.id);
                     createdCount++;
                 }
             }
@@ -4445,7 +4471,12 @@
         const year = document.getElementById('boardYearInput').value.trim();
         if (year) {
             const newBoardId = generateId();
-            appData.boards.push({ id: newBoardId, year, backgroundImage: '' });
+            appData.boards.push({
+                id: newBoardId,
+                year,
+                backgroundImage: '',
+                settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] }
+            });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Submitted',   order: 0, assignedTo: '', members: [], hideable: true });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'In Progress', order: 1, assignedTo: '', members: [], hideable: true });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Completed',   order: 2, assignedTo: '', members: [], hideable: true });
