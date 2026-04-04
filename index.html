@@ -857,22 +857,105 @@
             /* Bottom-Sheet Modals */
             .modal-overlay { align-items: flex-end; padding: 0; }
             .modal-content {
-                border-radius: 28px 28px 0 0;
-                padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px;
+                border-radius: 32px 32px 0 0 !important;
+                padding: 0 !important;
                 max-height: 96dvh !important;
                 min-height: 85dvh;
                 height: auto;
-                margin-top: auto; width: 100%; max-width: 100%; 
-                overflow-x: hidden; 
-                overflow-y: auto !important; 
+                margin-top: auto; width: 100%; max-width: 100%;
+                overflow-x: hidden;
+                overflow-y: auto !important;
                 box-sizing: border-box;
                 -webkit-overflow-scrolling: touch;
                 transform: translateY(100%) !important;
+                display: flex;
+                flex-direction: column;
+                background: linear-gradient(to bottom, #1c1c1e 0%, #1c1c1e 100%) !important;
             }
             .modal-overlay.show .modal-content { transform: translateY(0) !important; }
+
+            /* Mobile Modal Header Styles */
+            .modal-content::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 220px;
+                background: linear-gradient(135deg, #382c5a 0%, #4a3a6b 100%);
+                border-radius: 32px 32px 0 0;
+                z-index: 1;
+            }
             
+            /* Mobile Modal Header Layout */
+            .modal-header-section {
+                position: relative;
+                z-index: 10;
+                padding: 16px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: white;
+            }
+
+            .modal-header-title {
+                color: white;
+                font-size: 1.125rem;
+                font-weight: 600;
+            }
+
+            .modal-header-avatars {
+                position: absolute;
+                bottom: 8px;
+                right: 20px;
+                display: flex;
+                gap: -8px;
+                z-index: 15;
+            }
+
+            .modal-header-avatars .avatar {
+                width: 40px;
+                height: 40px;
+                border: 2px solid white;
+                margin-left: -12px;
+                flex-shrink: 0;
+            }
+
+            .modal-header-avatars .avatar:first-child {
+                margin-left: 0;
+            }
+
+            /* Modal Content Wrapper */
+            .modal-content > * {
+                position: relative;
+                z-index: 5;
+            }
+
+            .modal-grid {
+                padding: 24px 20px calc(40px + env(safe-area-inset-bottom)) 20px !important;
+                grid-template-columns: 1fr !important;
+                gap: 0 !important;
+                margin-top: 120px !important;
+            }
+
+            .modal-main {
+                padding: 0 !important;
+                gap: 0 !important;
+            }
+
+            .modal-sidebar {
+                display: none !important;
+            }
+
+            #taskTitleInput {
+                font-size: 1.625rem !important;
+                font-weight: 800 !important;
+                margin-top: 20px !important;
+                margin-bottom: 8px !important;
+            }
+
             .modern-input, .rich-text-editor, .checklist-text { max-width: 100%; box-sizing: border-box; }
-            #modalTabDetails > div > div { max-width: 100%; } 
+            #modalTabDetails > div > div { max-width: 100%; }
             #taskDueDate { min-width: 0 !important; width: 100%; } 
 
             .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
@@ -1265,7 +1348,16 @@
 
 <div id="taskModal" class="modal-overlay" onclick="closeModal(event, 'taskModal')">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="close-modal" onclick="closeModal(null, 'taskModal')">&times;</button>
+        <div class="modal-header-section">
+            <button type="button" onclick="closeModal(null, 'taskModal')" style="background: none; border: none; color: white; padding: 8px; cursor: pointer;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h2 class="modal-header-title" id="modalHeaderTitle">Task Details</h2>
+            <button type="button" style="background: none; border: none; color: white; padding: 8px; cursor: pointer;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+        </div>
+        <div class="modal-header-avatars" id="modalHeaderAvatars"></div>
         <form id="taskForm" onsubmit="handleSaveTask(event)">
             <div id="taskModalCover" class="modal-cover">
                 <button type="button" class="remove-cover-btn" onclick="removeCover()">Remove Cover</button>
@@ -2009,7 +2101,7 @@
         autoPromptNotifPermission();
     }
 
-    function createNewPassword() {
+    async function createNewPassword() {
         const name = document.getElementById('setupName').value.trim();
         const pass1 = document.getElementById('newPassword1').value;
         const pass2 = document.getElementById('newPassword2').value;
@@ -2024,22 +2116,41 @@
             user.name = name;
             user.password = pass1;
 
-            // Store profile picture if one was uploaded during signup
-            const setupPreview = document.getElementById('setupProfilePicPreview');
-            if (setupPreview && setupPreview.innerHTML.includes('<img')) {
-                const img = setupPreview.querySelector('img');
-                if (img && img.src) {
-                    user.profilePicture = img.src;
-                }
-            }
-
-            saveData();
             isAuthenticated = true;
             currentUserRole = 'user';
             currentUserEmail = email;
             currentUserName = name;
             localStorage.setItem('cab_auth_email', email);
             localStorage.setItem('cab_auth_pass', pass1);
+
+            // Handle profile picture upload if one was selected during signup
+            const setupPreview = document.getElementById('setupProfilePicPreview');
+            if (setupPreview && setupPreview.innerHTML.includes('<img')) {
+                const pendingImageData = setupPreview.dataset.pendingFile;
+                if (pendingImageData) {
+                    const base64Data = pendingImageData.split(',')[1];
+                    showToast("Saving profile picture...");
+                    try {
+                        const response = await fetch(GAS_UPLOAD_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                filename: `profile_${email}_${Date.now()}.jpg`,
+                                mimeType: 'image/jpeg',
+                                base64: base64Data
+                            })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            user.profilePictureUrl = toDirectDriveUrl(result.url);
+                        }
+                    } catch (err) {
+                        console.error("Profile picture upload error:", err);
+                    }
+                }
+            }
+
+            saveData();
             closeLoginOverlay();
             showToast("Account ready!");
         }
@@ -2136,21 +2247,14 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            showToast('File is too large. Maximum size is 2MB.');
-            event.target.value = '';
-            return;
-        }
-
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const imageData = e.target.result;
+        reader.onload = async function(e) {
+            const base64Data = e.target.result.split(',')[1];
             const preview = document.getElementById('profilePicturePreview');
             if (preview) {
-                preview.innerHTML = `<img src="${imageData}" style="width:100%; height:100%; object-fit:cover;">`;
-                preview.dataset.newImage = imageData;
+                preview.innerHTML = `<img src="data:${file.type};base64,${base64Data}" style="width:100%; height:100%; object-fit:cover;">`;
             }
-            saveProfilePicture(imageData);
+            await uploadProfilePictureToGoogleDrive(file, base64Data);
         };
         reader.readAsDataURL(file);
     }
@@ -2159,31 +2263,53 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            showToast('File is too large. Maximum size is 2MB.');
-            event.target.value = '';
-            return;
-        }
-
         const reader = new FileReader();
         reader.onload = function(e) {
-            const imageData = e.target.result;
+            const base64Data = e.target.result.split(',')[1];
             const preview = document.getElementById('setupProfilePicPreview');
             if (preview) {
-                preview.innerHTML = `<img src="${imageData}" style="width:100%; height:100%; object-fit:cover;">`;
+                preview.innerHTML = `<img src="data:${file.type};base64,${base64Data}" style="width:100%; height:100%; object-fit:cover;">`;
+                preview.dataset.pendingFile = e.target.result;
             }
             showToast('Profile picture selected!');
         };
         reader.readAsDataURL(file);
     }
 
-    function saveProfilePicture(imageData) {
+    async function uploadProfilePictureToGoogleDrive(file, base64Data) {
+        try {
+            showToast("Uploading profile picture to Google Drive...");
+            const response = await fetch(GAS_UPLOAD_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    filename: `profile_${currentUserEmail}_${Date.now()}.jpg`,
+                    mimeType: file.type,
+                    base64: base64Data
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                const driveUrl = toDirectDriveUrl(result.url);
+                saveProfilePictureUrl(driveUrl);
+                showToast('Profile picture uploaded successfully!');
+            } else {
+                showToast("Upload failed: " + result.error);
+                initProfilePicture();
+            }
+        } catch (err) {
+            console.error("Google Drive upload error:", err);
+            showToast("Network error during upload.");
+            initProfilePicture();
+        }
+    }
+
+    function saveProfilePictureUrl(driveUrl) {
         if (!appData.settings.users) appData.settings.users = [];
         const user = appData.settings.users.find(u => u.email === currentUserEmail);
         if (user) {
-            user.profilePicture = imageData;
+            user.profilePictureUrl = driveUrl;
             saveData();
-            showToast('Profile picture updated successfully.');
         }
     }
 
@@ -2193,7 +2319,6 @@
 
         if (preview) {
             preview.innerHTML = '👤';
-            preview.dataset.newImage = '';
         }
         if (fileInput) {
             fileInput.value = '';
@@ -2202,7 +2327,7 @@
         if (!appData.settings.users) appData.settings.users = [];
         const user = appData.settings.users.find(u => u.email === currentUserEmail);
         if (user) {
-            user.profilePicture = null;
+            user.profilePictureUrl = null;
             saveData();
             showToast('Profile picture removed.');
         }
@@ -2215,8 +2340,8 @@
         if (!appData.settings.users) appData.settings.users = [];
         const user = appData.settings.users.find(u => u.email === currentUserEmail);
 
-        if (user && user.profilePicture) {
-            preview.innerHTML = `<img src="${user.profilePicture}" style="width:100%; height:100%; object-fit:cover;">`;
+        if (user && user.profilePictureUrl) {
+            preview.innerHTML = `<img src="${user.profilePictureUrl}" style="width:100%; height:100%; object-fit:cover;">`;
         } else {
             preview.innerHTML = '👤';
         }
@@ -4749,6 +4874,31 @@
         const postStory = document.getElementById('postStory');
         const postPhoto = document.getElementById('postPhoto');
         const postReel = document.getElementById('postReel');
+
+        // Update header title
+        const headerTitle = document.getElementById('modalHeaderTitle');
+        if (headerTitle) {
+            headerTitle.innerText = taskId ? 'Task Details' : 'New Task';
+        }
+
+        // Populate header avatars on mobile
+        const headerAvatars = document.getElementById('modalHeaderAvatars');
+        if (headerAvatars && taskId) {
+            const task = appData.tasks.find(t => t.id === taskId);
+            if (task && task.members && task.members.length > 0) {
+                const avatarHTML = task.members.slice(0, 4).map(m => `
+                    <div class="avatar" style="background: linear-gradient(135deg, #0A84FF, #BF5AF2);">
+                        ${getInitials(m)}
+                    </div>
+                `).join('');
+                headerAvatars.innerHTML = avatarHTML;
+            } else {
+                headerAvatars.innerHTML = '';
+            }
+        } else if (headerAvatars) {
+            headerAvatars.innerHTML = '';
+        }
+
         switchTaskTab('details');
         
         const moveSelect = document.getElementById('settingMoveList');
