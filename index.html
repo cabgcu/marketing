@@ -406,6 +406,16 @@
         .settings-wrapper { width: 100%; max-width: 600px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
         .settings-card { background: rgba(20,20,20,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
 
+        .user-profile-section { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 20px; margin-bottom: 20px; }
+        .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; object-fit: cover; border: 3px solid rgba(255,255,255,0.2); }
+        .user-profile-info { text-align: center; }
+        .user-profile-info .user-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+        .user-profile-info .user-email { font-size: 0.9rem; color: var(--text-muted); }
+
+        @media (max-width: 900px) {
+            .settings-card.admin-only { display: none; }
+        }
+
         .modal-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -1025,6 +1035,19 @@
         <input type="text" id="setupName" class="modern-input" placeholder="Your Full Name" style="margin-bottom: 10px; text-align: center;">
         <input type="password" id="newPassword1" class="modern-input" placeholder="New Password" style="margin-bottom: 10px; text-align: center;">
         <input type="password" id="newPassword2" class="modern-input" placeholder="Confirm Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') createNewPassword()">
+
+        <!-- Profile Picture Upload Section -->
+        <div style="text-align: center; margin-bottom: 15px;">
+            <button type="button" class="btn-outline" style="width: 100%; margin-bottom: 10px; cursor: pointer;" onclick="document.getElementById('setupProfilePictureInput').click()">
+                📸 Upload Profile Picture (Optional)
+            </button>
+            <input type="file" id="setupProfilePictureInput" accept="image/*" style="display: none;" onchange="handleSetupProfilePicturePreview(event)">
+            <div id="setupProfilePicturePreview" style="display: none; text-align: center; margin-top: 10px;">
+                <img id="setupProfilePictureImg" src="" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 8px;">
+                <p id="setupProfilePictureText" style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Picture selected</p>
+            </div>
+        </div>
+
         <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">Save &amp; Enter</button>
         <button class="btn-outline" style="width:100%; border: none;" onclick="cancelSetup()">Cancel</button>
     </div>
@@ -1065,6 +1088,7 @@
         <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')">⚡ Due</button>
         <button class="nav-tab" id="tab-events" onclick="switchView('events')" style="display:none;">📋 Events</button>
         <button class="nav-tab notif-tab-bell" onclick="toggleNotifPanel()" id="notifBellTab" style="position:relative;">🔔<span class="notif-badge" id="notifBadgeMobile" style="display:none;">0</span></button>
+        <button class="nav-tab" id="tab-settings" onclick="switchView('settings')">⚙️ Settings</button>
     </div>
 
     <div class="app-view active board-container" id="view-board"></div>
@@ -1088,8 +1112,21 @@
 
     <div class="app-view" id="view-settings">
         <div class="settings-wrapper">
-            <h2 style="margin-top:0; font-weight:800;">Master Settings</h2>
-            
+            <h2 style="margin-top:0; font-weight:800;" id="settingsTitle">Settings</h2>
+
+            <!-- User Profile Section (Mobile-friendly, visible to all users) -->
+            <div class="settings-card" style="background: rgba(255,255,255,0.08);" id="userProfileCard">
+                <div class="user-profile-section">
+                    <img id="userProfilePicture" class="user-profile-picture" alt="Profile">
+                    <div class="user-profile-info">
+                        <div class="user-name" id="userProfileName">Loading...</div>
+                        <div class="user-email" id="userProfileEmail"></div>
+                    </div>
+                    <button class="btn-action" style="width: 100%; padding: 12px;" onclick="uploadProfilePicture()">📸 Upload Profile Picture</button>
+                    <input type="file" id="profilePictureInput" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
+                </div>
+            </div>
+
             <div class="settings-card admin-only">
                 <h3 class="section-title">Security</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Change the master password required to access this application.</p>
@@ -1970,20 +2007,81 @@
         autoPromptNotifPermission();
     }
 
-    function createNewPassword() {
+    let setupProfilePictureFile = null;
+
+    function handleSetupProfilePicturePreview(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be less than 5MB.');
+            return;
+        }
+
+        setupProfilePictureFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('setupProfilePicturePreview');
+            const img = document.getElementById('setupProfilePictureImg');
+            if (preview && img) {
+                img.src = e.target.result;
+                preview.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function createNewPassword() {
         const name = document.getElementById('setupName').value.trim();
         const pass1 = document.getElementById('newPassword1').value;
         const pass2 = document.getElementById('newPassword2').value;
-        
+
         if (!name) { showToast("Please enter your full name."); return; }
         if (pass1 !== pass2) { showToast("Passwords do not match!"); return; }
         if (pass1.length < 6) { showToast("Password must be at least 6 characters."); return; }
-        
+
         const email = document.getElementById('setupEmailDisplay').innerText;
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
         if (user) {
             user.name = name;
             user.password = pass1;
+
+            // Upload profile picture if provided
+            if (setupProfilePictureFile) {
+                showToast('Uploading profile picture...');
+                const uploadResult = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const response = await fetch(GAS_UPLOAD_URL, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    fileName: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
+                                    fileData: e.target.result,
+                                    mimeType: setupProfilePictureFile.type
+                                })
+                            });
+                            const result = await response.json();
+                            resolve(result);
+                        } catch (err) {
+                            console.error('Upload error:', err);
+                            resolve({ success: false, error: err.message });
+                        }
+                    };
+                    reader.readAsDataURL(setupProfilePictureFile);
+                });
+
+                if (uploadResult.success) {
+                    user.profilePicture = toDirectDriveUrl(uploadResult.url);
+                }
+                setupProfilePictureFile = null;
+            }
+
             saveData();
             isAuthenticated = true;
             currentUserRole = 'user';
@@ -2003,6 +2101,9 @@
         document.getElementById('setupName').value = '';
         document.getElementById('newPassword1').value = '';
         document.getElementById('newPassword2').value = '';
+        document.getElementById('setupProfilePictureInput').value = '';
+        document.getElementById('setupProfilePicturePreview').style.display = 'none';
+        setupProfilePictureFile = null;
     }
 
     function logout() {
@@ -2016,6 +2117,9 @@
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
         document.getElementById('setupName').value = '';
+        document.getElementById('setupProfilePictureInput').value = '';
+        document.getElementById('setupProfilePicturePreview').style.display = 'none';
+        setupProfilePictureFile = null;
         document.getElementById('login-overlay-setup').style.display = 'none';
         document.getElementById('login-overlay-password').style.display = 'none';
         document.getElementById('login-overlay-email').style.display = 'block';
@@ -2062,6 +2166,85 @@
             showToast('Password updated successfully.');
         } else if (newPass) {
             showToast('Password must be at least 6 characters.');
+        }
+    }
+
+    function uploadProfilePicture() {
+        const fileInput = document.getElementById('profilePictureInput');
+        if (fileInput) fileInput.click();
+    }
+
+    async function handleProfilePictureUpload(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select an image file.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be less than 5MB.');
+            return;
+        }
+
+        showToast('Uploading profile picture to Google Drive...');
+        const uploadResult = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const response = await fetch(GAS_UPLOAD_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            fileName: `profile-${currentUserEmail}-${Date.now()}.${file.name.split('.').pop()}`,
+                            fileData: e.target.result,
+                            mimeType: file.type
+                        })
+                    });
+                    const result = await response.json();
+                    resolve(result);
+                } catch (err) {
+                    console.error('Upload error:', err);
+                    resolve({ success: false, error: err.message });
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (!uploadResult.success) {
+            showToast('Upload failed: ' + uploadResult.error);
+            return;
+        }
+
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        if (user) {
+            user.profilePicture = toDirectDriveUrl(uploadResult.url);
+            saveData();
+            renderUserProfile();
+            showToast('Profile picture updated successfully!');
+        }
+    }
+
+    function renderUserProfile() {
+        if (!currentUserEmail) return;
+
+        const user = appData.settings.users.find(u => u.email === currentUserEmail);
+        const nameEl = document.getElementById('userProfileName');
+        const emailEl = document.getElementById('userProfileEmail');
+        const pictureEl = document.getElementById('userProfilePicture');
+
+        if (nameEl) nameEl.textContent = currentUserName || currentUserEmail;
+        if (emailEl) emailEl.textContent = currentUserEmail;
+
+        if (pictureEl) {
+            if (user?.profilePicture) {
+                pictureEl.src = user.profilePicture;
+                pictureEl.style.backgroundImage = 'none';
+            } else {
+                pictureEl.src = '';
+                const initial = (currentUserName || currentUserEmail).charAt(0).toUpperCase();
+                pictureEl.textContent = initial;
+            }
         }
     }
 
@@ -2112,7 +2295,7 @@
 
         if (viewName === 'board') renderBoard();
         if (viewName === 'calendar') renderCalendar();
-        if (viewName === 'settings') renderSettings();
+        if (viewName === 'settings') { renderSettings(); renderUserProfile(); }
         if (viewName === 'duesoon') renderDueSoon();
         if (viewName === 'events') renderEvents();
     }
