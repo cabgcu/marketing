@@ -1227,13 +1227,53 @@
                 <label class="stat-label">Team Name to Search For</label>
                 <input type="text" id="mondayTeamName" class="modern-input" placeholder="e.g. CAB" value="CAB" style="margin-bottom: 12px;">
                 <label class="stat-label">Default List for New Cards</label>
-                <input type="text" id="mondayDefaultListId" class="modern-input" placeholder="e.g. group_name or list_1" value="group_1" style="margin-bottom: 12px;">
+                <input type="text" id="mondayDefaultListId" class="modern-input" placeholder="e.g. group_name or list_1" value="group_1" style="margin-bottom: 20px;">
+
+                <h3 class="section-title" style="font-size: 0.9rem; margin-top: 0; margin-bottom: 12px;">📋 Field Mapping (Column IDs)</h3>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 12px;">Find column IDs in Monday.com URL or API. Leave blank to skip.</p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Event Name</label>
+                        <input type="text" id="fieldEventName" class="modern-input" placeholder="mkv54kad" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Date</label>
+                        <input type="text" id="fieldDate" class="modern-input" placeholder="Datezzqtpb3x" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Time</label>
+                        <input type="text" id="fieldTime" class="modern-input" placeholder="mkv8jajm" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Description</label>
+                        <input type="text" id="fieldDescription" class="modern-input" placeholder="mkv5467b" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Location</label>
+                        <input type="text" id="fieldLocation" class="modern-input" placeholder="mkv5brpa" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Submitted By</label>
+                        <input type="text" id="fieldSubmittedBy" class="modern-input" placeholder="mkv8ebee" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Email</label>
+                        <input type="text" id="fieldEmail" class="modern-input" placeholder="mkv8x9x" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Inspiration/File</label>
+                        <input type="text" id="fieldInspiration" class="modern-input" placeholder="mkv5hqye" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                </div>
+
                 <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
                     Only NEW submissions matching the Team Name will be imported. Pull automatically on page reload or click "Fetch Now" anytime.
                 </p>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
                     <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday()">Fetch Now</button>
+                    <button class="btn-outline" style="flex:1; min-width: 200px; border-color:rgba(255,152,0,0.4); color:#FF9500;" onclick="clearMondayImportHistory()">Refresh Old Imports</button>
                 </div>
             </div>
 
@@ -1918,6 +1958,15 @@
                     if (board.settings.mondayTeamName === undefined) board.settings.mondayTeamName = globalMondayTeam || 'CAB';
                     if (board.settings.mondayDefaultListId === undefined) board.settings.mondayDefaultListId = globalMondayList || 'group_1';
                     if (!board.settings.mondayImportedIds) board.settings.mondayImportedIds = globalMondayIds || [];
+                    // Initialize field ID mappings with defaults
+                    if (!board.settings.fieldEventName) board.settings.fieldEventName = 'mkv54kad';
+                    if (!board.settings.fieldDate) board.settings.fieldDate = 'Datezzqtpb3x';
+                    if (!board.settings.fieldTime) board.settings.fieldTime = 'mkv8jajm';
+                    if (!board.settings.fieldDescription) board.settings.fieldDescription = 'mkv5467b';
+                    if (!board.settings.fieldLocation) board.settings.fieldLocation = 'mkv5brpa';
+                    if (!board.settings.fieldSubmittedBy) board.settings.fieldSubmittedBy = 'mkv8ebee';
+                    if (!board.settings.fieldEmail) board.settings.fieldEmail = 'mkv8x9x';
+                    if (!board.settings.fieldInspiration) board.settings.fieldInspiration = 'mkv5hqye';
                 });
 
                 // Clean up legacy global Monday settings
@@ -2019,7 +2068,7 @@
             settings: { password: 'Marketing49!', users: [] },
             notifications: {},
             notifPrefs: {},
-            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] } }],
+            boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [], fieldEventName: 'mkv54kad', fieldDate: 'Datezzqtpb3x', fieldTime: 'mkv8jajm', fieldDescription: 'mkv5467b', fieldLocation: 'mkv5brpa', fieldSubmittedBy: 'mkv8ebee', fieldEmail: 'mkv8x9x', fieldInspiration: 'mkv5hqye' } }],
             columns: [
                 { id: colBacklog, boardId: defaultBoardId, title: 'Backlog', order: 0, assignedTo: '' },
                 { id: colInProgress, boardId: defaultBoardId, title: 'In Progress', order: 1, assignedTo: '' },
@@ -3732,6 +3781,16 @@
             if (mondayTeamInput) mondayTeamInput.value = boardSettings.mondayTeamName || 'CAB';
             const mondayListInput = document.getElementById('mondayDefaultListId');
             if (mondayListInput) mondayListInput.value = boardSettings.mondayDefaultListId || 'group_1';
+
+            // Load field ID mappings
+            document.getElementById('fieldEventName').value = boardSettings.fieldEventName || 'mkv54kad';
+            document.getElementById('fieldDate').value = boardSettings.fieldDate || 'Datezzqtpb3x';
+            document.getElementById('fieldTime').value = boardSettings.fieldTime || 'mkv8jajm';
+            document.getElementById('fieldDescription').value = boardSettings.fieldDescription || 'mkv5467b';
+            document.getElementById('fieldLocation').value = boardSettings.fieldLocation || 'mkv5brpa';
+            document.getElementById('fieldSubmittedBy').value = boardSettings.fieldSubmittedBy || 'mkv8ebee';
+            document.getElementById('fieldEmail').value = boardSettings.fieldEmail || 'mkv8x9x';
+            document.getElementById('fieldInspiration').value = boardSettings.fieldInspiration || 'mkv5hqye';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -4010,10 +4069,40 @@
         activeBoard.settings.mondayBoardId = (boardInput.value || '').trim();
         activeBoard.settings.mondayTeamName = (teamInput.value || '').trim() || 'CAB';
         activeBoard.settings.mondayDefaultListId = (listInput.value || '').trim() || 'group_1';
+
+        // Save field ID mappings
+        activeBoard.settings.fieldEventName = (document.getElementById('fieldEventName').value || '').trim();
+        activeBoard.settings.fieldDate = (document.getElementById('fieldDate').value || '').trim();
+        activeBoard.settings.fieldTime = (document.getElementById('fieldTime').value || '').trim();
+        activeBoard.settings.fieldDescription = (document.getElementById('fieldDescription').value || '').trim();
+        activeBoard.settings.fieldLocation = (document.getElementById('fieldLocation').value || '').trim();
+        activeBoard.settings.fieldSubmittedBy = (document.getElementById('fieldSubmittedBy').value || '').trim();
+        activeBoard.settings.fieldEmail = (document.getElementById('fieldEmail').value || '').trim();
+        activeBoard.settings.fieldInspiration = (document.getElementById('fieldInspiration').value || '').trim();
+
         if (!activeBoard.settings.mondayImportedIds) activeBoard.settings.mondayImportedIds = [];
 
         await saveData();
         showToast(`Monday.com settings saved for "${activeBoard.name || 'Workspace'}"! Cards will auto-pull on page reload.`);
+    }
+
+    async function clearMondayImportHistory() {
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard) return;
+
+        const ok = await showConfirm(
+            'Re-import Old Submissions?',
+            `This will clear the import history for "${activeBoard.name || 'Workspace'}" and allow re-importing all previous submissions with the new mapping. Continue?`,
+            'Yes, Refresh',
+            true
+        );
+
+        if (ok) {
+            if (!activeBoard.settings) activeBoard.settings = {};
+            activeBoard.settings.mondayImportedIds = [];
+            await saveData();
+            showToast('Import history cleared! Click "Fetch Now" to re-import with updated field mapping.');
+        }
     }
 
     function findTeamColumnId(items, teamName) {
@@ -4135,76 +4224,97 @@
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard) return false;
 
-        // Smart adaptive mapping - intelligently extract data from any column structure
-        const dataMap = {};
-        const usedFieldIds = new Set();
-
-        item.column_values.forEach(cv => {
-            const fieldValue = cv.text || cv.value || '';
-
-            if (fieldValue) {
-                // Use column ID as fallback - Monday.com uses IDs like "status", "date", "text123", etc.
-                const fieldName = (cv.id || 'field').toLowerCase().trim();
-                dataMap[fieldName] = { value: fieldValue, type: '', id: cv.id };
-                usedFieldIds.add(cv.id);
-            }
-        });
-
-        // Smart field detection - match by keywords and field type
-        const findField = (keywords, fieldType = null) => {
-            return Object.entries(dataMap).find(([name, data]) => {
-                const matchesKeyword = keywords.some(k => name.includes(k.toLowerCase()));
-                const matchesType = !fieldType || data.type.toLowerCase().includes(fieldType.toLowerCase());
-                return matchesKeyword && matchesType;
-            });
+        // Get field ID mapping from board settings
+        const FIELD_IDS = {
+            eventName: activeBoard.settings?.fieldEventName || 'mkv54kad',
+            date: activeBoard.settings?.fieldDate || 'Datezzqtpb3x',
+            time: activeBoard.settings?.fieldTime || 'mkv8jajm',
+            description: activeBoard.settings?.fieldDescription || 'mkv5467b',
+            location: activeBoard.settings?.fieldLocation || 'mkv5brpa',
+            submittedBy: activeBoard.settings?.fieldSubmittedBy || 'mkv8ebee',
+            email: activeBoard.settings?.fieldEmail || 'mkv8x9x',
+            inspiration: activeBoard.settings?.fieldInspiration || 'mkv5hqye'
         };
 
-        // Extract commonly used fields intelligently
-        const descMatch = findField(['description', 'details', 'brief', 'summary', 'about']);
-        const dateMatch = findField(['date', 'time', 'when', 'scheduled', 'due'], 'date');
-        const locationMatch = findField(['location', 'place', 'venue', 'address', 'where']);
-        const priorityMatch = findField(['priority', 'level', 'importance', 'urgency']);
+        // Extract data by field ID
+        const fieldData = {};
+        const attachments = [];
+
+        item.column_values.forEach(cv => {
+            fieldData[cv.id] = { text: cv.text, value: cv.value };
+        });
+
+        // Get the values using field IDs
+        const eventName = fieldData[FIELD_IDS.eventName]?.text || item.name || 'Untitled';
+        const eventDate = fieldData[FIELD_IDS.date]?.text || '';
+        const eventTime = fieldData[FIELD_IDS.time]?.text || '';
+        const descriptionText = fieldData[FIELD_IDS.description]?.text || '';
+        const locationText = fieldData[FIELD_IDS.location]?.text || '';
+        const submittedByText = fieldData[FIELD_IDS.submittedBy]?.text || '';
+        const emailText = fieldData[FIELD_IDS.email]?.text || '';
+        const inspirationValue = fieldData[FIELD_IDS.inspiration]?.value;
+
+        // Parse inspiration JSON for file attachment
+        if (inspirationValue) {
+            try {
+                const inspirationData = JSON.parse(inspirationValue);
+                if (inspirationData.files && Array.isArray(inspirationData.files)) {
+                    inspirationData.files.forEach(file => {
+                        if (file.url) {
+                            attachments.push({
+                                id: generateId(),
+                                name: file.name || 'Design Inspiration',
+                                url: file.url,
+                                isLink: false
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                // If it's just a URL string
+                if (inspirationValue && typeof inspirationValue === 'string' && inspirationValue.includes('http')) {
+                    attachments.push({
+                        id: generateId(),
+                        name: 'Design Inspiration',
+                        url: inspirationValue,
+                        isLink: true
+                    });
+                }
+            }
+        }
+
+        // Build description with submitter metadata
+        let fullDescription = descriptionText;
+        const metaLines = [];
+        if (submittedByText) metaLines.push(`📝 Submitted by: ${submittedByText}`);
+        if (emailText) metaLines.push(`📧 Contact: ${emailText}`);
+        if (metaLines.length > 0) {
+            fullDescription = fullDescription ? `${fullDescription}\n\n${metaLines.join('\n')}` : metaLines.join('\n');
+        }
 
         const taskId = generateId();
-        const listId = appData.settings?.mondayDefaultListId || 'group_1';
+        const listId = activeBoard.settings?.mondayDefaultListId || 'group_1';
         const column = appData.columns.find(c => c.boardId === appData.activeBoardId && c.id === listId)
                       || appData.columns.find(c => c.boardId === appData.activeBoardId && c.order === 0);
 
         const newTask = {
             id: taskId,
-            title: item.name || 'Untitled',
-            text: descMatch?.[1]?.value || '',
+            title: eventName,
+            text: fullDescription,
             boardId: appData.activeBoardId,
             columnId: column?.id || '',
-            dueDate: dateMatch?.[1]?.value || '',
-            eventLocation: locationMatch?.[1]?.value || '',
-            priority: priorityMatch?.[1]?.value || '',
-            members: [],
+            dueDate: eventDate || '',
+            eventLocation: locationText || '',
+            eventTime: eventTime || '',  // Store time separately
+            priority: '',
+            members: submittedByText ? [{ name: submittedByText, email: emailText }] : [],
             labels: [],
             status: 'open',
             createdAt: new Date().toISOString(),
             customFields: [],
+            attachments: attachments,
             _mondayId: item.id  // Track original Monday.com ID to prevent re-imports
         };
-
-        // Add all remaining fields as custom fields - capture everything!
-        const mappedFieldIds = new Set([
-            descMatch?.[1]?.id,
-            dateMatch?.[1]?.id,
-            locationMatch?.[1]?.id,
-            priorityMatch?.[1]?.id
-        ].filter(Boolean));
-
-        Object.entries(dataMap).forEach(([fieldName, data]) => {
-            if (!mappedFieldIds.has(data.id) && data.value) {
-                newTask.customFields.push({
-                    id: generateId(),
-                    name: fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/_/g, ' '),
-                    type: 'text',
-                    value: data.value
-                });
-            }
-        });
 
         appData.tasks.push(newTask);
         return true;
@@ -4486,7 +4596,21 @@
                 id: newBoardId,
                 year,
                 backgroundImage: '',
-                settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [] }
+                settings: {
+                    mondayApiToken: '',
+                    mondayBoardId: '',
+                    mondayTeamName: 'CAB',
+                    mondayDefaultListId: 'group_1',
+                    mondayImportedIds: [],
+                    fieldEventName: 'mkv54kad',
+                    fieldDate: 'Datezzqtpb3x',
+                    fieldTime: 'mkv8jajm',
+                    fieldDescription: 'mkv5467b',
+                    fieldLocation: 'mkv5brpa',
+                    fieldSubmittedBy: 'mkv8ebee',
+                    fieldEmail: 'mkv8x9x',
+                    fieldInspiration: 'mkv5hqye'
+                }
             });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'Submitted',   order: 0, assignedTo: '', members: [], hideable: true });
             appData.columns.push({ id: generateId(), boardId: newBoardId, title: 'In Progress', order: 1, assignedTo: '', members: [], hideable: true });
