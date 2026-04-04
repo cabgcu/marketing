@@ -1897,9 +1897,9 @@
             showToast("Network error. Failed to load database. Please refresh.");
             return; // CRITICAL: Stop execution, do NOT overwrite data
         }
-        
-        if (!appData.activeBoardId && appData.boards.length > 0) {
-            // Use default workspace if set, otherwise use first board
+
+        // Always load the admin's configured default workspace on startup (not user's previous selection)
+        if (appData.boards.length > 0) {
             const defaultWorkspaceId = appData.settings?.defaultWorkspaceId;
             if (defaultWorkspaceId && appData.boards.find(b => b.id === defaultWorkspaceId)) {
                 appData.activeBoardId = defaultWorkspaceId;
