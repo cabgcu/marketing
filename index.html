@@ -1142,10 +1142,26 @@
                 </div>
             </div>
 
+            <!-- Workspace Switcher (visible to all users) -->
+            <div class="settings-card">
+                <h3 class="section-title">Workspace</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Switch between workspaces or academic years.</p>
+                <div id="mobileWorkspaceList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
             <div class="settings-card admin-only">
                 <h3 class="section-title">Security</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Change the master password required to access this application.</p>
                 <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF;" onclick="changePassword()">Change Workspace Password</button>
+
+                <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+                <h3 class="section-title">Default Workspace</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Choose which workspace loads automatically on startup.</p>
+                <select id="defaultWorkspaceSelect" class="modern-input" style="width: 100%; margin-bottom: 10px;" onchange="setDefaultWorkspace(this.value)">
+                    <option value="">No default (first workspace)</option>
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-muted);" id="currentDefaultNote">Current default: First workspace</div>
             </div>
 
             <div class="settings-card admin-only" id="adminUserManagement">
@@ -1883,7 +1899,13 @@
         }
         
         if (!appData.activeBoardId && appData.boards.length > 0) {
-            appData.activeBoardId = appData.boards[0].id;
+            // Use default workspace if set, otherwise use first board
+            const defaultWorkspaceId = appData.settings?.defaultWorkspaceId;
+            if (defaultWorkspaceId && appData.boards.find(b => b.id === defaultWorkspaceId)) {
+                appData.activeBoardId = defaultWorkspaceId;
+            } else {
+                appData.activeBoardId = appData.boards[0].id;
+            }
         }
         applyBranding();
         applyBoardBackground();
@@ -2551,6 +2573,62 @@
         }
     }
 
+    function renderMobileWorkspaceList() {
+        const list = document.getElementById('mobileWorkspaceList');
+        if (!list) return;
+        const sorted = [...appData.boards].sort((a, b) => b.year.localeCompare(a.year));
+        if (sorted.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-muted); text-align:center;">No workspaces yet.</p>';
+            return;
+        }
+        list.innerHTML = sorted.map(b => {
+            const isActive = b.id === appData.activeBoardId;
+            const bg = isActive ? 'rgba(10,132,255,0.12)' : 'rgba(255,255,255,0.04)';
+            const border = isActive ? 'rgba(10,132,255,0.35)' : 'rgba(255,255,255,0.08)';
+            const color = isActive ? '#0A84FF' : '#fff';
+            return `<button onclick="switchBoardMobile('${b.id}')" style="background:${bg};border:1px solid ${border};color:${color};padding:14px 18px;border-radius:14px;cursor:pointer;font-weight:800;font-size:1rem;text-align:left;font-family:inherit;transition:0.2s;">${isActive ? '✦ ' : ''}${b.year}</button>`;
+        }).join('');
+    }
+
+    function switchBoardMobile(id) {
+        if (!id) return;
+        appData.activeBoardId = id;
+        saveData();
+        renderUserProfile();
+        if (typeof renderTopbar === 'function') renderTopbar();
+        if (typeof renderBoard === 'function') renderBoard();
+        showToast('Switched to ' + (appData.boards.find(b => b.id === id)?.year || 'workspace'));
+        renderMobileWorkspaceList();
+    }
+
+    function loadDefaultWorkspaceSelect() {
+        const select = document.getElementById('defaultWorkspaceSelect');
+        const noteEl = document.getElementById('currentDefaultNote');
+        if (!select) return;
+
+        const sorted = [...appData.boards].sort((a, b) => b.year.localeCompare(a.year));
+        const defaultId = appData.settings?.defaultWorkspaceId || '';
+
+        select.innerHTML = '<option value="">No default (first workspace)</option>' +
+            sorted.map(b => `<option value="${b.id}" ${b.id === defaultId ? 'selected' : ''}>${b.year}</option>`).join('');
+
+        if (defaultId) {
+            const defaultBoard = appData.boards.find(b => b.id === defaultId);
+            if (noteEl) noteEl.innerText = 'Current default: ' + (defaultBoard?.year || 'None');
+        } else {
+            if (noteEl) noteEl.innerText = 'Current default: First workspace';
+        }
+    }
+
+    function setDefaultWorkspace(workspaceId) {
+        if (currentUserRole !== 'admin') return;
+        if (!appData.settings) appData.settings = {};
+        appData.settings.defaultWorkspaceId = workspaceId;
+        saveData();
+        loadDefaultWorkspaceSelect();
+        showToast(workspaceId ? 'Default workspace updated' : 'Default workspace reset');
+    }
+
     async function deleteWorkspace(id) {
         if (currentUserRole !== 'admin') {
             showToast('Only admins can delete workspaces');
@@ -2561,7 +2639,10 @@
         appData.boards = appData.boards.filter(b => b.id !== id);
         appData.columns = appData.columns.filter(c => c.boardId !== id);
         appData.tasks = appData.tasks.filter(t => t.boardId !== id);
-        if (appData.boards.length > 0) appData.activeBoardId = appData.boards[0].id;
+        if (appData.boards.length > 0) {
+            const defaultId = appData.settings?.defaultWorkspaceId;
+            appData.activeBoardId = (defaultId && appData.boards.find(b => b.id === defaultId)) ? defaultId : appData.boards[0].id;
+        }
         saveData(); renderTopbar(); renderWorkspaceModal(); renderApp();
     }
 
@@ -3385,8 +3466,11 @@
 
             renderUserList();
             renderListVisibilityControls();
+            loadDefaultWorkspaceSelect();
         }
 
+        // Render mobile workspace list for all users
+        renderMobileWorkspaceList();
         // Initialize user preferences
         initHideListsToggle();
     }
