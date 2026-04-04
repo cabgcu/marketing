@@ -4284,7 +4284,9 @@
         const locationText = getFieldValue(FIELD_IDS.location)?.text || '';
         const submittedByText = getFieldValue(FIELD_IDS.submittedBy)?.text || '';
         const emailText = getFieldValue(FIELD_IDS.email)?.text || '';
-        const inspirationValue = getFieldValue(FIELD_IDS.inspiration)?.value;
+        const inspirationField = getFieldValue(FIELD_IDS.inspiration) || {};
+        const inspirationValue = inspirationField.value;
+        const inspirationText = inspirationField.text;
 
         // DEBUG: Log field mapping to console
         console.log('🔍 Monday.com Field Mapping Debug:', {
@@ -4296,11 +4298,13 @@
                 eventTime,
                 descriptionText: descriptionText.substring(0, 50) + '...',
                 locationText,
-                submittedByText
+                submittedByText,
+                inspirationText
             }
         });
 
-        // Parse inspiration JSON for file attachment
+        // Parse inspiration JSON for file attachment (try .value first, then .text)
+        let inspirationUrl = null;
         if (inspirationValue) {
             try {
                 const inspirationData = JSON.parse(inspirationValue);
@@ -4313,11 +4317,12 @@
                                 url: file.url,
                                 isLink: false
                             });
+                            if (!inspirationUrl) inspirationUrl = file.url;
                         }
                     });
                 }
             } catch (e) {
-                // If it's just a URL string
+                // If it's just a URL string in value
                 if (inspirationValue && typeof inspirationValue === 'string' && inspirationValue.includes('http')) {
                     attachments.push({
                         id: generateId(),
@@ -4325,8 +4330,20 @@
                         url: inspirationValue,
                         isLink: true
                     });
+                    inspirationUrl = inspirationValue;
                 }
             }
+        }
+
+        // Also check .text field for direct URL (Monday.com file field sometimes stores URL in text)
+        if (!inspirationUrl && inspirationText && typeof inspirationText === 'string' && inspirationText.includes('http')) {
+            attachments.push({
+                id: generateId(),
+                name: 'Design Inspiration',
+                url: inspirationText,
+                isLink: true
+            });
+            inspirationUrl = inspirationText;
         }
 
         // Build a formatted description with all data
@@ -4348,6 +4365,12 @@
             descriptionParts.push('');
             if (submittedByText) descriptionParts.push(`👤 Submitted by: ${submittedByText}`);
             if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
+        }
+
+        // Add inspiration/design file link if present
+        if (inspirationUrl) {
+            descriptionParts.push('');
+            descriptionParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
         }
 
         const fullDescription = descriptionParts.join('\n');
