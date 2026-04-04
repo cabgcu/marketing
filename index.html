@@ -3276,19 +3276,18 @@
     }
 
     async function importCardsFromCSV() {
+        // Check if a file was uploaded
         const csvFile = document.getElementById('importCSVFile').files[0];
-
-        if (!csvFile) {
-            showToast('Please upload a CSV file');
-            return;
+        if (csvFile) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const csvInput = e.target.result;
+                await processCSVImport(csvInput);
+            };
+            reader.readAsText(csvFile);
+        } else {
+            showToast('Please select a CSV file');
         }
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const csvInput = e.target.result;
-            await processCSVImport(csvInput);
-        };
-        reader.readAsText(csvFile);
     }
 
     async function processCSVImport(csvInput) {
@@ -3397,12 +3396,7 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            document.getElementById('importCSVInput').value = e.target.result;
-        };
-        reader.readAsText(file);
-        event.target.value = '';
+        showToast(`Selected: ${file.name} - Click "Import Cards" to proceed`);
     }
 
     let selectedCards = new Set();
