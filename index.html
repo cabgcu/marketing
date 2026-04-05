@@ -1574,6 +1574,29 @@
                     </div>
                     </div>
 
+                    <!-- Instagram Analytics Section -->
+                    <div class="settings-card admin-only">
+                        <h3 class="section-title">Instagram Analytics</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+                            Connect your Instagram Business Account to track metrics, analytics, and best posting times. View detailed insights on posts and performance.
+                        </p>
+                        <label class="stat-label">Instagram Access Token</label>
+                        <input type="password" id="instagramAccessToken" class="modern-input" placeholder="Paste your Instagram access token" style="margin-bottom: 12px;">
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
+                            <strong>How to get your token:</strong> Visit <a href="https://developers.facebook.com/docs/instagram-api/getting-started" target="_blank" style="color: #0A84FF;">Meta Developer Docs</a> to create an app and generate a token for your Instagram Business Account.
+                        </p>
+                        <label class="stat-label">Instagram Business Account ID</label>
+                        <input type="text" id="instagramBusinessAccountId" class="modern-input" placeholder="Your Instagram Business Account ID (optional)" style="margin-bottom: 12px;">
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0; margin-bottom: 16px;">
+                            Leave blank to auto-detect from token. Find it in your Facebook Business Manager or app settings.
+                        </p>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveInstagramSettings()">Save Settings</button>
+                            <button class="btn-action" style="flex:1; min-width: 200px;" onclick="testInstagramConnection()">Test Connection</button>
+                        </div>
+                        <div id="instagramStatusMessage" style="margin-top: 15px; padding: 12px; border-radius: 8px; display: none;"></div>
+                    </div>
+
                     <!-- Data Section -->
                     <div class="settings-section" data-section="data">
                         <div class="settings-card admin-only">
@@ -4135,6 +4158,7 @@
             renderUserList();
             renderListVisibilityControls();
             loadDefaultWorkspaceSelect();
+            loadInstagramSettings();
         }
 
         // Render mobile workspace list for all users
@@ -4798,6 +4822,70 @@
         appData.settings.googleCalendarAutoSync = autoSyncCheckbox ? autoSyncCheckbox.checked : false;
         await saveData();
         showToast('Google Calendar settings saved.');
+    }
+
+    async function saveInstagramSettings() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can change Instagram settings.'); return; }
+        const token = document.getElementById('instagramAccessToken');
+        const accountId = document.getElementById('instagramBusinessAccountId');
+        if (!token || !token.value.trim()) { showToast('Please enter an Instagram access token.'); return; }
+        if (!appData.settings) appData.settings = {};
+        appData.settings.instagramAccessToken = token.value.trim();
+        appData.settings.instagramBusinessAccountId = (accountId && accountId.value.trim()) || '';
+        await saveData();
+        showToast('Instagram settings saved successfully!');
+    }
+
+    async function testInstagramConnection() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can test connection.'); return; }
+        const token = document.getElementById('instagramAccessToken');
+        const statusDiv = document.getElementById('instagramStatusMessage');
+
+        if (!token || !token.value.trim()) {
+            showToast('Please enter an Instagram access token first.');
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = 'rgba(10, 132, 255, 0.1)';
+        statusDiv.style.color = '#0A84FF';
+        statusDiv.innerText = '⏳ Testing connection...';
+
+        try {
+            const response = await fetch(`https://graph.instagram.com/me?fields=id,username,name,biography,followers_count,media_count&access_token=${token.value.trim()}`);
+            const data = await response.json();
+
+            if (data.error) {
+                statusDiv.style.background = 'rgba(255, 59, 48, 0.1)';
+                statusDiv.style.color = '#FF3B30';
+                statusDiv.innerText = '❌ Connection failed: ' + (data.error.message || 'Invalid token');
+                return;
+            }
+
+            if (data.id) {
+                document.getElementById('instagramBusinessAccountId').value = data.id;
+                statusDiv.style.background = 'rgba(52, 199, 89, 0.1)';
+                statusDiv.style.color = '#34C759';
+                statusDiv.innerText = `✅ Connected! Account: @${data.username} (${data.followers_count} followers)`;
+                await saveInstagramSettings();
+            }
+        } catch (error) {
+            statusDiv.style.background = 'rgba(255, 59, 48, 0.1)';
+            statusDiv.style.color = '#FF3B30';
+            statusDiv.innerText = '❌ Connection error: ' + error.message;
+        }
+    }
+
+    function loadInstagramSettings() {
+        if (!appData.settings) return;
+        const token = document.getElementById('instagramAccessToken');
+        const accountId = document.getElementById('instagramBusinessAccountId');
+        if (token && appData.settings.instagramAccessToken) {
+            token.value = appData.settings.instagramAccessToken;
+        }
+        if (accountId && appData.settings.instagramBusinessAccountId) {
+            accountId.value = appData.settings.instagramBusinessAccountId;
+        }
     }
 
     let _calSyncTimer = null;
