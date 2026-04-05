@@ -4345,27 +4345,28 @@
             inspirationUrl = inspirationText;
         }
 
-        // Build a well-formatted description with spacing and emoji headers
+        // Build a well-formatted description with metadata on separate lines
         const descriptionParts = [];
 
-        // Add event metadata at the top with spacing
+        // Add event metadata each on its own line
         if (eventName) descriptionParts.push(`📌 Event: ${eventName}`);
         if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
         if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
         if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
 
-        // Add the main description in its own section
+        // Add the main description with spacing
         if (descriptionText) {
             descriptionParts.push('');
-            descriptionParts.push(`📝 Details:`);
             descriptionParts.push(descriptionText);
         }
 
         // Add submitter info in its own section
         if (submittedByText || emailText) {
             descriptionParts.push('');
-            if (submittedByText) descriptionParts.push(`👤 Submitted by: ${submittedByText}`);
-            if (emailText) descriptionParts.push(`📧 Email: ${emailText}`);
+            const submitterLines = [];
+            if (submittedByText) submitterLines.push(`👤 Submitted by: ${submittedByText}`);
+            if (emailText) submitterLines.push(`📧 Email: ${emailText}`);
+            descriptionParts.push(submitterLines.join('\n'));
         }
 
         // Add inspiration/design file link in its own section
