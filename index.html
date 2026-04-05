@@ -429,8 +429,8 @@
             display: grid;
             grid-template-columns: 220px 1fr;
             gap: 30px;
-            height: 100%;
             width: 100%;
+            align-items: start;
         }
 
         .settings-sidebar {
@@ -500,11 +500,10 @@
         }
 
         .settings-content-area {
-            overflow-y: auto;
-            padding-right: 10px;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            width: 100%;
         }
 
         .settings-content-area::-webkit-scrollbar {
