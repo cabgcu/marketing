@@ -4346,49 +4346,51 @@
         }
 
         // Build a well-formatted description with metadata on separate lines
+        // Use HTML formatting since description is stored as contenteditable HTML
         const descriptionParts = [];
 
-        // Add event metadata each on its own line
-        if (eventName) descriptionParts.push(`📌 Event: ${eventName}`);
-        if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
-        if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
-        if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
+        // Add event metadata in first paragraph
+        const metadataParts = [];
+        if (eventName) metadataParts.push(`📌 Event: ${eventName}`);
+        if (eventDate) metadataParts.push(`📅 Date: ${eventDate}`);
+        if (eventTime) metadataParts.push(`⏰ Time: ${eventTime}`);
+        if (locationText) metadataParts.push(`📍 Location: ${locationText}`);
 
-        // Add the main description with spacing
+        if (metadataParts.length > 0) {
+            descriptionParts.push(`<p>\n  ${metadataParts.join('<br>\n  ')}\n</p>`);
+        }
+
+        // Add the main description in its own paragraph
         if (descriptionText) {
-            descriptionParts.push('');
-            descriptionParts.push(descriptionText);
+            descriptionParts.push(`<p>\n  ${descriptionText}\n</p>`);
         }
 
-        // Add submitter info in its own section
-        if (submittedByText || emailText) {
-            descriptionParts.push('');
-            const submitterLines = [];
-            if (submittedByText) submitterLines.push(`👤 Submitted by: ${submittedByText}`);
-            if (emailText) submitterLines.push(`📧 Email: ${emailText}`);
-            descriptionParts.push(submitterLines.join('\n'));
+        // Add submitter and design reference info in final paragraph
+        const infoParts = [];
+        if (submittedByText) infoParts.push(`👤 Submitted by: ${submittedByText}`);
+        if (emailText) infoParts.push(`📧 Email: ${emailText}`);
+        if (inspirationUrl) infoParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
+
+        if (infoParts.length > 0) {
+            descriptionParts.push(`<p>\n  ${infoParts.join('<br>\n  ')}\n</p>`);
         }
 
-        // Add inspiration/design file link in its own section
-        if (inspirationUrl) {
-            descriptionParts.push('');
-            descriptionParts.push(`🎨 Design Reference: <a href="${inspirationUrl}" target="_blank" rel="noopener noreferrer">View Inspiration</a>`);
-        }
-
-        const fullDescription = descriptionParts.join('\n');
+        const fullDescription = descriptionParts.join('\n\n');
 
         // Parse description to extract date, time, location
         // This allows them to be edited in the description and still populate the fields
         const dateMatch = fullDescription.match(/📅 Date:\s*(\d{4}-\d{2}-\d{2})/);
-        const timeMatch = fullDescription.match(/⏰ Time:\s*([^\n]+)/);
-        const locationMatch = fullDescription.match(/📍 Location:\s*([^\n]+)/);
+        const timeMatch = fullDescription.match(/⏰ Time:\s*([^<\n]+)/);
+        const locationMatch = fullDescription.match(/📍 Location:\s*([^<\n]+)/);
 
         // Helper to parse time string like "7pm", "6:30pm", "3 pm" etc. into HH:mm format
         const parseTimeString = (timeStr) => {
             if (!timeStr || typeof timeStr !== 'string') return '00:00';
-            const lower = timeStr.toLowerCase().trim();
+            // Strip HTML tags and whitespace
+            const cleaned = timeStr.replace(/<[^>]*>/g, '').trim().toLowerCase();
+            if (!cleaned) return '00:00';
             // Match patterns like "7pm", "7:30pm", "7 pm", "7:30 pm"
-            const match = lower.match(/(\d{1,2})(?::(\d{2}))?\s*([ap]m)/);
+            const match = cleaned.match(/(\d{1,2})(?::(\d{2}))?\s*([ap]m)/);
             if (!match) return '00:00';
 
             let hours = parseInt(match[1]);
