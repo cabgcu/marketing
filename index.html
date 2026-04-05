@@ -4345,18 +4345,14 @@
             inspirationUrl = inspirationText;
         }
 
-        // Build a well-formatted description with metadata on one line, then sections below
+        // Build a well-formatted description with metadata on separate lines
         const descriptionParts = [];
 
-        // Add event metadata all on one line
-        const metadataLine = [
-            eventName ? `📌 Event: ${eventName}` : null,
-            eventDate ? `📅 Date: ${eventDate}` : null,
-            eventTime ? `⏰ Time: ${eventTime}` : null,
-            locationText ? `📍 Location: ${locationText}` : null
-        ].filter(x => x).join(' ');
-
-        if (metadataLine) descriptionParts.push(metadataLine);
+        // Add event metadata each on its own line
+        if (eventName) descriptionParts.push(`📌 Event: ${eventName}`);
+        if (eventDate) descriptionParts.push(`📅 Date: ${eventDate}`);
+        if (eventTime) descriptionParts.push(`⏰ Time: ${eventTime}`);
+        if (locationText) descriptionParts.push(`📍 Location: ${locationText}`);
 
         // Add the main description with spacing
         if (descriptionText) {
