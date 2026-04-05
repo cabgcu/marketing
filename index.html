@@ -1352,8 +1352,14 @@
 
                         <!-- Security Section -->
                         <div class="nav-section">
+                            <div class="nav-section-label">Security</div>
+                            <button class="nav-item" onclick="switchSettingsSection('security')">Password</button>
+                        </div>
+
+                        <!-- Admin Section -->
+                        <div class="nav-section">
                             <div class="nav-section-label">Admin</div>
-                            <button class="nav-item admin-only" onclick="switchSettingsSection('security')">Security</button>
+                            <button class="nav-item admin-only" onclick="switchSettingsSection('admin')">User Management</button>
                             <button class="nav-item admin-only" onclick="switchSettingsSection('branding')">Branding</button>
                             <button class="nav-item admin-only" onclick="switchSettingsSection('integrations')">Integrations</button>
                             <button class="nav-item admin-only" onclick="switchSettingsSection('data')">Data</button>
@@ -1410,6 +1416,25 @@
                     <option value="">No default (first workspace)</option>
                 </select>
                             <div style="font-size: 0.8rem; color: var(--text-muted);" id="currentDefaultNote">Current default: First workspace</div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Section -->
+                    <div class="settings-section" data-section="admin">
+                        <div class="settings-card admin-only">
+                            <h3 class="section-title">User Management</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Add or remove users for this workspace.</p>
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                                <input type="email" id="newUserEmail" class="modern-input" placeholder="new-user@example.com" style="flex: 1;">
+                                <button class="btn-action" onclick="addUser()" style="flex-shrink: 0;">Add User</button>
+                            </div>
+                            <div id="userListContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        </div>
+
+                        <div class="settings-card admin-only">
+                            <h3 class="section-title">List Visibility Control</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Choose which lists users can hide when they enable "Hide lists I'm not part of".</p>
+                            <div id="listVisibilityContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
                         </div>
                     </div>
 
@@ -1543,12 +1568,6 @@
 
                     <!-- Data Section -->
                     <div class="settings-section" data-section="data">
-                        <div class="settings-card admin-only">
-                            <h3 class="section-title">List Visibility Control</h3>
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Choose which lists users can hide when they enable "Hide lists I'm not part of".</p>
-                            <div id="listVisibilityContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
-                        </div>
-
                         <div class="settings-card admin-only">
                             <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
