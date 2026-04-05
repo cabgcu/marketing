@@ -1272,7 +1272,7 @@
                 </p>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
-                    <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday()">Fetch Now</button>
+                    <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday(false)">Fetch Now</button>
                     <button class="btn-outline" style="flex:1; min-width: 200px; border-color:rgba(255,152,0,0.4); color:#FF9500;" onclick="clearMondayImportHistory()">Refresh Old Imports</button>
                 </div>
             </div>
@@ -4117,14 +4117,14 @@
         return null;
     }
 
-    async function fetchAndCreateCardsFromMonday() {
+    async function fetchAndCreateCardsFromMonday(silent = true) {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard || !activeBoard.settings || !activeBoard.settings.mondayApiToken || !activeBoard.settings.mondayBoardId) {
-            showToast('Please configure Monday.com API token and Board ID for this workspace first.');
+            if (!silent) showToast('Please configure Monday.com API token and Board ID for this workspace first.');
             return;
         }
 
-        showToast(`Pulling new submissions from Monday.com for "${activeBoard.name || 'Workspace'}"...`);
+        if (!silent) showToast(`Pulling new submissions from Monday.com for "${activeBoard.name || 'Workspace'}"...`);
         try {
             const token = activeBoard.settings.mondayApiToken;
             const boardId = parseInt(activeBoard.settings.mondayBoardId);
@@ -4200,7 +4200,7 @@
             const newItems = teamItems.filter(item => !activeBoard.settings.mondayImportedIds.includes(item.id));
 
             if (newItems.length === 0) {
-                showToast(`No new ${teamName} submissions found.`);
+                if (!silent) showToast(`No new ${teamName} submissions found.`);
                 return;
             }
 
@@ -4213,10 +4213,10 @@
             }
 
             await saveData();
-            showToast(`✅ Created ${createdCount} new card(s) from Monday.com!`);
+            if (!silent) showToast(`✅ Created ${createdCount} new card(s) from Monday.com!`);
         } catch (error) {
             console.error('Monday.com fetch error:', error);
-            showToast('Error fetching from Monday.com: ' + error.message);
+            if (!silent) showToast('Error fetching from Monday.com: ' + error.message);
         }
     }
 
