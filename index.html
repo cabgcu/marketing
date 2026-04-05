@@ -424,6 +424,215 @@
             .settings-card { padding: 20px; }
         }
 
+        /* Settings UI Improvements */
+        .settings-container {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 30px;
+            height: 100%;
+            width: 100%;
+        }
+
+        .settings-sidebar {
+            position: sticky;
+            top: 0;
+            height: fit-content;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .settings-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: 16px;
+        }
+
+        .nav-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .nav-section-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 8px 12px 6px 12px;
+            margin: 0;
+        }
+
+        .nav-item {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            text-align: left;
+            display: block;
+            width: 100%;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .nav-item.active {
+            background: rgba(10, 132, 255, 0.2);
+            color: #0A84FF;
+            border-color: rgba(10, 132, 255, 0.4);
+        }
+
+        .nav-item.admin-only {
+            opacity: 0.7;
+        }
+
+        .settings-content-area {
+            overflow-y: auto;
+            padding-right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-content-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .settings-content-area::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+
+        .settings-content-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .accordion-header {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .accordion-header.active {
+            background: rgba(10, 132, 255, 0.1);
+            border-color: rgba(10, 132, 255, 0.3);
+            color: #0A84FF;
+        }
+
+        .accordion-header::after {
+            content: "▼";
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+
+        .accordion-header.active::after {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .accordion-content.active {
+            max-height: 2000px;
+        }
+
+        @media (max-width: 900px) {
+            .settings-container {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .settings-sidebar {
+                position: static;
+                display: flex;
+                flex-direction: row;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 8px;
+                margin-bottom: 10px;
+            }
+
+            .settings-sidebar::-webkit-scrollbar {
+                height: 4px;
+            }
+
+            .settings-sidebar::-webkit-scrollbar-track {
+                background: rgba(255, 255, 255, 0.02);
+            }
+
+            .settings-sidebar::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+            }
+
+            .settings-nav {
+                display: flex;
+                flex-direction: row;
+                gap: 8px;
+                flex-wrap: nowrap;
+            }
+
+            .nav-section {
+                display: none;
+            }
+
+            .nav-section-label {
+                display: none;
+            }
+
+            .nav-item {
+                padding: 10px 16px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .settings-content-area {
+                padding-right: 0;
+            }
+        }
+
         .modal-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -1123,11 +1332,46 @@
     </div>
 
     <div class="app-view" id="view-settings">
-        <div class="settings-wrapper">
+        <div style="width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px;">
             <h2 style="margin-top:0; font-weight:800;" id="settingsTitle">Settings</h2>
+            <div class="settings-container">
+                <!-- Sidebar Navigation -->
+                <div class="settings-sidebar">
+                    <nav class="settings-nav">
+                        <!-- Profile Section -->
+                        <div class="nav-section">
+                            <div class="nav-section-label">Personal</div>
+                            <button class="nav-item active" onclick="switchSettingsSection('profile')">Profile</button>
+                        </div>
 
-            <!-- User Profile Section (Mobile-friendly, visible to all users) -->
-            <div class="settings-card" id="userProfileCard">
+                        <!-- Workspace Section -->
+                        <div class="nav-section">
+                            <div class="nav-section-label">Workspace</div>
+                            <button class="nav-item" onclick="switchSettingsSection('workspace')">Workspace</button>
+                        </div>
+
+                        <!-- Security Section -->
+                        <div class="nav-section">
+                            <div class="nav-section-label">Admin</div>
+                            <button class="nav-item admin-only" onclick="switchSettingsSection('security')">Security</button>
+                            <button class="nav-item admin-only" onclick="switchSettingsSection('branding')">Branding</button>
+                            <button class="nav-item admin-only" onclick="switchSettingsSection('integrations')">Integrations</button>
+                            <button class="nav-item admin-only" onclick="switchSettingsSection('data')">Data</button>
+                        </div>
+
+                        <!-- Account Section -->
+                        <div class="nav-section">
+                            <div class="nav-section-label">Account</div>
+                            <button class="nav-item" onclick="switchSettingsSection('account')">My Account</button>
+                        </div>
+                    </nav>
+                </div>
+
+                <!-- Content Area -->
+                <div class="settings-content-area">
+                    <!-- Profile Section -->
+                    <div class="settings-section active" data-section="profile">
+                        <div class="settings-card" id="userProfileCard">
                 <div class="user-profile-section">
                     <div id="userProfilePicture" class="user-profile-picture">
                         <img id="userProfileImage" alt="">
@@ -1139,17 +1383,21 @@
                     </div>
                     <button class="btn-action" style="width: 100%; padding: 12px;" onclick="uploadProfilePicture()">📸 Upload Profile Picture</button>
                     <input type="file" id="profilePictureInput" accept="image/*" style="display: none;" onchange="handleProfilePictureUpload(event)">
-                </div>
-            </div>
+                        </div>
+                    </div>
 
-            <!-- Workspace Switcher (visible to all users) -->
-            <div class="settings-card">
-                <h3 class="section-title">Workspace</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Switch between workspaces or academic years.</p>
-                <div id="mobileWorkspaceList" style="display: flex; flex-direction: column; gap: 10px;"></div>
-            </div>
+                    <!-- Workspace Section -->
+                    <div class="settings-section" data-section="workspace">
+                        <div class="settings-card">
+                            <h3 class="section-title">Workspace</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Switch between workspaces or academic years.</p>
+                            <div id="mobileWorkspaceList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        </div>
+                    </div>
 
-            <div class="settings-card admin-only">
+                    <!-- Security Section -->
+                    <div class="settings-section" data-section="security">
+                        <div class="settings-card admin-only">
                 <h3 class="section-title">Security</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Change the master password required to access this application.</p>
                 <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF;" onclick="changePassword()">Change Workspace Password</button>
@@ -1161,20 +1409,13 @@
                 <select id="defaultWorkspaceSelect" class="modern-input" style="width: 100%; margin-bottom: 10px;" onchange="setDefaultWorkspace(this.value)">
                     <option value="">No default (first workspace)</option>
                 </select>
-                <div style="font-size: 0.8rem; color: var(--text-muted);" id="currentDefaultNote">Current default: First workspace</div>
-            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);" id="currentDefaultNote">Current default: First workspace</div>
+                        </div>
+                    </div>
 
-            <div class="settings-card admin-only" id="adminUserManagement">
-                <h3 class="section-title">User Management</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Manage who can access this workspace via email.</p>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <input type="email" id="newUserEmail" class="modern-input" placeholder="user@email.com" style="flex-grow: 1;">
-                    <button class="btn-action" onclick="addUser()" style="flex-shrink: 0;">Add User</button>
-                </div>
-                <div id="userListContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
-            </div>
-
-            <div class="settings-card admin-only">
+                    <!-- Branding Section -->
+                    <div class="settings-section" data-section="branding">
+                        <div class="settings-card admin-only">
                 <h3 class="section-title">Workspace Branding</h3>
                 <label class="stat-label">Custom Logo (Max 2MB)</label>
                 <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
@@ -1212,11 +1453,14 @@
                     <span id="bgUploadPreviewText" style="color: var(--text-muted); font-size: 0.85rem; flex-grow: 1;">No new file selected</span>
                     <button class="btn-outline" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30; flex-shrink: 0;" onclick="clearBoardBackground()">Remove Current</button>
                 </div>
-                <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveBoardSettings()">Save Background</button>
-            </div>
+                        <button class="btn-action" style="margin-top: 25px; width: 100%; padding: 15px;" onclick="saveBoardSettings()">Save Background</button>
+                    </div>
+                    </div>
 
-            <div class="settings-card admin-only">
-                <h3 class="section-title">Monday.com Integration</h3>
+                    <!-- Integrations Section -->
+                    <div class="settings-section" data-section="integrations">
+                        <div class="settings-card admin-only">
+                            <h3 class="section-title">Monday.com Integration</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
                     Pull new team submissions from Monday.com. Cards are created once and never updated, even if Monday.com data changes.
                 </p>
@@ -1292,18 +1536,21 @@
                 </label>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveGoogleCalendarSettings()">Save Settings</button>
-                    <button class="btn-action" style="flex:1; min-width: 200px;" onclick="syncBoardToGoogleCalendar()">Sync to Google Calendar</button>
-                </div>
-            </div>
+                            <button class="btn-action" style="flex:1; min-width: 200px;" onclick="syncBoardToGoogleCalendar()">Sync to Google Calendar</button>
+                        </div>
+                    </div>
+                    </div>
 
-            <div class="settings-card admin-only">
-                <h3 class="section-title">List Visibility Control</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Choose which lists users can hide when they enable "Hide lists I'm not part of".</p>
-                <div id="listVisibilityContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
-            </div>
+                    <!-- Data Section -->
+                    <div class="settings-section" data-section="data">
+                        <div class="settings-card admin-only">
+                            <h3 class="section-title">List Visibility Control</h3>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Choose which lists users can hide when they enable "Hide lists I'm not part of".</p>
+                            <div id="listVisibilityContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        </div>
 
-            <div class="settings-card admin-only">
-                <h3 class="section-title">Data Management</h3>
+                        <div class="settings-card admin-only">
+                            <h3 class="section-title">Data Management</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Backup your entire workspace or load a previously saved configuration.</p>
                 <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
                     <button class="btn-outline" style="flex: 1; min-width: 200px;" onclick="exportData()">Export Data (JSON)</button>
@@ -1321,12 +1568,15 @@
                 </div>
 
                 <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin: 30px 0 20px 0;">
-                <h3 class="section-title" style="color: #FF3B30;">Danger Zone</h3>
-                <button class="btn-action" style="background: var(--gradient-danger); width: 100%; margin-bottom: 10px;" onclick="deleteCurrentBoard()">Delete Current Workspace</button>
-            </div>
+                            <h3 class="section-title" style="color: #FF3B30;">Danger Zone</h3>
+                            <button class="btn-action" style="background: var(--gradient-danger); width: 100%; margin-bottom: 10px;" onclick="deleteCurrentBoard()">Delete Current Workspace</button>
+                        </div>
+                    </div>
 
-            <div class="settings-card">
-                <h3 class="section-title">My Account</h3>
+                    <!-- Account Section -->
+                    <div class="settings-section" data-section="account">
+                        <div class="settings-card">
+                            <h3 class="section-title">My Account</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Update your personal settings and preferences.</p>
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.04); border-radius: 12px;">
                     <div>
@@ -1335,8 +1585,11 @@
                     </div>
                     <input type="checkbox" id="hideListsToggle" onchange="toggleHideListsPreference()" style="width: 20px; height: 20px; cursor: pointer;">
                 </div>
-                <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF; margin-bottom: 10px;" onclick="changeMyPassword()">Change My Password</button>
-                <button class="btn-outline" style="width: 100%; border-color: #FF3B30; color: #FF3B30;" onclick="logout()">Sign Out</button>
+                            <button class="btn-outline" style="width: 100%; border-color: #0A84FF; color: #0A84FF; margin-bottom: 10px;" onclick="changeMyPassword()">Change My Password</button>
+                            <button class="btn-outline" style="width: 100%; border-color: #FF3B30; color: #FF3B30;" onclick="logout()">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -3740,6 +3993,64 @@
         }
     }
 
+    let activeSettingsSection = 'profile';
+
+    function switchSettingsSection(sectionName) {
+        // Hide all sections
+        document.querySelectorAll('.settings-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // Show target section
+        const targetSection = document.querySelector(`.settings-section[data-section="${sectionName}"]`);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+
+        // Mark nav item as active
+        const targetNavItem = document.querySelector(`.nav-item[onclick*="switchSettingsSection('${sectionName}')"]`);
+        if (targetNavItem) {
+            targetNavItem.classList.add('active');
+        }
+
+        // Save to localStorage
+        activeSettingsSection = sectionName;
+        try {
+            localStorage.setItem('activeSettingsSection', sectionName);
+        } catch (e) {}
+    }
+
+    function initializeSettingsUI() {
+        // Try to restore activeSettingsSection from localStorage
+        try {
+            const savedSection = localStorage.getItem('activeSettingsSection');
+            if (savedSection) {
+                activeSettingsSection = savedSection;
+            }
+        } catch (e) {}
+
+        // Set up click handlers on nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const onclickAttr = this.getAttribute('onclick');
+                if (onclickAttr && onclickAttr.includes("switchSettingsSection(")) {
+                    const match = onclickAttr.match(/switchSettingsSection\('([^']+)'\)/);
+                    if (match) {
+                        switchSettingsSection(match[1]);
+                    }
+                }
+            });
+        });
+
+        // Show the active section
+        switchSettingsSection(activeSettingsSection);
+    }
+
     function renderSettings() {
         document.querySelectorAll('.admin-only').forEach(el => {
             el.style.display = currentUserRole === 'admin' ? 'block' : 'none';
@@ -3803,6 +4114,8 @@
         renderMobileWorkspaceList();
         // Initialize user preferences
         initHideListsToggle();
+        // Initialize Settings UI
+        initializeSettingsUI();
     }
 
     function renderUserList() {
