@@ -1182,6 +1182,436 @@
             overflow: hidden; position: relative;
         }
         .mention-dropdown .mention-item .mention-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+
+        /* Instagram Analytics Dashboard Styles */
+        .analytics-wrapper {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+            height: calc(100vh - 120px);
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .analytics-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .analytics-refresh-btn {
+            padding: 12px 20px;
+            background: var(--gradient-accent);
+            border: none;
+            border-radius: var(--radius-button);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .analytics-refresh-btn:active {
+            transform: scale(0.95);
+        }
+
+        .analytics-refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: var(--glass-surface);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-card-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.1;
+        }
+
+        .stat-card-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .stat-card-metric {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .stat-card-metric.positive {
+            color: #34C759;
+        }
+
+        .stat-card-metric.neutral {
+            color: var(--text-muted);
+        }
+
+        .section-container {
+            background: var(--glass-surface);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-card);
+            padding: 24px;
+        }
+
+        .section-title-with-control {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .posts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .post-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .post-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(191, 90, 242, 0.4);
+        }
+
+        .post-thumbnail {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: rgba(255, 255, 255, 0.05);
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 3rem;
+            position: relative;
+        }
+
+        .post-content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+        }
+
+        .post-caption {
+            font-size: 0.9rem;
+            color: var(--text-main);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .post-metrics {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+        }
+
+        .post-metric {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: var(--text-muted);
+        }
+
+        .post-engagement {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            padding: 8px;
+            background: rgba(191, 90, 242, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .post-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .best-time-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .best-time-table th,
+        .best-time-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .best-time-table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .best-time-table tr:hover {
+            background: rgba(191, 90, 242, 0.05);
+        }
+
+        .best-time-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--gradient-accent);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--text-main);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .analytics-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .analytics-empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .analytics-empty-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .analytics-error {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            color: #FF3B30;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .analytics-error-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .engagement-trend-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 150px;
+            margin-top: 12px;
+        }
+
+        .trend-bar {
+            flex: 1;
+            min-width: 20px;
+            background: linear-gradient(180deg, rgba(10, 132, 255, 0.6), rgba(10, 132, 255, 0.2));
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            border: 1px solid rgba(10, 132, 255, 0.4);
+        }
+
+        .trend-bar:hover {
+            background: linear-gradient(180deg, rgba(10, 132, 255, 0.9), rgba(10, 132, 255, 0.4));
+            transform: scaleY(1.05);
+        }
+
+        .trend-bar-label {
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .instagram-post-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 12px 0;
+        }
+
+        .instagram-post-option {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .instagram-post-option:hover {
+            border-color: rgba(191, 90, 242, 0.5);
+            transform: scale(1.05);
+        }
+
+        .instagram-post-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .instagram-post-option-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .instagram-post-option:hover .instagram-post-option-overlay {
+            opacity: 1;
+        }
+
+        .instagram-post-option.selected::before {
+            content: '✓';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            font-weight: 800;
+            background: rgba(52, 199, 89, 0.9);
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .posts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card-value {
+                font-size: 2rem;
+            }
+
+            .analytics-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .section-title-with-control {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .best-time-table th,
+            .best-time-table td {
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1316,6 +1746,7 @@
         <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')">⚡ Due</button>
         <button class="nav-tab" id="tab-events" onclick="switchView('events')" style="display:none;">📋 Events</button>
         <button class="nav-tab notif-tab-bell" onclick="toggleNotifPanel()" id="notifBellTab" style="position:relative;">🔔<span class="notif-badge" id="notifBadgeMobile" style="display:none;">0</span></button>
+        <button class="nav-tab" id="tab-analytics" onclick="switchView('analytics')" style="display:none;">📊 Analytics</button>
         <button class="nav-tab" id="tab-settings" onclick="switchView('settings')">⚙️ Settings</button>
     </div>
 
@@ -1327,6 +1758,10 @@
 
     <div class="app-view" id="view-events" style="padding: 0 4px;">
         <div class="events-wrapper" id="events-content"></div>
+    </div>
+
+    <div class="app-view" id="view-analytics" style="padding: 0 4px;">
+        <div class="analytics-wrapper" id="analytics-content"></div>
     </div>
 
     <!-- BULK ACTION BAR -->
@@ -1752,6 +2187,21 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
+                            <h3 class="section-title">Instagram Post Link</h3>
+                            <div style="display: flex; gap: 10px; align-items: flex-end; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                                <div style="flex-grow: 1;">
+                                    <label class="stat-label" style="margin-top:0;">Post ID</label>
+                                    <input type="text" id="taskInstagramPostId" oninput="scheduleAutoSave()" class="modern-input" placeholder="Instagram Post ID" style="font-size: 16px;">
+                                </div>
+                                <button type="button" class="btn-action" onclick="linkInstagramPost()" style="padding: 10px 20px; white-space: nowrap;">Link Post</button>
+                            </div>
+                            <div id="instagramPostMetrics" style="margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(191, 90, 242, 0.05); border: 1px solid rgba(191, 90, 242, 0.2); display: none;">
+                                <div style="font-size: 0.9rem; color: var(--text-muted);">
+                                    <div id="instagramPostMetricsContent"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
                                 <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
                                 <div class="checklist-actions" style="display: flex; gap: 5px; flex-shrink: 0;">
@@ -1817,6 +2267,7 @@
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
                     <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
+                    <button type="button" class="sidebar-btn" id="instagramPostLinkBtn" onclick="openInstagramPostPicker()" style="display:none;">Link IG Post</button>
                     <button type="button" class="sidebar-btn" onclick="importMondayFormToCard()">Import Monday Form</button>
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
                     <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
@@ -2824,7 +3275,7 @@
         document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
         const viewEl = document.getElementById('view-' + viewName);
         if (viewEl) viewEl.classList.add('active');
-        
+
         const topbar = document.querySelector('.topbar');
         if (topbar) {
             topbar.style.display = viewName === 'calendar' ? 'none' : 'flex';
@@ -2835,6 +3286,7 @@
         if (viewName === 'settings') { renderSettings(); renderUserProfile(); }
         if (viewName === 'duesoon') renderDueSoon();
         if (viewName === 'events') renderEvents();
+        if (viewName === 'analytics') renderAnalytics();
     }
 
     let searchQuery = '';
@@ -8790,6 +9242,533 @@
         html += '</div>'; // close padding div
         container.innerHTML = html;
     }
+
+    // ===== INSTAGRAM ANALYTICS DASHBOARD =====
+
+    // Check if Instagram token is configured and show/hide analytics tab
+    function updateAnalyticsTabVisibility() {
+        const hasToken = appData.settings?.instagramAccessToken;
+        const tab = document.getElementById('tab-analytics');
+        if (tab) {
+            tab.style.display = hasToken ? 'block' : 'none';
+        }
+    }
+
+    // Main function to render analytics dashboard
+    async function renderAnalytics() {
+        const container = document.getElementById('analytics-content');
+        const token = appData.settings?.instagramAccessToken;
+
+        if (!token) {
+            container.innerHTML = `
+                <div class="analytics-empty">
+                    <div class="analytics-empty-icon">📊</div>
+                    <h2 class="analytics-empty-title">Instagram Analytics Not Configured</h2>
+                    <p>Go to Settings > Integrations to configure your Instagram Business Account access token.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="analytics-wrapper">
+                <div class="analytics-header">
+                    <h1>Instagram Analytics</h1>
+                    <button class="analytics-refresh-btn" onclick="refreshAnalytics()" id="refreshBtn">🔄 Refresh</button>
+                </div>
+                <div id="analyticsContent" style="display: flex; flex-direction: column; gap: 24px;">
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div class="loading-spinner" style="display: inline-block; margin-bottom: 16px;"></div>
+                        <p style="color: var(--text-muted);">Loading analytics data...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        await loadAnalyticsData(token);
+    }
+
+    // Fetch and load all analytics data
+    async function loadAnalyticsData(token) {
+        try {
+            const accountId = appData.settings?.instagramBusinessAccountId;
+            if (!accountId) {
+                showToast('Instagram Business Account ID not configured');
+                return;
+            }
+
+            const [accountData, mediaData] = await Promise.all([
+                fetchInstagramAccountInfo(accountId, token),
+                fetchInstagramMedia(accountId, token)
+            ]);
+
+            if (accountData && mediaData) {
+                const bestTimes = await analyzeBestPostingTimes(mediaData, token);
+                renderAnalyticsDashboard(accountData, mediaData, bestTimes);
+            }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            document.getElementById('analyticsContent').innerHTML = `
+                <div class="analytics-empty">
+                    <div class="analytics-empty-icon">⚠️</div>
+                    <h2 class="analytics-empty-title">Error Loading Analytics</h2>
+                    <p>${error.message || 'Failed to fetch Instagram data. Please check your token and try again.'}</p>
+                </div>
+            `;
+            showToast('Error loading analytics data');
+        }
+    }
+
+    // Fetch Instagram account information
+    async function fetchInstagramAccountInfo(accountId, token) {
+        const response = await fetch(
+            `https://graph.instagram.com/${accountId}?fields=id,username,name,biography,followers_count,media_count&access_token=${token}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch account info');
+        return await response.json();
+    }
+
+    // Fetch recent Instagram media
+    async function fetchInstagramMedia(accountId, token) {
+        const response = await fetch(
+            `https://graph.instagram.com/${accountId}/media?fields=id,caption,media_type,media_url,timestamp,permalink,insights.metric(engagement,impressions,reach,saves,video_views)&access_token=${token}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch media');
+        const data = await response.json();
+        return data.data || [];
+    }
+
+    // Analyze best times to post
+    async function analyzeBestPostingTimes(mediaData, token) {
+        const sixtyDaysAgo = new Date();
+        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+        const timeslots = {};
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        for (const media of mediaData) {
+            const postDate = new Date(media.timestamp);
+            if (postDate < sixtyDaysAgo) continue;
+
+            const dayName = dayNames[postDate.getDay()];
+            const hour = postDate.getHours();
+            const key = `${dayName} ${hour}:00`;
+
+            if (!timeslots[key]) {
+                timeslots[key] = { count: 0, totalEngagement: 0, dayName, hour, date: postDate };
+            }
+
+            // Calculate engagement from insights
+            let engagement = 0;
+            if (media.insights && media.insights.data) {
+                media.insights.data.forEach(metric => {
+                    if (metric.name === 'engagement') engagement += metric.values[0].value || 0;
+                });
+            }
+
+            timeslots[key].count++;
+            timeslots[key].totalEngagement += engagement;
+        }
+
+        // Calculate average engagement and sort
+        const analyzed = Object.values(timeslots)
+            .map(slot => ({
+                ...slot,
+                avgEngagement: slot.totalEngagement / slot.count
+            }))
+            .sort((a, b) => b.avgEngagement - a.avgEngagement)
+            .slice(0, 5);
+
+        return analyzed;
+    }
+
+    // Render the complete analytics dashboard
+    function renderAnalyticsDashboard(accountData, mediaData, bestTimes) {
+        const container = document.getElementById('analyticsContent');
+
+        // Calculate metrics
+        const followerGrowth7d = calculateFollowerGrowth(mediaData, 7);
+        const followerGrowth30d = calculateFollowerGrowth(mediaData, 30);
+        const avgEngagement = calculateAverageEngagement(mediaData);
+
+        let html = `
+            <div class="analytics-grid">
+                <div class="stat-card">
+                    <span class="stat-card-label">Followers</span>
+                    <div class="stat-card-value">${(accountData.followers_count || 0).toLocaleString()}</div>
+                    <div class="stat-card-metric positive">
+                        📈 Last 7 days: ${followerGrowth7d > 0 ? '+' : ''}${followerGrowth7d}
+                    </div>
+                    <div class="stat-card-metric">
+                        📊 Last 30 days: ${followerGrowth30d > 0 ? '+' : ''}${followerGrowth30d}
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-label">Total Posts</span>
+                    <div class="stat-card-value">${(accountData.media_count || 0).toLocaleString()}</div>
+                    <div class="stat-card-metric">
+                        Recent: ${mediaData.length} posts loaded
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-label">Avg Engagement</span>
+                    <div class="stat-card-value">${avgEngagement.toFixed(1)}%</div>
+                    <div class="stat-card-metric">
+                        Based on recent posts
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-label">Account</span>
+                    <div class="stat-card-value" style="font-size: 1.5rem;">@${accountData.username}</div>
+                    <div class="stat-card-metric">
+                        ${accountData.name || 'Instagram Account'}
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-container">
+                <div class="section-title-with-control">
+                    <h3 class="section-title" style="margin: 0;">Recent Posts Performance</h3>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Last 12 posts</span>
+                </div>
+                <div class="posts-grid">
+                    ${renderPostsGrid(mediaData.slice(0, 12))}
+                </div>
+            </div>
+
+            <div class="section-container">
+                <div class="section-title-with-control">
+                    <h3 class="section-title" style="margin: 0;">Best Times to Post</h3>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Last 60 days analysis</span>
+                </div>
+                ${renderBestTimesTable(bestTimes)}
+            </div>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // Render posts grid
+    function renderPostsGrid(mediaData) {
+        return mediaData.map(media => {
+            const engagement = calculatePostEngagement(media);
+            const postedTime = new Date(media.timestamp).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const caption = (media.caption || '').substring(0, 100) + (media.caption?.length > 100 ? '...' : '');
+
+            return `
+                <div class="post-card">
+                    <div class="post-thumbnail">
+                        ${media.media_url ? `<img src="${media.media_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Post">` : media.media_type === 'VIDEO' ? '🎥' : '📸'}
+                    </div>
+                    <div class="post-content">
+                        <div class="post-caption">${escapeHtml(caption)}</div>
+                        <div class="post-metrics">
+                            <div class="post-metric">❤️ ${formatNumber(getMetricValue(media, 'likes', 0))}</div>
+                            <div class="post-metric">💬 ${formatNumber(getMetricValue(media, 'comments', 0))}</div>
+                            <div class="post-metric">🔖 ${formatNumber(getMetricValue(media, 'saves', 0))}</div>
+                            <div class="post-metric">👁️ ${formatNumber(getMetricValue(media, 'reach', 0))}</div>
+                        </div>
+                        <div class="post-engagement">
+                            ${engagement.toFixed(2)}% Engagement
+                        </div>
+                        <div class="post-time">Posted: ${postedTime}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Render best times table
+    function renderBestTimesTable(bestTimes) {
+        if (!bestTimes || bestTimes.length === 0) {
+            return `
+                <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                    Not enough data to analyze best posting times. Keep posting!
+                </div>
+            `;
+        }
+
+        const rows = bestTimes.map((slot, idx) => `
+            <tr>
+                <td>
+                    <span class="best-time-badge" style="background: ${idx === 0 ? 'var(--gradient-accent)' : 'rgba(255,255,255,0.1)'};">
+                        ${idx === 0 ? '🏆 Best' : `#${idx + 1}`}
+                    </span>
+                </td>
+                <td>${slot.dayName}</td>
+                <td>${String(slot.hour).padStart(2, '0')}:00</td>
+                <td>${slot.count} posts</td>
+                <td style="font-weight: 600; color: #0A84FF;">${(slot.avgEngagement * 100).toFixed(2)}%</td>
+            </tr>
+        `).join('');
+
+        return `
+            <table class="best-time-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Posts</th>
+                        <th>Avg Engagement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // Helper: Calculate follower growth
+    function calculateFollowerGrowth(mediaData, days) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        let oldestFollowers = appData.settings?.initialFollowerCount || appData.settings?.instagramFollowerHistory?.[0] || 0;
+        const currentFollowers = appData.settings?.instagramFollowerHistory?.[appData.settings.instagramFollowerHistory.length - 1] || 0;
+
+        return Math.max(0, currentFollowers - oldestFollowers);
+    }
+
+    // Helper: Calculate average engagement
+    function calculateAverageEngagement(mediaData) {
+        if (!mediaData.length) return 0;
+        const totalEngagement = mediaData.reduce((sum, media) => sum + calculatePostEngagement(media), 0);
+        return totalEngagement / mediaData.length;
+    }
+
+    // Helper: Calculate single post engagement
+    function calculatePostEngagement(media) {
+        let likes = 0, comments = 0, shares = 0;
+
+        if (media.insights && media.insights.data) {
+            media.insights.data.forEach(metric => {
+                if (metric.name === 'likes') likes = metric.values?.[0]?.value || 0;
+                if (metric.name === 'comments') comments = metric.values?.[0]?.value || 0;
+                if (metric.name === 'shares') shares = metric.values?.[0]?.value || 0;
+            });
+        }
+
+        const totalEngagement = likes + comments + shares;
+        const reach = getMetricValue(media, 'reach', 1);
+
+        return (totalEngagement / reach) * 100;
+    }
+
+    // Helper: Get metric value from insights
+    function getMetricValue(media, metricName, defaultVal = 0) {
+        if (!media.insights || !media.insights.data) return defaultVal;
+        const metric = media.insights.data.find(m => m.name === metricName);
+        return metric?.values?.[0]?.value || defaultVal;
+    }
+
+    // Helper: Format large numbers
+    function formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    }
+
+    // Refresh analytics data
+    async function refreshAnalytics() {
+        const btn = document.getElementById('refreshBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '⏳ Updating...';
+        }
+
+        await renderAnalytics();
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🔄 Refresh';
+            showToast('Analytics updated');
+        }
+    }
+
+    // Link Instagram post to task
+    function linkInstagramPost() {
+        const postId = document.getElementById('taskInstagramPostId').value.trim();
+
+        if (!postId) {
+            showToast('Please enter an Instagram Post ID');
+            return;
+        }
+
+        if (currentEditingTask) {
+            currentEditingTask.instagramPostId = postId;
+            scheduleAutoSave();
+            displayInstagramPostMetrics(postId);
+            showToast('Instagram post linked to this task');
+        }
+    }
+
+    // Display metrics for linked Instagram post
+    function displayInstagramPostMetrics(postId) {
+        const token = appData.settings?.instagramAccessToken;
+        if (!token || !postId) return;
+
+        const metricsDiv = document.getElementById('instagramPostMetrics');
+        const contentDiv = document.getElementById('instagramPostMetricsContent');
+
+        metricsDiv.style.display = 'none';
+
+        fetch(`https://graph.instagram.com/${postId}?fields=id,caption,media_type,timestamp,insights.metric(engagement,impressions,reach,saves)&access_token=${token}`)
+            .then(r => r.json())
+            .then(data => {
+                const engagement = getMetricValue(data, 'engagement', 0);
+                const impressions = getMetricValue(data, 'impressions', 0);
+                const reach = getMetricValue(data, 'reach', 0);
+                const saves = getMetricValue(data, 'saves', 0);
+
+                contentDiv.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Engagement</div>
+                            <div style="font-weight: 700; font-size: 1.2rem; color: #0A84FF;">${formatNumber(engagement)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Impressions</div>
+                            <div style="font-weight: 700; font-size: 1.2rem; color: #BF5AF2;">${formatNumber(impressions)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Reach</div>
+                            <div style="font-weight: 700; font-size: 1.2rem; color: #34C759;">${formatNumber(reach)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Saves</div>
+                            <div style="font-weight: 700; font-size: 1.2rem; color: #FF9500;">${formatNumber(saves)}</div>
+                        </div>
+                    </div>
+                `;
+                metricsDiv.style.display = 'block';
+            })
+            .catch(err => {
+                console.error('Error fetching post metrics:', err);
+                contentDiv.innerHTML = '<p style="color: var(--text-muted);">Could not load post metrics</p>';
+                metricsDiv.style.display = 'block';
+            });
+    }
+
+    // Display post metrics on task card
+    function renderTaskPostMetrics(instagramPostId) {
+        if (!instagramPostId) return '';
+
+        const token = appData.settings?.instagramAccessToken;
+        if (!token) return '';
+
+        // This will be rendered asynchronously
+        return `<div class="instagram-post-indicator" style="margin-top: 10px; padding: 10px; background: rgba(191, 90, 242, 0.1); border-radius: 8px; border: 1px solid rgba(191, 90, 242, 0.2); font-size: 0.9rem;">
+            <span style="color: #BF5AF2;">📷 Instagram Post Linked</span>
+        </div>`;
+    }
+
+    // Open Instagram post picker modal
+    function openInstagramPostPicker() {
+        const token = appData.settings?.instagramAccessToken;
+        const accountId = appData.settings?.instagramBusinessAccountId;
+
+        if (!token || !accountId) {
+            showToast('Instagram not configured in settings');
+            return;
+        }
+
+        // Create picker modal
+        let modal = document.getElementById('instagramPostPickerModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'instagramPostPickerModal';
+            modal.className = 'modal-overlay';
+            modal.onclick = (e) => closeModal(e, 'instagramPostPickerModal');
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <button class="close-modal" onclick="closeModal(null, 'instagramPostPickerModal')">&times;</button>
+                <h2 style="margin-top:0; margin-bottom:20px; font-weight: 800;">Select Instagram Post</h2>
+                <div style="text-align: center; padding: 40px 20px;">
+                    <div class="loading-spinner" style="display: inline-block; margin-bottom: 16px;"></div>
+                    <p style="color: var(--text-muted);">Loading your posts...</p>
+                </div>
+            </div>
+        `;
+
+        modal.classList.add('show');
+
+        // Load posts
+        fetchInstagramMedia(accountId, token)
+            .then(posts => {
+                let postsHtml = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 16px;">
+                        ${posts.slice(0, 20).map(post => `
+                            <div class="instagram-post-option" onclick="selectInstagramPost('${post.id}', '${escapeHtml(post.caption || '')}')">
+                                ${post.media_url ? `<img src="${post.media_url}" style="width: 100%; height: 100%; object-fit: cover;">` : post.media_type === 'VIDEO' ? '<div style="width: 100%; height: 100%; background: #333; display: flex; align-items: center; justify-content: center;">🎥</div>' : '<div style="width: 100%; height: 100%; background: #333; display: flex; align-items: center; justify-content: center;">📸</div>'}
+                                <div class="instagram-post-option-overlay">
+                                    <span style="font-size: 1.5rem;">✓</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                modal.querySelector('.modal-content').innerHTML = `
+                    <button class="close-modal" onclick="closeModal(null, 'instagramPostPickerModal')">&times;</button>
+                    <h2 style="margin-top:0; margin-bottom:20px; font-weight: 800;">Select Instagram Post</h2>
+                    ${postsHtml}
+                `;
+            })
+            .catch(err => {
+                console.error('Error loading posts:', err);
+                modal.querySelector('.modal-content').innerHTML = `
+                    <button class="close-modal" onclick="closeModal(null, 'instagramPostPickerModal')">&times;</button>
+                    <h2 style="margin-top:0; margin-bottom:20px; font-weight: 800;">Error</h2>
+                    <p style="color: var(--text-muted);">Failed to load Instagram posts. Please try again.</p>
+                `;
+            });
+    }
+
+    // Select post from picker
+    function selectInstagramPost(postId, caption) {
+        document.getElementById('taskInstagramPostId').value = postId;
+        linkInstagramPost();
+        closeModal(null, 'instagramPostPickerModal');
+    }
+
+    // Update visibility when settings change
+    function saveInstagramSettings() {
+        const token = document.getElementById('instagramAccessToken');
+        const accountId = document.getElementById('instagramBusinessAccountId');
+
+        if (token && accountId) {
+            appData.settings.instagramAccessToken = token.value.trim();
+            appData.settings.instagramBusinessAccountId = accountId.value.trim();
+            saveData();
+            updateAnalyticsTabVisibility();
+            showToast('Instagram settings saved');
+        }
+    }
+
+    // Initialize analytics on app load
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            updateAnalyticsTabVisibility();
+        }, 500);
+    });
+
+    // Override the original saveInstagramSettings if it exists
+    const originalSaveInstagramSettings = window.saveInstagramSettings;
+    window.saveInstagramSettings = function() {
+        if (originalSaveInstagramSettings) originalSaveInstagramSettings();
+        updateAnalyticsTabVisibility();
+    };
 </script>
 </body>
 </html>
