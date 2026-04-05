@@ -435,11 +435,16 @@
 
         .settings-sidebar {
             position: sticky;
-            top: 0;
+            top: 20px;
             height: fit-content;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            background: rgba(20,20,20,0.6);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: var(--radius-card);
+            backdrop-filter: blur(var(--blur));
         }
 
         .settings-nav {
