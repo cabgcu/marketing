@@ -587,7 +587,8 @@
             .settings-container {
                 display: flex;
                 flex-direction: column;
-                gap: 20px;
+                gap: 16px;
+                padding: 0 16px;
             }
 
             .settings-sidebar {
@@ -597,12 +598,19 @@
                 gap: 8px;
                 overflow-x: auto;
                 overflow-y: hidden;
-                padding-bottom: 8px;
-                margin-bottom: 10px;
+                padding: 12px 0;
+                margin-bottom: 0;
+                border: none;
+                background: transparent;
+                backdrop-filter: none;
+                width: 100vw;
+                margin-left: calc(-50vw + 50%);
+                padding-left: 16px;
+                padding-right: 16px;
             }
 
             .settings-sidebar::-webkit-scrollbar {
-                height: 4px;
+                height: 3px;
             }
 
             .settings-sidebar::-webkit-scrollbar-track {
@@ -610,8 +618,8 @@
             }
 
             .settings-sidebar::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.15);
-                border-radius: 4px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 2px;
             }
 
             .settings-nav {
@@ -622,7 +630,7 @@
             }
 
             .nav-section {
-                display: none;
+                display: contents;
             }
 
             .nav-section-label {
@@ -630,13 +638,32 @@
             }
 
             .nav-item {
-                padding: 10px 16px;
+                padding: 10px 14px;
                 white-space: nowrap;
                 flex-shrink: 0;
+                font-size: 0.9rem;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
             }
 
             .settings-content-area {
                 padding-right: 0;
+                max-height: calc(100vh - 200px);
+            }
+
+            .settings-card {
+                padding: 20px;
+                margin-bottom: 16px;
+            }
+
+            #view-settings {
+                padding: 0;
+            }
+
+            h2 {
+                padding: 0 16px;
+                margin-bottom: 16px;
             }
         }
 
