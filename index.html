@@ -598,28 +598,30 @@
                 gap: 8px;
                 overflow-x: auto;
                 overflow-y: hidden;
-                padding: 12px 0;
-                margin-bottom: 0;
+                padding: 12px 16px;
+                margin-bottom: 16px;
                 border: none;
-                background: transparent;
-                backdrop-filter: none;
-                width: 100vw;
-                margin-left: calc(-50vw + 50%);
-                padding-left: 16px;
+                background: rgba(20,20,20,0.6);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 12px;
+                backdrop-filter: blur(10px);
+                width: auto;
+                margin-left: 0;
                 padding-right: 16px;
             }
 
             .settings-sidebar::-webkit-scrollbar {
-                height: 3px;
+                height: 4px;
             }
 
             .settings-sidebar::-webkit-scrollbar-track {
                 background: rgba(255, 255, 255, 0.02);
+                border-radius: 4px;
             }
 
             .settings-sidebar::-webkit-scrollbar-thumb {
                 background: rgba(255, 255, 255, 0.2);
-                border-radius: 2px;
+                border-radius: 4px;
             }
 
             .settings-nav {
@@ -645,6 +647,22 @@
                 min-height: 44px;
                 display: flex;
                 align-items: center;
+                background: rgba(255,255,255,0.05);
+                border-radius: 8px;
+                border: 1px solid rgba(255,255,255,0.08);
+                color: var(--text-muted);
+                transition: all 0.2s;
+            }
+
+            .nav-item.active {
+                background: rgba(10, 132, 255, 0.15);
+                color: #0A84FF;
+                border-color: rgba(10, 132, 255, 0.3);
+            }
+
+            .nav-item:hover {
+                background: rgba(255,255,255,0.1);
+                color: var(--text-primary);
             }
 
             .settings-content-area {
