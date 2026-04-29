@@ -745,6 +745,28 @@
         .badge { background: rgba(255, 255, 255, 0.1); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-block; border: 1px solid rgba(255,255,255,0.1);}
         .badge.warning { background: rgba(255, 149, 0, 0.2); color: #FF9500; border-color: rgba(255, 149, 0, 0.4); }
         
+        /* Checklist view toggle (List | Calendar) */
+        .cl-view-toggle { background: rgba(255,255,255,0.05); padding: 3px; border-radius: 8px; display: inline-flex; gap: 2px; border: 1px solid rgba(255,255,255,0.06); }
+        .cl-view-toggle-btn { background: transparent; border: none; color: var(--text-muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 700; transition: 0.2s; line-height: 1; }
+        .cl-view-toggle-btn:hover { color: #fff; }
+        .cl-view-toggle-btn.active { background: var(--gradient-accent); color: #fff; box-shadow: 0 1px 4px rgba(10,132,255,0.25); }
+
+        /* Checklist mini-calendar */
+        .cl-cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+        .cl-cal-title { font-weight: 800; font-size: 1.05rem; flex: 1; text-align: center; }
+        .cl-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+        .cl-cal-day-header { font-size: 0.7rem; color: var(--text-muted); text-align: center; padding: 4px 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .cl-cal-cell { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; min-height: 64px; padding: 4px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+        .cl-cal-cell.today { background: linear-gradient(145deg, rgba(10,132,255,0.18), rgba(10,132,255,0.05)); border-color: rgba(10,132,255,0.4); }
+        .cl-cal-cell.other { background: transparent; border-color: transparent; }
+        .cl-cal-cell.has-overdue { border-color: rgba(255, 59, 48, 0.35); }
+        .cl-cal-date { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px; }
+        .cl-cal-pill { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(10,132,255,0.18); border: 1px solid rgba(10,132,255,0.3); color: #fff; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: 0.15s; line-height: 1.3; }
+        .cl-cal-pill:hover { background: rgba(10,132,255,0.32); }
+        .cl-cal-pill.done { opacity: 0.55; text-decoration: line-through; background: rgba(52,199,89,0.18); border-color: rgba(52,199,89,0.3); }
+        .cl-cal-pill.overdue { background: rgba(255, 59, 48, 0.18); border-color: rgba(255, 59, 48, 0.4); }
+        .cl-cal-empty { text-align: center; color: var(--text-muted); margin-top: 14px; font-size: 0.88rem; font-style: italic; }
+
         .checklist-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);}
         .checklist-item input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: #0A84FF; cursor: pointer; }
         .checklist-text { flex-grow: 1; font-size: 0.95rem; line-height: 1.4; color: #ddd; outline: none; word-break: break-word; }
@@ -1210,6 +1232,10 @@
 
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
+            .cl-cal-cell { min-height: 56px; padding: 3px; }
+            .cl-cal-pill { font-size: 0.62rem; padding: 1px 4px; }
+            .cl-cal-day-header { font-size: 0.62rem; padding: 3px 1px; }
+            .cl-view-toggle-btn { padding: 6px 10px; min-height: 32px; }
             .cl-assign-btn { width: 36px; height: 36px; min-height: 36px; }
             .cl-assign-btn.assigned { min-width: 42px; padding: 0 7px; }
             .cl-assign-avatar { width: 25px; height: 25px; min-width: 25px; min-height: 25px; flex-basis: 25px; }
@@ -1802,8 +1828,14 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
-                                <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                    <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
+                                    <div class="cl-view-toggle" role="tablist" aria-label="Checklist view">
+                                        <button type="button" class="cl-view-toggle-btn active" id="clViewListBtn" onclick="setChecklistView('list')" title="List view">List</button>
+                                        <button type="button" class="cl-view-toggle-btn" id="clViewCalBtn" onclick="setChecklistView('calendar')" title="Calendar view">📅 Calendar</button>
+                                    </div>
+                                </div>
                                 <div class="checklist-actions" style="display: flex; gap: 5px; flex-shrink: 0;">
                                     <button type="button" class="btn-outline cl-btn" style="border-color: rgba(10,132,255,0.4); color: #0A84FF;" onclick="saveChecklistAsTemplate()">Save</button>
                                     <button type="button" class="btn-outline cl-btn" style="border-color: rgba(191,90,242,0.4); color: #BF5AF2;" onclick="loadChecklistTemplate()">Load</button>
@@ -1825,6 +1857,7 @@
                                 <button type="button" class="btn-outline" style="padding: 8px 15px; border: none; flex-shrink: 0; min-height: 44px;" onclick="hideChecklistInput()">Cancel</button>
                             </div>
                             <button type="button" class="sidebar-btn" id="showChecklistInputBtn" style="margin-top: 10px; width: fit-content;" onclick="showChecklistInput()">+ Add an item</button>
+                            <div id="checklistCalendarContainer" style="display:none; margin-top: 16px;"></div>
                         </div>
                         <div style="margin-top: 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -6244,6 +6277,7 @@
             currentEditingTask.comments = []; renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         }
         hideChecklistInput();
+        setChecklistView('list');
         openModal('taskModal');
     }
 
@@ -6769,6 +6803,7 @@
         const container = document.getElementById('checklistContainer');
         const progress = document.getElementById('checklistProgress');
         const percent = document.getElementById('checklistPercent');
+        if (checklistViewMode === 'calendar') renderChecklistCalendar();
         if (!currentEditingTask || !currentEditingTask.checklist || currentEditingTask.checklist.length === 0) {
             container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No checklist items yet.</div>';
             progress.style.width = '0%'; percent.innerText = '0%'; return;
@@ -7103,7 +7138,127 @@
 
     function deleteChecklistItem(id) { currentEditingTask.checklist = currentEditingTask.checklist.filter(i => i.id !== id); scheduleAutoSave(); renderChecklist(); }
 
+    let checklistViewMode = 'list';
+    let checklistCalDate = new Date();
+
+    function setChecklistView(mode) {
+        checklistViewMode = mode === 'calendar' ? 'calendar' : 'list';
+        const isList = checklistViewMode === 'list';
+        const listBtn = document.getElementById('clViewListBtn');
+        const calBtn = document.getElementById('clViewCalBtn');
+        if (listBtn) listBtn.classList.toggle('active', isList);
+        if (calBtn) calBtn.classList.toggle('active', !isList);
+
+        const listContainer = document.getElementById('checklistContainer');
+        const addContainer = document.getElementById('checklistAddContainer');
+        const showAddBtn = document.getElementById('showChecklistInputBtn');
+        const calContainer = document.getElementById('checklistCalendarContainer');
+        if (listContainer) listContainer.style.display = isList ? 'flex' : 'none';
+        if (addContainer) addContainer.style.display = 'none';
+        if (showAddBtn) showAddBtn.style.display = isList ? 'inline-flex' : 'none';
+        if (calContainer) calContainer.style.display = isList ? 'none' : 'block';
+
+        if (!isList) {
+            anchorChecklistCalendarToTask();
+            renderChecklistCalendar();
+        }
+    }
+
+    function anchorChecklistCalendarToTask() {
+        // Default the visible month to the task's event date if available, else first checklist due date, else today.
+        if (!currentEditingTask) return;
+        let anchor = null;
+        if (currentEditingTask.dueDate) {
+            const d = new Date(currentEditingTask.dueDate);
+            if (!isNaN(d)) anchor = d;
+        }
+        if (!anchor) {
+            const firstDated = (currentEditingTask.checklist || []).find(i => i.dueDate);
+            if (firstDated) {
+                const parts = firstDated.dueDate.split('-');
+                anchor = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+        }
+        if (!anchor) anchor = new Date();
+        checklistCalDate = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    }
+
+    function changeChecklistMonth(offset) {
+        checklistCalDate.setMonth(checklistCalDate.getMonth() + offset);
+        renderChecklistCalendar();
+    }
+
+    function renderChecklistCalendar() {
+        const cont = document.getElementById('checklistCalendarContainer');
+        if (!cont || !currentEditingTask) return;
+        const items = (currentEditingTask.checklist || []).filter(i => i.dueDate);
+        const year = checklistCalDate.getFullYear();
+        const month = checklistCalDate.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const monthYear = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(checklistCalDate);
+        const today = new Date();
+        const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        const byDate = {};
+        items.forEach(i => {
+            const parts = i.dueDate.split('-');
+            const y = parseInt(parts[0]), m = parseInt(parts[1]) - 1, d = parseInt(parts[2]);
+            if (y === year && m === month) {
+                (byDate[d] = byDate[d] || []).push(i);
+            }
+        });
+
+        const dayHeaders = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+            .map(d => `<div class="cl-cal-day-header">${d}</div>`).join('');
+        let cellsHtml = '';
+        for (let i = 0; i < firstDay; i++) cellsHtml += `<div class="cl-cal-cell other"></div>`;
+        for (let d = 1; d <= daysInMonth; d++) {
+            const cellDate = new Date(year, month, d);
+            const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+            const dayItems = byDate[d] || [];
+            const hasOverdue = dayItems.some(it => !it.done && cellDate < todayMidnight);
+            const pills = dayItems.map(it => {
+                const cls = ['cl-cal-pill'];
+                if (it.done) cls.push('done');
+                else if (cellDate < todayMidnight) cls.push('overdue');
+                const safeText = escapeHtml(it.text || 'Untitled');
+                return `<div class="${cls.join(' ')}" title="${safeText}" onclick="openChecklistItemFromCal('${it.id}')">${it.done ? '✓ ' : ''}${safeText}</div>`;
+            }).join('');
+            const cellCls = ['cl-cal-cell'];
+            if (isToday) cellCls.push('today');
+            if (hasOverdue) cellCls.push('has-overdue');
+            cellsHtml += `<div class="${cellCls.join(' ')}"><div class="cl-cal-date">${d}</div>${pills}</div>`;
+        }
+
+        cont.innerHTML = `
+            <div class="cl-cal-header">
+                <button type="button" class="btn-outline" style="padding:6px 12px;font-size:0.85rem;min-height:32px;" onclick="changeChecklistMonth(-1)" aria-label="Previous month">‹</button>
+                <div class="cl-cal-title">${monthYear}</div>
+                <button type="button" class="btn-outline" style="padding:6px 12px;font-size:0.85rem;min-height:32px;" onclick="changeChecklistMonth(1)" aria-label="Next month">›</button>
+            </div>
+            <div class="cl-cal-grid">${dayHeaders}${cellsHtml}</div>
+            ${items.length === 0 ? '<div class="cl-cal-empty">No checklist items have due dates yet. Add a date to an item to see it here.</div>' : ''}
+        `;
+    }
+
+    function openChecklistItemFromCal(itemId) {
+        setChecklistView('list');
+        // Wait for DOM to update then highlight + scroll to the item
+        requestAnimationFrame(() => {
+            const row = document.querySelector('.checklist-item[data-cl-id="' + itemId + '"]');
+            if (!row) return;
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const orig = row.style.background;
+            row.style.transition = 'background 0.4s ease';
+            row.style.background = 'rgba(10,132,255,0.18)';
+            setTimeout(() => { row.style.background = orig; }, 1100);
+        });
+    }
+
     function showChecklistInput() {
+        // Ensure we're in list mode so the input is visible
+        if (checklistViewMode !== 'list') setChecklistView('list');
         document.getElementById('showChecklistInputBtn').style.display = 'none';
         document.getElementById('checklistAddContainer').style.display = 'flex';
         document.getElementById('newChecklistInput').focus();
