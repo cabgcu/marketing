@@ -1235,7 +1235,13 @@
             .cl-cal-cell { min-height: 56px; padding: 3px; }
             .cl-cal-pill { font-size: 0.62rem; padding: 1px 4px; }
             .cl-cal-day-header { font-size: 0.62rem; padding: 3px 1px; }
-            .cl-view-toggle-btn { padding: 6px 10px; min-height: 32px; }
+            .cl-view-toggle-btn { padding: 8px 12px; min-height: 36px; }
+
+            /* Drop the List/Calendar toggle onto its own row below the Marketing Checklist title on mobile */
+            .cl-section-title-group { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
+            .cl-section-title-group .section-title { width: 100%; }
+            .cl-section-title-group .cl-view-toggle { width: 100%; justify-content: stretch; }
+            .cl-section-title-group .cl-view-toggle-btn { flex: 1; text-align: center; }
             .cl-assign-btn { width: 36px; height: 36px; min-height: 36px; }
             .cl-assign-btn.assigned { min-width: 42px; padding: 0 7px; }
             .cl-assign-avatar { width: 25px; height: 25px; min-width: 25px; min-height: 25px; flex-basis: 25px; }
@@ -1828,8 +1834,8 @@
                             </div>
                         </div>
                         <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div class="cl-section-header" style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <div class="cl-section-title-group" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                     <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
                                     <div class="cl-view-toggle" role="tablist" aria-label="Checklist view">
                                         <button type="button" class="cl-view-toggle-btn active" id="clViewListBtn" onclick="setChecklistView('list')" title="List view">List</button>
