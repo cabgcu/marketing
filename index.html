@@ -402,6 +402,21 @@
         .planner-date-header { font-size: 1.2rem; font-weight: 800; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;}
         .planner-task-row { background: linear-gradient(145deg, rgba(10, 132, 255, 0.08) 0%, rgba(191, 90, 242, 0.08) 100%); border: 1px solid rgba(255, 255, 255, 0.15); padding: 15px 20px; border-radius: 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.15), inset 0 1px 2px rgba(255,255,255,0.15); backdrop-filter: blur(20px) saturate(200%); -webkit-backdrop-filter: blur(20px) saturate(200%); }
         .planner-task-row:hover { background: linear-gradient(145deg, rgba(10, 132, 255, 0.15) 0%, rgba(191, 90, 242, 0.15) 100%); transform: translateX(5px); border-color: rgba(255, 255, 255, 0.3); box-shadow: 0 8px 25px rgba(0,0,0,0.25), inset 0 1px 3px rgba(255,255,255,0.25); }
+        .planner-task-row .planner-row-main { display: flex; align-items: center; gap: 15px; min-width: 0; flex: 1; flex-wrap: wrap; }
+        .planner-task-row .planner-row-title { font-weight: bold; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; flex-wrap: wrap; word-break: break-word; }
+        .planner-task-row .planner-row-time { color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap; }
+
+        /* Posting Schedule (multi-date) */
+        .posting-schedule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .posting-schedule-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .post-date-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .post-date-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .post-date-row .modern-input { flex: 1; min-width: 0; font-size: 16px; }
+        .post-date-remove { flex-shrink: 0; width: 32px; height: 32px; min-width: 32px; border-radius: 8px; border: 1px solid rgba(255, 59, 48, 0.35); background: rgba(255, 59, 48, 0.12); color: #FF3B30; cursor: pointer; font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center; transition: 0.15s; padding: 0; }
+        .post-date-remove:hover { background: rgba(255, 59, 48, 0.25); }
+        .post-date-add-btn { background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.18); color: var(--ps-color, var(--text-muted)); font-size: 0.82rem; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: 0.2s; width: 100%; }
+        .post-date-add-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--ps-color, rgba(255,255,255,0.3)); }
+        .post-date-empty { font-size: 0.78rem; color: var(--text-muted); padding: 6px 2px; font-style: italic; }
 
         .settings-wrapper { width: 100%; max-width: 600px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
         .settings-card { background: rgba(20,20,20,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
@@ -1187,6 +1202,12 @@
             
             .bulk-bar { bottom: calc(90px + env(safe-area-inset-bottom)); width: 90%; flex-wrap: wrap; justify-content: center; }
             
+            /* Posting Schedule stacks vertically on mobile to prevent label/input bubble overlap */
+            .posting-schedule-grid { grid-template-columns: 1fr; gap: 18px; padding: 16px !important; }
+            .posting-schedule-col { padding: 12px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; }
+            .post-date-remove { width: 38px; height: 38px; min-width: 38px; }
+            .post-date-add-btn { padding: 12px; min-height: 44px; }
+
             .checklist-item { min-height: 44px; }
             .checklist-item input[type="checkbox"] { width: 24px; height: 24px; }
             .cl-assign-btn { width: 36px; height: 36px; min-height: 36px; }
@@ -1762,18 +1783,21 @@
                         </div>
                         <div style="margin-top: 20px;">
                             <h3 class="section-title">Posting Schedule</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
-                                <div>
+                            <div class="posting-schedule-grid" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                                <div class="posting-schedule-col" data-type="story" style="--ps-color: #BF5AF2;">
                                     <label class="stat-label" style="margin-top:0; color: #BF5AF2;">IG Story</label>
-                                    <input type="text" id="postStory" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                                    <div class="post-date-list" id="postStoryList"></div>
+                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('story')">+ Add Date</button>
                                 </div>
-                                <div>
+                                <div class="posting-schedule-col" data-type="photo" style="--ps-color: #0A84FF;">
                                     <label class="stat-label" style="margin-top:0; color: #0A84FF;">IG Photo</label>
-                                    <input type="text" id="postPhoto" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                                    <div class="post-date-list" id="postPhotoList"></div>
+                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('photo')">+ Add Date</button>
                                 </div>
-                                <div>
+                                <div class="posting-schedule-col" data-type="reel" style="--ps-color: #FF2D55;">
                                     <label class="stat-label" style="margin-top:0; color: #FF2D55;">IG Reel</label>
-                                    <input type="text" id="postReel" placeholder="--/--/--" onfocus="(this.type='datetime-local')" onblur="(this.value === '' ? this.type='text' : this.type='datetime-local')" onchange="scheduleAutoSave()" class="modern-input" style="font-size: 16px;">
+                                    <div class="post-date-list" id="postReelList"></div>
+                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('reel')">+ Add Date</button>
                                 </div>
                             </div>
                         </div>
@@ -2335,7 +2359,7 @@
                     if (t.eventLocation === undefined) t.eventLocation = '';
                     if (t.priority    === undefined) t.priority = '';
                     if (t.completed   === undefined) t.completed = false;
-                    if (!t.postingSchedule) t.postingSchedule = { story: '', photo: '', reel: '' };
+                    t.postingSchedule = normalizePostingSchedule(t.postingSchedule);
                     if (t.assignedTo !== undefined) delete t.assignedTo;
 
                     if (t.coverImage) t.coverImage = toDirectDriveUrl(t.coverImage);
@@ -2418,7 +2442,7 @@
                 title: "Put Your Records On",
                 description: "Submitted By: Shae Dale_<br>Submission Date: 01-25-2026<br>Student Contact: sdale10@my.gcu.edu<br>Team: CAB<br>Staff Email: chris.hinojosa@gcu.edu<br><br>Event Information<br>Event Description: This event will be held on the quad where students come to paint records and watch local GCU artist sing at the lopes live.<br>Event Date: 04-07-2026<br>Start Time: 06:00 PM<br>End Time: 08:00 PM<br>Event Location: The Quad<br>Design Inspiration: Posters<br>Approved Marketing Request : Chris Hinojosa",
                 text: "Legacy Text fallback", dueDate: "",
-                postingSchedule: { story: "", photo: "", reel: "" },
+                postingSchedule: { story: [], photo: [], reel: [] },
                 customFields: [
                     { id: generateId(), name: "Meet With AD", type: "datetime-local", value: "" },
                     { id: generateId(), name: "Video Request Due By", type: "datetime-local", value: "" },
@@ -3318,7 +3342,7 @@
                 description: card.desc || '',
                 text: card.desc || '',
                 dueDate,
-                postingSchedule: { story: '', photo: '', reel: '' },
+                postingSchedule: { story: [], photo: [], reel: [] },
                 customFields: [],
                 attachments: card.attachments?.map(att => ({
                     id: generateId(),
@@ -3891,9 +3915,10 @@
             });
         } else {
             appData.tasks.filter(t => t.boardId === appData.activeBoardId).forEach(t => {
-                if (t.postingSchedule?.story) items.push({ date: t.postingSchedule.story, type: 'Story', hex: '#BF5AF2', task: t });
-                if (t.postingSchedule?.photo) items.push({ date: t.postingSchedule.photo, type: 'Photo', hex: '#0A84FF', task: t });
-                if (t.postingSchedule?.reel)  items.push({ date: t.postingSchedule.reel,  type: 'Reel',  hex: '#FF2D55', task: t });
+                const ps = normalizePostingSchedule(t.postingSchedule);
+                ps.story.forEach(d => { if (d) items.push({ date: d, type: 'Story', hex: '#BF5AF2', task: t }); });
+                ps.photo.forEach(d => { if (d) items.push({ date: d, type: 'Photo', hex: '#0A84FF', task: t }); });
+                ps.reel.forEach(d  => { if (d) items.push({ date: d, type: 'Reel',  hex: '#FF2D55', task: t }); });
             });
         }
 
@@ -3925,12 +3950,12 @@
                         
                         let badgeHtml = '';
                         if (calendarType === 'planner') {
-                            badgeHtml = `<span class="label-tag" style="background: rgba(255,255,255,0.1); color: ${item.hex}; border-color: ${item.hex}; margin-right: 10px;">${item.type}</span>`;
+                            badgeHtml = `<span class="label-tag" style="background: rgba(255,255,255,0.1); color: ${item.hex}; border-color: ${item.hex}; flex-shrink: 0;">${item.type}</span>`;
                         }
                         
                         let extraHtml = item.task.labels && item.task.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 8px;">(${item.task.labels[0].text})</span>` : '';
                         
-                        row.innerHTML = `<div style="display: flex; align-items: center; gap: 15px;"><span style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap;">${time}</span><div style="font-weight: bold; font-size: 1.05rem; display: flex; align-items: center;">${badgeHtml} ${item.task.title} ${extraHtml}</div></div>`;
+                        row.innerHTML = `<div class="planner-row-main"><span class="planner-row-time">${time}</span><div class="planner-row-title">${badgeHtml}<span style="word-break:break-word; min-width:0;">${item.task.title}</span>${extraHtml}</div></div>`;
                         groupEl.appendChild(row);
                     });
                     listContainer.appendChild(groupEl);
@@ -4007,8 +4032,9 @@
         const dateTimeStr = `${dateStr}T${timeStr}`;
         const taskIndex = appData.tasks.findIndex(t => t.id === taskId);
         if (taskIndex > -1) {
-            if (!appData.tasks[taskIndex].postingSchedule) appData.tasks[taskIndex].postingSchedule = { story: '', photo: '', reel: '' };
-            appData.tasks[taskIndex].postingSchedule[type] = dateTimeStr;
+            const ps = normalizePostingSchedule(appData.tasks[taskIndex].postingSchedule);
+            if (!ps[type].includes(dateTimeStr)) ps[type].push(dateTimeStr);
+            appData.tasks[taskIndex].postingSchedule = ps;
             saveData(); closeModal(null, 'quickPostModal'); renderCalendar(); showToast("Post scheduled!");
         }
     }
@@ -4886,17 +4912,19 @@
                 });
             }
 
-            const schedule = task.postingSchedule || {};
+            const schedule = normalizePostingSchedule(task.postingSchedule);
             [['story', 'Story'], ['photo', 'Photo'], ['reel', 'Reel']].forEach(([key, label]) => {
-                if (!schedule[key]) return;
-                events.push({
-                    id: `task-${task.id}-${key}`,
-                    source: 'content_calendar',
-                    title: `${task.title || 'Untitled Event'} — ${label} Post`,
-                    start: schedule[key],
-                    location: task.eventLocation || '',
-                    description: `Content Calendar ${label} slot for ${task.title || 'Untitled Event'}`,
-                    taskId: task.id
+                schedule[key].forEach((dateStr, idx) => {
+                    if (!dateStr) return;
+                    events.push({
+                        id: `task-${task.id}-${key}-${idx}`,
+                        source: 'content_calendar',
+                        title: `${task.title || 'Untitled Event'} — ${label} Post`,
+                        start: dateStr,
+                        location: task.eventLocation || '',
+                        description: `Content Calendar ${label} slot for ${task.title || 'Untitled Event'}`,
+                        taskId: task.id
+                    });
                 });
             });
         });
@@ -6063,6 +6091,85 @@
     // Track which @mentions have already been notified per task to prevent duplicates on auto-save
     const _notifiedMentions = {};
 
+    // Normalize posting schedule into arrays. Accepts legacy {story:'',photo:'',reel:''} or arrays.
+    function normalizePostingSchedule(ps) {
+        const out = { story: [], photo: [], reel: [] };
+        if (!ps || typeof ps !== 'object') return out;
+        ['story', 'photo', 'reel'].forEach(k => {
+            const v = ps[k];
+            if (Array.isArray(v)) out[k] = v.filter(d => typeof d === 'string');
+            else if (typeof v === 'string' && v) out[k] = [v];
+        });
+        return out;
+    }
+
+    function renderPostingSchedule() {
+        if (!currentEditingTask) return;
+        currentEditingTask.postingSchedule = normalizePostingSchedule(currentEditingTask.postingSchedule);
+        const colorMap = { story: '#BF5AF2', photo: '#0A84FF', reel: '#FF2D55' };
+        const labelMap = { story: 'IG Story', photo: 'IG Photo', reel: 'IG Reel' };
+        ['story', 'photo', 'reel'].forEach(type => {
+            const list = document.getElementById('post' + type.charAt(0).toUpperCase() + type.slice(1) + 'List');
+            if (!list) return;
+            const dates = currentEditingTask.postingSchedule[type];
+            list.innerHTML = '';
+            if (dates.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'post-date-empty';
+                empty.textContent = 'No ' + labelMap[type] + ' dates yet';
+                list.appendChild(empty);
+                return;
+            }
+            dates.forEach((date, idx) => {
+                const row = document.createElement('div');
+                row.className = 'post-date-row';
+                const input = document.createElement('input');
+                input.type = date ? 'datetime-local' : 'text';
+                input.className = 'modern-input';
+                input.value = date || '';
+                input.placeholder = '--/--/--';
+                input.onfocus = () => { input.type = 'datetime-local'; };
+                input.onblur = () => { if (!input.value) input.type = 'text'; };
+                input.onchange = () => updatePostDate(type, idx, input.value);
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'post-date-remove';
+                remove.title = 'Remove date';
+                remove.textContent = '×';
+                remove.onclick = () => removePostDate(type, idx);
+                row.appendChild(input);
+                row.appendChild(remove);
+                list.appendChild(row);
+            });
+        });
+    }
+
+    function addPostDate(type) {
+        if (!currentEditingTask) return;
+        currentEditingTask.postingSchedule = normalizePostingSchedule(currentEditingTask.postingSchedule);
+        currentEditingTask.postingSchedule[type].push('');
+        renderPostingSchedule();
+    }
+
+    function updatePostDate(type, idx, value) {
+        if (!currentEditingTask) return;
+        currentEditingTask.postingSchedule = normalizePostingSchedule(currentEditingTask.postingSchedule);
+        const arr = currentEditingTask.postingSchedule[type];
+        if (idx < 0 || idx >= arr.length) return;
+        arr[idx] = value || '';
+        scheduleAutoSave();
+    }
+
+    function removePostDate(type, idx) {
+        if (!currentEditingTask) return;
+        currentEditingTask.postingSchedule = normalizePostingSchedule(currentEditingTask.postingSchedule);
+        const arr = currentEditingTask.postingSchedule[type];
+        if (idx < 0 || idx >= arr.length) return;
+        arr.splice(idx, 1);
+        renderPostingSchedule();
+        scheduleAutoSave();
+    }
+
     function openTaskModal(colId, taskId = null) {
         document.getElementById('taskModalColId').value = colId;
         document.getElementById('taskModalTaskId').value = taskId || '';
@@ -6071,9 +6178,6 @@
         const titleEl = document.getElementById('taskTitleInput');
         const descEl = document.getElementById('taskContentInput');
         const dueEl = document.getElementById('taskDueDate');
-        const postStory = document.getElementById('postStory');
-        const postPhoto = document.getElementById('postPhoto');
-        const postReel = document.getElementById('postReel');
         switchTaskTab('details');
         
         const moveSelect = document.getElementById('settingMoveList');
@@ -6127,25 +6231,17 @@
             dueEl.value = task.dueDate || '';
             document.getElementById('taskEventLocation').value = task.eventLocation || '';
             document.getElementById('taskPriority').value = task.priority || '';
-            if (task.postingSchedule) { postStory.value = task.postingSchedule.story || ''; postPhoto.value = task.postingSchedule.photo || ''; postReel.value = task.postingSchedule.reel || ''; }
-            else { postStory.value = ''; postPhoto.value = ''; postReel.value = ''; }
-            
-            postStory.type = postStory.value ? 'datetime-local' : 'text';
-            postPhoto.type = postPhoto.value ? 'datetime-local' : 'text';
-            postReel.type = postReel.value ? 'datetime-local' : 'text';
+            currentEditingTask.postingSchedule = normalizePostingSchedule(task.postingSchedule);
 
             if (task.coverImage) { coverEl.style.display = 'block'; coverEl.style.backgroundImage = `url('${task.coverImage}')`; }
             else { coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none'; }
-            renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments();
+            renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         } else {
-            currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: '', photo: '', reel: '' } };
+            currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: [], photo: [], reel: [] } };
             titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
-            postStory.value = ''; postPhoto.value = ''; postReel.value = '';
-
-            postStory.type = 'text'; postPhoto.type = 'text'; postReel.type = 'text';
 
             coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none';
-            currentEditingTask.comments = []; renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments();
+            currentEditingTask.comments = []; renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         }
         hideChecklistInput();
         openModal('taskModal');
@@ -7570,7 +7666,9 @@
         if (!title || !colId) return;
         const desc = document.getElementById('taskContentInput').innerHTML;
         const dueDate = document.getElementById('taskDueDate').value;
-        const postingObj = { story: document.getElementById('postStory').value, photo: document.getElementById('postPhoto').value, reel: document.getElementById('postReel').value };
+        const postingObj = normalizePostingSchedule(currentEditingTask && currentEditingTask.postingSchedule);
+        // Drop empty placeholder rows when persisting
+        ['story','photo','reel'].forEach(k => { postingObj[k] = postingObj[k].filter(Boolean); });
         const eventLocation = document.getElementById('taskEventLocation').value.trim();
         const priority = document.getElementById('taskPriority').value;
         const newPos = parseInt(document.getElementById('settingTaskPosition').value);
@@ -8507,7 +8605,7 @@
             dueDate: '',
             eventLocation: '',
             priority: '',
-            postingSchedule: { story: '', photo: '', reel: '' },
+            postingSchedule: { story: [], photo: [], reel: [] },
             customFields: [],
             attachments: [],
             coverImage: '',
@@ -8698,14 +8796,17 @@
         }
 
         // Posting Schedule
-        const ps = task.postingSchedule;
-        if (ps && (ps.story || ps.photo || ps.reel)) {
+        const ps = normalizePostingSchedule(task.postingSchedule);
+        if (ps.story.length || ps.photo.length || ps.reel.length) {
             html += '<div style="margin-bottom:20px; background:rgba(255,255,255,0.03); padding:16px; border-radius:14px; border:1px solid rgba(255,255,255,0.06);">';
             html += '<div style="font-weight:700; font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Posting Schedule</div>';
             const formatPS = (val) => { if (!val) return '—'; const d = new Date(val); return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); };
-            if (ps.story) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#BF5AF2; font-weight:700;">Story:</span> ${formatPS(ps.story)}</div>`;
-            if (ps.photo) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#0A84FF; font-weight:700;">Photo:</span> ${formatPS(ps.photo)}</div>`;
-            if (ps.reel) html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:#34C759; font-weight:700;">Reel:</span> ${formatPS(ps.reel)}</div>`;
+            const renderRows = (arr, label, color) => arr.filter(Boolean).forEach(val => {
+                html += `<div style="padding:4px 0; font-size:0.88rem;"><span style="color:${color}; font-weight:700;">${label}:</span> ${formatPS(val)}</div>`;
+            });
+            renderRows(ps.story, 'Story', '#BF5AF2');
+            renderRows(ps.photo, 'Photo', '#0A84FF');
+            renderRows(ps.reel,  'Reel',  '#34C759');
             html += '</div>';
         }
 
