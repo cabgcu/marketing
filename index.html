@@ -2747,16 +2747,11 @@
 
         try {
             const appUrl = window.location.origin + window.location.pathname;
-            const resp = await fetch(SUPABASE_URL + '/functions/v1/send-password-reset', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + SUPABASE_KEY
-                },
-                body: JSON.stringify({ email, appUrl })
+            const { data: result, error } = await _supabase.rpc('send_password_reset_email', {
+                p_email: email,
+                p_app_url: appUrl
             });
-            const result = await resp.json();
-            if (result.success) {
+            if (!error && result?.success) {
                 document.getElementById('login-overlay-forgot').innerHTML = `
                     <h1 style="margin-top:0;font-weight:800;background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Check Your Email</h1>
                     <p style="color:var(--text-muted);margin-bottom:25px;">
