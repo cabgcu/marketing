@@ -1,9 +1,9 @@
 // Supabase Edge Function: send-password-reset
-// Generates a password reset token, stores it in app_state, and emails it via Brevo
+// Generates a password reset token, stores it in app_state, and emails it via Brevo.
+// BREVO_API_KEY is read from the app_secrets table (set via SQL editor).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -37,6 +37,24 @@ Deno.serve(async (req) => {
     const normalizedEmail = email.trim().toLowerCase();
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Read Brevo API key from database (stored via SQL editor)
+    const { data: secretRow, error: secretError } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("key", "BREVO_API_KEY")
+      .single();
+
+    if (secretError || !secretRow?.value) {
+      console.error("Secret fetch error:", secretError);
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
+      );
+    }
+
+    const brevoApiKey = secretRow.value;
+
+    // Load app state to verify user and store token
     const { data: stateRow, error: fetchError } = await supabase
       .from("app_state")
       .select("data")
@@ -78,11 +96,7 @@ Deno.serve(async (req) => {
       appData.settings.passwordResetTokens as any[]
     ).filter((t: any) => t.email !== normalizedEmail);
 
-    appData.settings.passwordResetTokens.push({
-      email: normalizedEmail,
-      token,
-      expiry,
-    });
+    appData.settings.passwordResetTokens.push({ email: normalizedEmail, token, expiry });
 
     const { error: updateError } = await supabase
       .from("app_state")
@@ -103,11 +117,11 @@ Deno.serve(async (req) => {
     const emailRes = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        "api-key": BREVO_API_KEY,
+        "api-key": brevoApiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        sender: { name: "CAB Marketing", email: "no-reply@cabmarketing.com" },
+        sender: { name: "CAB Marketing", email: "noreply@cabgcu.com" },
         to: [{ email: normalizedEmail, name: userName }],
         subject: "Reset Your Password – CAB Marketing",
         htmlContent: `
