@@ -1686,7 +1686,7 @@
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
-                    <button class="btn-action" style="flex:1; min-width: 200px; background: linear-gradient(135deg,#BF5AF2,#0A84FF);" onclick="syncMondayAttachments(false)">Sync Attachments Now</button>
+                    <button class="btn-action" style="flex:1; min-width: 200px; background: linear-gradient(135deg,#BF5AF2,#0A84FF);" onclick="syncMondayAttachments(false).then(()=>localStorage.setItem('mondayAttachLastSync',String(Date.now())))">Sync Attachments Now</button>
                 </div>
             </div>
 
@@ -2482,6 +2482,17 @@
         if (activeBoard?.settings?.mondayApiToken && activeBoard?.settings?.mondayBoardId) {
             // Silent pull - don't show toast to avoid spam on every reload
             fetchAndCreateCardsFromMonday().catch(err => console.warn('Auto-pull skipped:', err));
+        }
+
+        // Auto-sync attachments once per day (silent)
+        if (activeBoard?.settings?.mondayApiToken && activeBoard?.settings?.mondayProxyGasUrl) {
+            const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+            const lastSync = parseInt(localStorage.getItem('mondayAttachLastSync') || '0', 10);
+            if (Date.now() - lastSync >= SYNC_INTERVAL_MS) {
+                syncMondayAttachments(true)
+                    .then(() => localStorage.setItem('mondayAttachLastSync', String(Date.now())))
+                    .catch(err => console.warn('Auto attach-sync skipped:', err));
+            }
         }
     }
 
@@ -5287,6 +5298,13 @@
                 const manualAttachments = (appData.tasks[taskIdx].attachments || []).filter(a => !a._mondayAssetId);
                 appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
                 console.log(`💾 "${task.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
+
+                // Set cover image from any attachment whose filename contains "GCU Life Header"
+                const coverAttach = mondayAttachments.find(a => a.name && a.name.toLowerCase().includes('gcu life header'));
+                if (coverAttach) {
+                    appData.tasks[taskIdx].coverImage = coverAttach.url; // already toDirectDriveUrl'd
+                    console.log(`🖼️ "${task.title}" — cover set from: ${coverAttach.name}`);
+                }
 
                 // Update revision round label (remove old, add new)
                 if (parsed.revisionRound) {
