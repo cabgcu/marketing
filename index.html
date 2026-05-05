@@ -1679,6 +1679,10 @@
                         <label class="stat-label" style="font-size: 0.85rem;">Revision Round Column ID</label>
                         <input type="text" id="mondayRevisionColId" class="modern-input" placeholder="lookup_mkxf9mzq" style="padding: 8px 12px; font-size: 14px;">
                     </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label class="stat-label" style="font-size: 0.85rem;">Drive Proxy URL <span style="color:var(--text-muted); font-weight:400;">(deploy <code>monday-drive-proxy.gs</code> as a Web App and paste the /exec URL here)</span></label>
+                        <input type="url" id="mondayProxyGasUrl" class="modern-input" placeholder="https://script.google.com/macros/s/.../exec" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
@@ -4393,6 +4397,8 @@
             if (attachColInput) attachColInput.value = boardSettings.mondayAttachColId || 'lookup_mkxfhsp2';
             const revisionColInput = document.getElementById('mondayRevisionColId');
             if (revisionColInput) revisionColInput.value = boardSettings.mondayRevisionColId || 'lookup_mkxf9mzq';
+            const proxyGasInput = document.getElementById('mondayProxyGasUrl');
+            if (proxyGasInput) proxyGasInput.value = boardSettings.mondayProxyGasUrl || '';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -4702,6 +4708,7 @@
         activeBoard.settings.mondayAttachBoardId = (document.getElementById('mondayAttachBoardId')?.value || '').trim() || '18369530025';
         activeBoard.settings.mondayAttachColId   = (document.getElementById('mondayAttachColId')?.value   || '').trim() || 'lookup_mkxfhsp2';
         activeBoard.settings.mondayRevisionColId = (document.getElementById('mondayRevisionColId')?.value || '').trim() || 'lookup_mkxf9mzq';
+        activeBoard.settings.mondayProxyGasUrl   = (document.getElementById('mondayProxyGasUrl')?.value   || '').trim();
 
         if (!activeBoard.settings.mondayImportedIds) activeBoard.settings.mondayImportedIds = [];
 
@@ -5095,7 +5102,13 @@
         const attachBoardId  = (activeBoard.settings?.mondayAttachBoardId  || '18369530025').trim();
         const attachColId    = (activeBoard.settings?.mondayAttachColId    || 'lookup_mkxfhsp2').trim();
         const revisionColId  = (activeBoard.settings?.mondayRevisionColId  || 'lookup_mkxf9mzq').trim();
+        const proxyGasUrl    = (activeBoard.settings?.mondayProxyGasUrl    || '').trim();
         const REVISION_PREFIX = 'Round:';
+
+        if (!proxyGasUrl) {
+            if (!silent) showToast('Please set the Drive Proxy URL in Settings → Monday.com first. Deploy monday-drive-proxy.gs as a Web App and paste the /exec URL.');
+            return;
+        }
 
         if (!silent) showToast('Syncing attachments from Monday.com…');
 
@@ -5239,24 +5252,12 @@
                         continue;
                     }
 
-                    // Download → base64 → upload to Google Drive
+                    // Proxy download + upload through GAS (avoids browser CORS on Monday's S3)
                     try {
-                        const fileRes = await fetch(asset.url);
-                        if (!fileRes.ok) continue;
-                        const blob     = await fileRes.blob();
-                        const mimeType = blob.type || 'application/octet-stream';
-
-                        const base64 = await new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload  = () => resolve(reader.result.split(',')[1]);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(blob);
-                        });
-
-                        const uploadRes    = await fetch(GAS_UPLOAD_URL, {
+                        const uploadRes    = await fetch(proxyGasUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ filename: asset.name, mimeType, base64 })
+                            body: JSON.stringify({ sourceUrl: asset.url, filename: asset.name })
                         });
                         const uploadResult = await uploadRes.json();
 
