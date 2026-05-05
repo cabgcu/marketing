@@ -5157,6 +5157,7 @@
 
                 const assetIds = [];
                 const rawValue = (attachCol?.display_value || attachCol?.text || '').trim();
+                console.log(`📎 "${item.name}" — attach col raw:`, JSON.stringify(attachCol), '| rawValue:', rawValue);
                 if (rawValue) {
                     rawValue.split(/,\s*/).forEach(url => {
                         const match = url.match(/\/resources\/(\d+)\//);
@@ -5166,6 +5167,7 @@
                         }
                     });
                 }
+                console.log(`📎 "${item.name}" — assetIds:`, assetIds, '| revision:', revisionRound);
 
                 return { id: item.id, name: item.name, assetIds, revisionRound };
             });
@@ -5260,6 +5262,7 @@
                             body: JSON.stringify({ sourceUrl: asset.url, filename: asset.name })
                         });
                         const uploadResult = await uploadRes.json();
+                        console.log(`☁️ Upload result for asset ${assetId}:`, uploadResult);
 
                         if (uploadResult.success) {
                             mondayAttachments.push({
