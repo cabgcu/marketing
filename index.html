@@ -5268,7 +5268,7 @@
                                 url: toDirectDriveUrl(uploadResult.url),
                                 viewerUrl: uploadResult.url,
                                 size: '',
-                                mimeType,
+                                mimeType: uploadResult.mimeType || '',
                                 isLink: false,
                                 _mondayAssetId: assetId,
                                 date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
