@@ -1659,6 +1659,31 @@
                     <button class="btn-action" style="flex:1; min-width: 200px;" onclick="fetchAndCreateCardsFromMonday(false)">Fetch Now</button>
                     <button class="btn-outline" style="flex:1; min-width: 200px; border-color:rgba(255,152,0,0.4); color:#FF9500;" onclick="clearMondayImportHistory()">Refresh Old Imports</button>
                 </div>
+
+                <hr style="border-color:rgba(255,255,255,0.08); margin:24px 0;">
+
+                <h3 class="section-title" style="font-size:0.95rem; margin-bottom:8px;">📎 Attachment &amp; Revision Sync</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                    For each card that was imported from Monday.com, pull the latest deliverable attachments and revision round label from a separate deliverables board. Files are downloaded from Monday.com and re-uploaded to Google Drive.
+                </p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div style="grid-column: 1 / -1;">
+                        <label class="stat-label" style="font-size: 0.85rem;">Deliverables Board ID</label>
+                        <input type="text" id="mondayAttachBoardId" class="modern-input" placeholder="e.g. 18369530025" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Attachments Column ID</label>
+                        <input type="text" id="mondayAttachColId" class="modern-input" placeholder="lookup_mkxfhsp2" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                    <div>
+                        <label class="stat-label" style="font-size: 0.85rem;">Revision Round Column ID</label>
+                        <input type="text" id="mondayRevisionColId" class="modern-input" placeholder="lookup_mkxf9mzq" style="padding: 8px 12px; font-size: 14px;">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn-outline" style="flex:1; min-width: 200px;" onclick="saveMondaySettings()">Save Settings</button>
+                    <button class="btn-action" style="flex:1; min-width: 200px; background: linear-gradient(135deg,#BF5AF2,#0A84FF);" onclick="syncMondayAttachments(false)">Sync Attachments Now</button>
+                </div>
             </div>
 
             <div class="settings-card admin-only">
@@ -4362,6 +4387,12 @@
             document.getElementById('fieldSubmittedBy').value = boardSettings.fieldSubmittedBy || 'text_mkv8ebee';
             document.getElementById('fieldEmail').value = boardSettings.fieldEmail || 'email_mkv8x9x';
             document.getElementById('fieldInspiration').value = boardSettings.fieldInspiration || 'file_mkv5hqye';
+            const attachBoardInput = document.getElementById('mondayAttachBoardId');
+            if (attachBoardInput) attachBoardInput.value = boardSettings.mondayAttachBoardId || '18369530025';
+            const attachColInput = document.getElementById('mondayAttachColId');
+            if (attachColInput) attachColInput.value = boardSettings.mondayAttachColId || 'lookup_mkxfhsp2';
+            const revisionColInput = document.getElementById('mondayRevisionColId');
+            if (revisionColInput) revisionColInput.value = boardSettings.mondayRevisionColId || 'lookup_mkxf9mzq';
             const autoSyncCheckbox = document.getElementById('googleCalendarAutoSync');
             if (autoSyncCheckbox) autoSyncCheckbox.checked = !!(appData.settings && appData.settings.googleCalendarAutoSync);
 
@@ -4668,6 +4699,9 @@
         activeBoard.settings.fieldSubmittedBy = (document.getElementById('fieldSubmittedBy').value || '').trim();
         activeBoard.settings.fieldEmail = (document.getElementById('fieldEmail').value || '').trim();
         activeBoard.settings.fieldInspiration = (document.getElementById('fieldInspiration').value || '').trim();
+        activeBoard.settings.mondayAttachBoardId = (document.getElementById('mondayAttachBoardId')?.value || '').trim() || '18369530025';
+        activeBoard.settings.mondayAttachColId   = (document.getElementById('mondayAttachColId')?.value   || '').trim() || 'lookup_mkxfhsp2';
+        activeBoard.settings.mondayRevisionColId = (document.getElementById('mondayRevisionColId')?.value || '').trim() || 'lookup_mkxf9mzq';
 
         if (!activeBoard.settings.mondayImportedIds) activeBoard.settings.mondayImportedIds = [];
 
@@ -5035,6 +5069,201 @@
 
         appData.tasks.push(newTask);
         return true;
+    }
+
+    // ── Monday.com Attachment + Revision Round Sync ───────────────────────────
+
+    function getRevisionLabelColor(revisionRound) {
+        const r = (revisionRound || '').toLowerCase();
+        if (r.includes('1') || r.includes('first') || r.includes('one'))   return 'green';
+        if (r.includes('2') || r.includes('second') || r.includes('two'))  return 'blue';
+        if (r.includes('3') || r.includes('third')  || r.includes('three'))return 'purple';
+        if (r.includes('4') || r.includes('fourth') || r.includes('four')) return 'orange';
+        return 'gray';
+    }
+
+    async function syncMondayAttachments(silent = false) {
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard) return;
+
+        const token = activeBoard.settings?.mondayApiToken;
+        if (!token) {
+            if (!silent) showToast('Please configure your Monday.com API token first.');
+            return;
+        }
+
+        const attachBoardId  = (activeBoard.settings?.mondayAttachBoardId  || '18369530025').trim();
+        const attachColId    = (activeBoard.settings?.mondayAttachColId    || 'lookup_mkxfhsp2').trim();
+        const revisionColId  = (activeBoard.settings?.mondayRevisionColId  || 'lookup_mkxf9mzq').trim();
+        const REVISION_PREFIX = 'Round:';
+
+        if (!silent) showToast('Syncing attachments from Monday.com…');
+
+        try {
+            // Step 1: Fetch items with both mirror columns
+            const boardQuery = `
+                query {
+                    boards(ids: ${attachBoardId}) {
+                        items_page(limit: 100) {
+                            items {
+                                id
+                                name
+                                column_values(ids: ["${attachColId}", "${revisionColId}"]) {
+                                    id
+                                    text
+                                    ... on MirrorValue { display_value }
+                                }
+                            }
+                        }
+                    }
+                }`;
+
+            const boardRes = await fetch('https://api.monday.com/v2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token, 'API-Version': '2024-01' },
+                body: JSON.stringify({ query: boardQuery })
+            });
+            if (!boardRes.ok) throw new Error('Monday.com connection failed: ' + boardRes.statusText);
+
+            const boardJson = await boardRes.json();
+            if (boardJson.errors) throw new Error(boardJson.errors[0]?.message || 'Monday.com API error');
+
+            const items = boardJson.data?.boards?.[0]?.items_page?.items || [];
+            if (items.length === 0) {
+                if (!silent) showToast('No items found on deliverables board.');
+                return;
+            }
+
+            // Parse each item — extract asset IDs and revision round
+            const allAssetIds = [];
+            const parsedItems = items.map(item => {
+                const attachCol   = item.column_values.find(cv => cv.id === attachColId);
+                const revisionCol = item.column_values.find(cv => cv.id === revisionColId);
+
+                const revisionRound = (revisionCol?.display_value || revisionCol?.text || '').trim();
+
+                const assetIds = [];
+                const rawValue = (attachCol?.display_value || attachCol?.text || '').trim();
+                if (rawValue) {
+                    rawValue.split(/,\s*/).forEach(url => {
+                        const match = url.match(/\/resources\/(\d+)\//);
+                        if (match) {
+                            assetIds.push(match[1]);
+                            allAssetIds.push(match[1]);
+                        }
+                    });
+                }
+
+                return { id: item.id, name: item.name, assetIds, revisionRound };
+            });
+
+            // Step 2: Resolve public URLs for all assets in one batch
+            const assetMap = {};
+            if (allAssetIds.length > 0) {
+                const assetQuery = `
+                    query {
+                        assets(ids: [${allAssetIds.join(',')}]) {
+                            id
+                            name
+                            public_url
+                        }
+                    }`;
+                const assetRes  = await fetch('https://api.monday.com/v2', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token, 'API-Version': '2024-01' },
+                    body: JSON.stringify({ query: assetQuery })
+                });
+                const assetJson = await assetRes.json();
+                (assetJson.data?.assets || []).forEach(a => {
+                    assetMap[a.id] = { name: a.name, url: a.public_url };
+                });
+            }
+
+            // Step 3: Update matching cards
+            let updatedCount = 0;
+
+            for (const parsed of parsedItems) {
+                // Match card by the Monday item ID stored at import time
+                const task = appData.tasks.find(t => t._mondayId === parsed.id);
+                if (!task) continue;
+
+                // Build new Monday-sourced attachments, reusing already-uploaded ones
+                const mondayAttachments = [];
+                for (const assetId of parsed.assetIds) {
+                    const asset = assetMap[assetId];
+                    if (!asset?.url) continue;
+
+                    // Reuse if already uploaded to Drive
+                    const existing = (task.attachments || []).find(a => a._mondayAssetId === assetId);
+                    if (existing) {
+                        mondayAttachments.push(existing);
+                        continue;
+                    }
+
+                    // Download → base64 → upload to Google Drive
+                    try {
+                        const fileRes = await fetch(asset.url);
+                        if (!fileRes.ok) continue;
+                        const blob     = await fileRes.blob();
+                        const mimeType = blob.type || 'application/octet-stream';
+
+                        const base64 = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload  = () => resolve(reader.result.split(',')[1]);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+
+                        const uploadRes    = await fetch(GAS_UPLOAD_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ filename: asset.name, mimeType, base64 })
+                        });
+                        const uploadResult = await uploadRes.json();
+
+                        if (uploadResult.success) {
+                            mondayAttachments.push({
+                                id: generateId(),
+                                name: uploadResult.name || asset.name,
+                                url: toDirectDriveUrl(uploadResult.url),
+                                viewerUrl: uploadResult.url,
+                                size: '',
+                                mimeType,
+                                isLink: false,
+                                _mondayAssetId: assetId,
+                                date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
+                            });
+                        }
+                    } catch (e) {
+                        console.warn(`Attachment sync: failed to upload asset ${assetId}:`, e);
+                    }
+                }
+
+                // Merge: keep manually-added attachments, replace Monday-sourced ones
+                const manualAttachments = (task.attachments || []).filter(a => !a._mondayAssetId);
+                task.attachments = [...manualAttachments, ...mondayAttachments];
+
+                // Update revision round label (remove old, add new)
+                if (parsed.revisionRound) {
+                    if (!task.labels) task.labels = [];
+                    task.labels = task.labels.filter(l => !l.text.startsWith(REVISION_PREFIX));
+                    task.labels.push({
+                        text: `${REVISION_PREFIX} ${parsed.revisionRound}`,
+                        color: getRevisionLabelColor(parsed.revisionRound)
+                    });
+                }
+
+                updatedCount++;
+            }
+
+            await saveData();
+            if (!silent) showToast(`✅ Attachment sync complete — ${updatedCount} card(s) updated.`);
+            renderBoard();
+
+        } catch (err) {
+            console.error('syncMondayAttachments error:', err);
+            if (!silent) showToast('Sync failed: ' + err.message);
+        }
     }
 
     async function saveGoogleCalendarSettings() {
