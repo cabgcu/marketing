@@ -5282,24 +5282,38 @@
                     }
                 }
 
-                // Merge: keep manually-added attachments, replace Monday-sourced ones
-                const manualAttachments = (task.attachments || []).filter(a => !a._mondayAssetId);
-                task.attachments = [...manualAttachments, ...mondayAttachments];
+                // Write back via index to guarantee appData.tasks is updated
+                const taskIdx = appData.tasks.findIndex(t => t.id === task.id);
+                if (taskIdx === -1) { console.warn('syncMondayAttachments: task vanished from appData', task.id); continue; }
+
+                const manualAttachments = (appData.tasks[taskIdx].attachments || []).filter(a => !a._mondayAssetId);
+                appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
+                console.log(`💾 "${task.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
 
                 // Update revision round label (remove old, add new)
                 if (parsed.revisionRound) {
-                    if (!task.labels) task.labels = [];
-                    task.labels = task.labels.filter(l => !l.text.startsWith(REVISION_PREFIX));
-                    task.labels.push({
+                    if (!appData.tasks[taskIdx].labels) appData.tasks[taskIdx].labels = [];
+                    appData.tasks[taskIdx].labels = appData.tasks[taskIdx].labels.filter(l => !l.text.startsWith(REVISION_PREFIX));
+                    appData.tasks[taskIdx].labels.push({
                         text: `${REVISION_PREFIX} ${parsed.revisionRound}`,
                         color: getRevisionLabelColor(parsed.revisionRound)
                     });
+                    console.log(`🏷️ "${task.title}" — label set: ${REVISION_PREFIX} ${parsed.revisionRound}`);
+                }
+
+                // If this card is currently open in the modal, sync the live editing state too
+                if (typeof currentEditingTask !== 'undefined' && currentEditingTask?.id === task.id) {
+                    currentEditingTask.attachments = appData.tasks[taskIdx].attachments;
+                    currentEditingTask.labels = appData.tasks[taskIdx].labels;
+                    if (typeof renderAttachments === 'function') renderAttachments();
+                    if (typeof renderLabels === 'function') renderLabels();
                 }
 
                 updatedCount++;
             }
 
             await saveData();
+            console.log(`💾 saveData() called — ${updatedCount} task(s) modified`);
             if (!silent) showToast(`✅ Attachment sync complete — ${updatedCount} card(s) updated.`);
             renderBoard();
 
