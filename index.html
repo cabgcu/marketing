@@ -5306,15 +5306,17 @@
                     console.log(`🖼️ "${task.title}" — cover set from: ${coverAttach.name}`);
                 }
 
-                // Update revision round label (remove old, add new)
+                // Update revision round label and fire automations
                 if (parsed.revisionRound) {
                     if (!appData.tasks[taskIdx].labels) appData.tasks[taskIdx].labels = [];
                     appData.tasks[taskIdx].labels = appData.tasks[taskIdx].labels.filter(l => !l.text.startsWith(REVISION_PREFIX));
-                    appData.tasks[taskIdx].labels.push({
+                    const newLabel = {
                         text: `${REVISION_PREFIX} ${parsed.revisionRound}`,
                         color: getRevisionLabelColor(parsed.revisionRound)
-                    });
-                    console.log(`🏷️ "${task.title}" — label set: ${REVISION_PREFIX} ${parsed.revisionRound}`);
+                    };
+                    appData.tasks[taskIdx].labels.push(newLabel);
+                    processAutomations(appData.tasks[taskIdx], 'label_added', { labelText: newLabel.text });
+                    console.log(`🏷️ "${task.title}" — label set: ${newLabel.text}`);
                 }
 
                 // If this card is currently open in the modal, sync the live editing state too
