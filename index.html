@@ -1181,7 +1181,10 @@
             
             .modern-input, .rich-text-editor, .checklist-text { max-width: 100%; box-sizing: border-box; }
             #modalTabDetails > div > div { max-width: 100%; } 
-            #taskDueDate { min-width: 0 !important; width: 100%; } 
+            #taskDueDateNative { min-width: 0 !important; width: 100%; }
+            /* On mobile hide native datetime-local, show custom trigger button */
+            #taskDueDateNative { display: none !important; }
+            #taskDueDateBtn   { display: flex !important; }
 
             .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
@@ -1270,6 +1273,95 @@
             overflow: hidden; position: relative;
         }
         .mention-dropdown .mention-item .mention-avatar img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+
+        /* ── Custom Mobile Date Picker ───────────────────────────────────────── */
+        #customDatePickerOverlay {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            align-items: flex-end; justify-content: center;
+        }
+        #customDatePickerOverlay.open { display: flex; }
+        #customDatePickerSheet {
+            width: 100%; max-width: 480px;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 28px 28px 0 0;
+            padding: 0 0 env(safe-area-inset-bottom,16px);
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        #customDatePickerOverlay.open #customDatePickerSheet { transform: translateY(0); }
+        .cdp-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 10px auto 0; }
+        .cdp-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 20px 4px;
+        }
+        .cdp-header button { background: none; border: none; color: #0A84FF; font-size: 1rem; font-weight: 600; cursor: pointer; padding: 8px 4px; }
+        .cdp-month-nav {
+            display: flex; align-items: center; gap: 16px; padding: 4px 20px 12px;
+            justify-content: center;
+        }
+        .cdp-month-nav button {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; border-radius: 50%; width: 34px; height: 34px;
+            font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .cdp-month-label { font-weight: 800; font-size: 1.05rem; color: #fff; min-width: 150px; text-align: center; }
+        .cdp-grid {
+            display: grid; grid-template-columns: repeat(7,1fr);
+            gap: 4px; padding: 0 12px;
+        }
+        .cdp-day-hdr {
+            text-align: center; font-size: 0.72rem; font-weight: 700;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 4px 0 6px;
+        }
+        .cdp-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 0.92rem; cursor: pointer;
+            border: 1.5px solid transparent; transition: background 0.15s;
+            color: #fff;
+        }
+        .cdp-day.other-month { color: rgba(255,255,255,0.25); }
+        .cdp-day.today { border-color: #0A84FF; color: #0A84FF; font-weight: 700; }
+        .cdp-day.selected {
+            background: linear-gradient(135deg,#0A84FF,#BF5AF2);
+            color: #fff; font-weight: 800; border-color: transparent;
+        }
+        .cdp-day:active { opacity: 0.7; }
+        .cdp-time-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; padding: 14px 20px 8px;
+            border-top: 1px solid rgba(255,255,255,0.08); margin-top: 10px;
+        }
+        .cdp-time-row label { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; }
+        .cdp-time-input {
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; border-radius: 10px; padding: 8px 10px;
+            font-size: 1rem; text-align: center; width: 58px;
+        }
+        .cdp-time-sep { color: #fff; font-size: 1.2rem; font-weight: 800; }
+        .cdp-ampm {
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 0.9rem;
+            cursor: pointer; font-weight: 700;
+        }
+        .cdp-footer {
+            display: flex; gap: 10px; padding: 10px 20px 6px;
+        }
+        .cdp-btn-clear {
+            flex: 1; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,59,48,0.4);
+            background: none; color: #FF3B30; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+        }
+        .cdp-btn-set {
+            flex: 2; padding: 12px; border-radius: 14px; border: none;
+            background: linear-gradient(135deg,#0A84FF,#BF5AF2);
+            color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+        /* On desktop keep native input, hide custom trigger */
+        #taskDueDateBtn { display: none; }
     </style>
 </head>
 <body>
@@ -1817,7 +1909,10 @@
                             <div style="flex-grow: 1;">
                                 <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <input type="datetime-local" id="taskDueDate" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
+                                    <input type="datetime-local" id="taskDueDateNative" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
+                                    <button type="button" id="taskDueDateBtn" onclick="openCustomDatePicker()" class="modern-input" style="padding: 10px 14px; flex-grow: 1; text-align: left; cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 12px; font-size: 0.95rem; min-height: 44px;">
+                                        <span id="taskDueDateBtnLabel" style="color: var(--text-muted);">Set date &amp; time…</span>
+                                    </button>
                                     <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
                                 </div>
                             </div>
@@ -1935,7 +2030,7 @@
                     <button type="button" class="sidebar-btn" onclick="addMember()">Members</button>
                     <button type="button" class="sidebar-btn" onclick="addLabel()">Labels</button>
                     <button type="button" class="sidebar-btn" onclick="showChecklistInput()">Checklist</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('taskDueDate').focus()">Dates</button>
+                    <button type="button" class="sidebar-btn" onclick="document.getElementById('taskDueDateNative').focus()">Dates</button>
                     <button type="button" class="sidebar-btn" onclick="addCustomField()">Custom Fields</button>
                     <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
@@ -6687,7 +6782,7 @@
         document.getElementById('taskModalListName').innerText = col ? col.title : 'List';
         const titleEl = document.getElementById('taskTitleInput');
         const descEl = document.getElementById('taskContentInput');
-        const dueEl = document.getElementById('taskDueDate');
+        const dueEl = document.getElementById('taskDueDateNative');
         switchTaskTab('details');
         
         const moveSelect = document.getElementById('settingMoveList');
@@ -6739,6 +6834,7 @@
             _notifiedMentions[taskId] = new Set(parseMentions((task.description || task.text || '') + ' ' + (task.title || '')));
 
             dueEl.value = task.dueDate || '';
+            _cdpUpdateBtnLabel(task.dueDate || '');
             document.getElementById('taskEventLocation').value = task.eventLocation || '';
             document.getElementById('taskPriority').value = task.priority || '';
             currentEditingTask.postingSchedule = normalizePostingSchedule(task.postingSchedule);
@@ -6748,7 +6844,7 @@
             renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         } else {
             currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: [], photo: [], reel: [] } };
-            titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
+            titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; _cdpUpdateBtnLabel(''); document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
 
             coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none';
             currentEditingTask.comments = []; renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
@@ -6936,7 +7032,7 @@
         const titleInput = document.getElementById('taskTitleInput');
         const descInput = document.getElementById('taskContentInput');
         const locationInput = document.getElementById('taskEventLocation');
-        const dueInput = document.getElementById('taskDueDate');
+        const dueInput = document.getElementById('taskDueDateNative');
 
         const titleEntry = entries.find(([key]) => /(name|title|event|campaign)/i.test(key));
         if (titleEntry && titleInput && !titleInput.value.trim()) titleInput.value = titleEntry[1];
@@ -8297,7 +8393,7 @@
         const title = document.getElementById('taskTitleInput').value.trim();
         if (!title || !colId) return;
         const desc = document.getElementById('taskContentInput').innerHTML;
-        const dueDate = document.getElementById('taskDueDate').value;
+        const dueDate = document.getElementById('taskDueDateNative').value;
         const postingObj = normalizePostingSchedule(currentEditingTask && currentEditingTask.postingSchedule);
         // Drop empty placeholder rows when persisting
         ['story','photo','reel'].forEach(k => { postingObj[k] = postingObj[k].filter(Boolean); });
@@ -8553,8 +8649,8 @@
                         task.dueDate = d.toISOString().slice(0,16);
                         modified = true; showToast(`🤖 Due date set to ${parseInt(act.value)} days from now`);
                         if (isCurrentEditing) {
-                            const dueInput = document.getElementById('taskDueDate');
-                            if (dueInput) dueInput.value = task.dueDate;
+                            const dueInput = document.getElementById('taskDueDateNative');
+                            if (dueInput) { dueInput.value = task.dueDate; _cdpUpdateBtnLabel(task.dueDate); }
                         }
                         break;
                     }
@@ -9597,6 +9693,205 @@
         html += '</div>'; // close padding div
         container.innerHTML = html;
     }
+</script>
+
+<!-- ── Custom Mobile Date/Time Picker ───────────────────────────────────── -->
+<div id="customDatePickerOverlay" onclick="handleDatePickerOverlayClick(event)">
+    <div id="customDatePickerSheet">
+        <div class="cdp-handle"></div>
+        <div class="cdp-header">
+            <button onclick="closeCustomDatePicker()">Cancel</button>
+            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Event Date &amp; Time</span>
+            <button onclick="confirmCustomDatePicker()" style="color:#BF5AF2;">Set</button>
+        </div>
+        <div class="cdp-month-nav">
+            <button onclick="cdpChangeMonth(-1)">&#8249;</button>
+            <span class="cdp-month-label" id="cdpMonthLabel"></span>
+            <button onclick="cdpChangeMonth(1)">&#8250;</button>
+        </div>
+        <div class="cdp-grid" id="cdpGrid"></div>
+        <div class="cdp-time-row">
+            <label>Time</label>
+            <input type="number" id="cdpHour"   class="cdp-time-input" min="1" max="12" placeholder="12">
+            <span class="cdp-time-sep">:</span>
+            <input type="number" id="cdpMinute" class="cdp-time-input" min="0"  max="59" placeholder="00">
+            <button class="cdp-ampm" id="cdpAmPm" onclick="cdpToggleAmPm()">AM</button>
+        </div>
+        <div class="cdp-footer">
+            <button class="cdp-btn-clear" onclick="clearCustomDatePicker()">Clear</button>
+            <button class="cdp-btn-set"   onclick="confirmCustomDatePicker()">Set Date &amp; Time</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Custom Mobile Date Picker ────────────────────────────────────────────
+    let _cdpYear, _cdpMonth, _cdpDay = null;
+
+    function _cdpGetInput() {
+        return document.getElementById('taskDueDateNative');
+    }
+
+    function openCustomDatePicker() {
+        const input = _cdpGetInput();
+        const val = input.value; // "YYYY-MM-DDTHH:mm"
+        const now = new Date();
+
+        if (val) {
+            const d = new Date(val);
+            _cdpYear  = d.getFullYear();
+            _cdpMonth = d.getMonth();
+            _cdpDay   = d.getDate();
+            let h = d.getHours(), m = d.getMinutes();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            document.getElementById('cdpHour').value   = h;
+            document.getElementById('cdpMinute').value = String(m).padStart(2,'0');
+            document.getElementById('cdpAmPm').textContent = ampm;
+        } else {
+            _cdpYear  = now.getFullYear();
+            _cdpMonth = now.getMonth();
+            _cdpDay   = null;
+            document.getElementById('cdpHour').value   = '';
+            document.getElementById('cdpMinute').value = '';
+            document.getElementById('cdpAmPm').textContent = 'AM';
+        }
+
+        _cdpRenderGrid();
+        const overlay = document.getElementById('customDatePickerOverlay');
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCustomDatePicker() {
+        document.getElementById('customDatePickerOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function handleDatePickerOverlayClick(e) {
+        if (e.target === document.getElementById('customDatePickerOverlay')) closeCustomDatePicker();
+    }
+
+    function cdpChangeMonth(dir) {
+        _cdpMonth += dir;
+        if (_cdpMonth > 11) { _cdpMonth = 0;  _cdpYear++; }
+        if (_cdpMonth < 0)  { _cdpMonth = 11; _cdpYear--; }
+        _cdpRenderGrid();
+    }
+
+    function cdpSelectDay(y, m, d) {
+        _cdpYear = y; _cdpMonth = m; _cdpDay = d;
+        _cdpRenderGrid();
+    }
+
+    function cdpToggleAmPm() {
+        const btn = document.getElementById('cdpAmPm');
+        btn.textContent = btn.textContent === 'AM' ? 'PM' : 'AM';
+    }
+
+    function _cdpRenderGrid() {
+        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('cdpMonthLabel').textContent = monthNames[_cdpMonth] + ' ' + _cdpYear;
+
+        const grid = document.getElementById('cdpGrid');
+        grid.innerHTML = '';
+        const days = ['S','M','T','W','T','F','S'];
+        days.forEach(d => {
+            const h = document.createElement('div');
+            h.className = 'cdp-day-hdr'; h.textContent = d;
+            grid.appendChild(h);
+        });
+
+        const today = new Date();
+        const firstDay = new Date(_cdpYear, _cdpMonth, 1).getDay();
+        const daysInMonth = new Date(_cdpYear, _cdpMonth + 1, 0).getDate();
+        const prevDays = new Date(_cdpYear, _cdpMonth, 0).getDate();
+
+        for (let i = firstDay - 1; i >= 0; i--) {
+            const cell = document.createElement('div');
+            cell.className = 'cdp-day other-month';
+            cell.textContent = prevDays - i;
+            const pm = _cdpMonth === 0 ? 11 : _cdpMonth - 1;
+            const py = _cdpMonth === 0 ? _cdpYear - 1 : _cdpYear;
+            cell.onclick = () => cdpSelectDay(py, pm, prevDays - i);
+            grid.appendChild(cell);
+        }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cdp-day';
+            cell.textContent = i;
+            const isToday = i === today.getDate() && _cdpMonth === today.getMonth() && _cdpYear === today.getFullYear();
+            const isSelected = _cdpDay === i;
+            if (isToday && !isSelected) cell.classList.add('today');
+            if (isSelected) cell.classList.add('selected');
+            const cy = _cdpYear, cm = _cdpMonth, cd = i;
+            cell.onclick = () => cdpSelectDay(cy, cm, cd);
+            grid.appendChild(cell);
+        }
+
+        const totalCells = firstDay + daysInMonth;
+        const nextDays = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+        for (let i = 1; i <= nextDays; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cdp-day other-month';
+            cell.textContent = i;
+            const nm = _cdpMonth === 11 ? 0 : _cdpMonth + 1;
+            const ny = _cdpMonth === 11 ? _cdpYear + 1 : _cdpYear;
+            cell.onclick = () => cdpSelectDay(ny, nm, i);
+            grid.appendChild(cell);
+        }
+    }
+
+    function confirmCustomDatePicker() {
+        if (!_cdpDay) { closeCustomDatePicker(); return; }
+
+        let h = parseInt(document.getElementById('cdpHour').value) || 12;
+        let m = parseInt(document.getElementById('cdpMinute').value) || 0;
+        const ampm = document.getElementById('cdpAmPm').textContent;
+        if (ampm === 'PM' && h !== 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+
+        const mm = String(_cdpMonth + 1).padStart(2,'0');
+        const dd = String(_cdpDay).padStart(2,'0');
+        const hh = String(h).padStart(2,'0');
+        const mi = String(m).padStart(2,'0');
+        const val = `${_cdpYear}-${mm}-${dd}T${hh}:${mi}`;
+
+        const input = _cdpGetInput();
+        input.value = val;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        _cdpUpdateBtnLabel(val);
+        closeCustomDatePicker();
+    }
+
+    function clearCustomDatePicker() {
+        const input = _cdpGetInput();
+        input.value = '';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        _cdpUpdateBtnLabel('');
+        _cdpDay = null;
+        closeCustomDatePicker();
+    }
+
+    function _cdpUpdateBtnLabel(val) {
+        const btn = document.getElementById('taskDueDateBtnLabel');
+        if (!btn) return;
+        if (!val) { btn.textContent = 'Set date & time…'; btn.style.color = 'var(--text-muted)'; return; }
+        const d = new Date(val);
+        const formatted = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d);
+        btn.textContent = formatted;
+        btn.style.color = '#fff';
+    }
+
+    // Sync button label whenever the modal opens (keeps desktop edits reflected on mobile)
+    const _origOpenTaskModal = typeof openTaskModal !== 'undefined' ? openTaskModal : null;
+    document.addEventListener('DOMContentLoaded', () => {
+        const nativeInput = document.getElementById('taskDueDateNative');
+        if (nativeInput) {
+            nativeInput.addEventListener('change', () => _cdpUpdateBtnLabel(nativeInput.value));
+        }
+    });
 </script>
 </body>
 </html>
