@@ -5247,6 +5247,13 @@
                     console.log(`⚠️ No card matched for Monday item: "${parsed.name}" (id: ${parsed.id})`);
                     continue;
                 }
+
+                // Skip cards that have been locked at Launch
+                if (task._mondayAttachLocked) {
+                    console.log(`🔒 "${task.title}" is locked at Launch — skipping sync`);
+                    continue;
+                }
+
                 console.log(`✅ Matched Monday item "${parsed.name}" → card "${task.title}"`);
 
 
@@ -5317,6 +5324,12 @@
                     appData.tasks[taskIdx].labels.push(newLabel);
                     processAutomations(appData.tasks[taskIdx], 'label_added', { labelText: newLabel.text });
                     console.log(`🏷️ "${task.title}" — label set: ${newLabel.text}`);
+
+                    // Lock the card once it reaches Launch — no further Monday syncs
+                    if (parsed.revisionRound.toLowerCase().includes('launch')) {
+                        appData.tasks[taskIdx]._mondayAttachLocked = true;
+                        console.log(`🔒 "${task.title}" — locked at Launch`);
+                    }
                 }
 
                 // If this card is currently open in the modal, sync the live editing state too
