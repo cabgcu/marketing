@@ -5182,10 +5182,24 @@
             // Step 3: Update matching cards
             let updatedCount = 0;
 
+            console.log('🔍 Attachment sync — Monday items found:', parsedItems.map(p => ({
+                id: p.id, name: p.name, assetCount: p.assetIds.length, revision: p.revisionRound
+            })));
+            console.log('🔍 App cards with _mondayId:', appData.tasks.filter(t => t._mondayId).map(t => ({ id: t.id, title: t.title, _mondayId: t._mondayId })));
+
             for (const parsed of parsedItems) {
-                // Match card by the Monday item ID stored at import time
-                const task = appData.tasks.find(t => t._mondayId === parsed.id);
-                if (!task) continue;
+                // Try exact _mondayId match first, then fall back to case-insensitive title match
+                let task = appData.tasks.find(t => t._mondayId === parsed.id);
+                if (!task) {
+                    const lc = parsed.name.trim().toLowerCase();
+                    task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lc);
+                }
+                if (!task) {
+                    console.log(`⚠️ No card matched for Monday item: "${parsed.name}" (id: ${parsed.id})`);
+                    continue;
+                }
+                console.log(`✅ Matched Monday item "${parsed.name}" → card "${task.title}"`);
+
 
                 // Build new Monday-sourced attachments, reusing already-uploaded ones
                 const mondayAttachments = [];
