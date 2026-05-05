@@ -5157,7 +5157,6 @@
 
                 const assetIds = [];
                 const rawValue = (attachCol?.display_value || attachCol?.text || '').trim();
-                console.log(`📎 "${item.name}" — attach col raw:`, JSON.stringify(attachCol), '| rawValue:', rawValue);
                 if (rawValue) {
                     rawValue.split(/,\s*/).forEach(url => {
                         const match = url.match(/\/resources\/(\d+)\//);
@@ -5167,7 +5166,6 @@
                         }
                     });
                 }
-                console.log(`📎 "${item.name}" — assetIds:`, assetIds, '| revision:', revisionRound);
 
                 return { id: item.id, name: item.name, assetIds, revisionRound };
             });
@@ -5312,8 +5310,20 @@
                 updatedCount++;
             }
 
-            await saveData();
-            console.log(`💾 saveData() called — ${updatedCount} task(s) modified`);
+            // Save directly here so we can log the result
+            try {
+                const { error: saveErr } = await _supabase.from('app_state').upsert({ id: 1, data: appData });
+                if (saveErr) {
+                    console.error('❌ syncMondayAttachments: Supabase save FAILED:', saveErr);
+                    if (!silent) showToast('⚠️ Files uploaded but save failed: ' + saveErr.message);
+                    return;
+                }
+                console.log(`✅ syncMondayAttachments: Supabase save succeeded — ${updatedCount} task(s) modified`);
+            } catch (saveEx) {
+                console.error('❌ syncMondayAttachments: Supabase save threw:', saveEx);
+                if (!silent) showToast('⚠️ Files uploaded but save failed: ' + saveEx.message);
+                return;
+            }
             if (!silent) showToast(`✅ Attachment sync complete — ${updatedCount} card(s) updated.`);
             renderBoard();
 
