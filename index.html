@@ -5188,12 +5188,37 @@
             console.log('🔍 App cards with _mondayId:', appData.tasks.filter(t => t._mondayId).map(t => ({ id: t.id, title: t.title, _mondayId: t._mondayId })));
 
             for (const parsed of parsedItems) {
-                // Try exact _mondayId match first, then fall back to case-insensitive title match
+                // Try _mondayId first, then several name-based strategies
                 let task = appData.tasks.find(t => t._mondayId === parsed.id);
+
                 if (!task) {
-                    const lc = parsed.name.trim().toLowerCase();
-                    task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lc);
+                    // Extract event name from "Team | Event Name - DD Month YYYY" pattern
+                    let extractedName = parsed.name.trim();
+                    const pipeIdx = extractedName.indexOf(' | ');
+                    if (pipeIdx !== -1) extractedName = extractedName.slice(pipeIdx + 3).trim();
+                    // Strip trailing " - DD Month YYYY" or " - MM/DD/YYYY" date
+                    extractedName = extractedName.replace(/\s*-\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
+                    extractedName = extractedName.replace(/\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim();
+
+                    const lcExtracted = extractedName.toLowerCase();
+                    const lcFull = parsed.name.trim().toLowerCase();
+
+                    // 1. Exact match on extracted event name
+                    task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcExtracted);
+                    // 2. Exact match on full Monday item name
+                    if (!task) task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcFull);
+                    // 3. Card title is contained inside the Monday item name (substring)
+                    if (!task) task = appData.tasks.find(t => {
+                        const ct = (t.title || '').trim().toLowerCase();
+                        return ct.length > 3 && lcFull.includes(ct);
+                    });
+                    // 4. Monday extracted name is contained inside the card title
+                    if (!task) task = appData.tasks.find(t => {
+                        const ct = (t.title || '').trim().toLowerCase();
+                        return lcExtracted.length > 3 && ct.includes(lcExtracted);
+                    });
                 }
+
                 if (!task) {
                     console.log(`⚠️ No card matched for Monday item: "${parsed.name}" (id: ${parsed.id})`);
                     continue;
