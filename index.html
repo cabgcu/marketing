@@ -1939,7 +1939,11 @@
                             <div class="form-row" id="customFieldsContainer" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);"></div>
                         </div>
                         <div id="attachmentsSection" style="margin-top: 20px;">
-                            <h3 class="section-title">File Links &amp; Attachments</h3>
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <h3 class="section-title" style="margin: 0;">File Links &amp; Attachments</h3>
+                                <button type="button" id="lockMondayFilesBtn" onclick="lockMondayFiles()" style="display:none; padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,59,48,0.4); background: rgba(255,59,48,0.1); color: #FF3B30; font-size: 0.8rem; cursor: pointer; font-weight: 600;">🔒 Lock Files</button>
+                                <div id="mondayFilesLockedBadge" style="display:none; padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(52,199,89,0.4); background: rgba(52,199,89,0.1); color: #34C759; font-size: 0.8rem; font-weight: 600;">🔒 Files Locked</div>
+                            </div>
                             <div id="attachmentsContainer"></div>
                         </div>
                         <div style="margin-top: 20px;">
@@ -5427,11 +5431,6 @@
                     processAutomations(appData.tasks[taskIdx], 'label_added', { labelText: newLabel.text });
                     console.log(`🏷️ "${task.title}" — label set: ${newLabel.text}`);
 
-                    // Lock the card once it reaches Launch — no further Monday syncs
-                    if (parsed.revisionRound.toLowerCase().includes('launch')) {
-                        appData.tasks[taskIdx]._mondayAttachLocked = true;
-                        console.log(`🔒 "${task.title}" — locked at Launch`);
-                    }
                 }
 
                 // If this card is currently open in the modal, sync the live editing state too
@@ -7162,6 +7161,13 @@
 
     function renderAttachments() {
         const container = document.getElementById('attachmentsContainer');
+        const lockBtn = document.getElementById('lockMondayFilesBtn');
+        const lockedBadge = document.getElementById('mondayFilesLockedBadge');
+        if (lockBtn && lockedBadge) {
+            const isLocked = !!currentEditingTask._mondayAttachLocked;
+            lockBtn.style.display = isLocked ? 'none' : 'inline-block';
+            lockedBadge.style.display = isLocked ? 'inline-block' : 'none';
+        }
         if(!currentEditingTask.attachments || currentEditingTask.attachments.length === 0) {
             container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No attached files/links yet.</div>';
             return;
@@ -7216,6 +7222,17 @@
             </div>
             `;
         }).join('');
+    }
+
+    function lockMondayFiles() {
+        if (!currentEditingTask) return;
+        if (currentEditingTask._mondayAttachLocked) return;
+        currentEditingTask._mondayAttachLocked = true;
+        const taskIdx = appData.tasks.findIndex(t => t.id === currentEditingTask.id);
+        if (taskIdx !== -1) appData.tasks[taskIdx]._mondayAttachLocked = true;
+        renderAttachments();
+        saveData();
+        showToast('🔒 Files locked — Monday.com will no longer update attachments for this card');
     }
 
     async function downloadAttachment(id) {
