@@ -2153,6 +2153,7 @@
                         <option value="card_completed">Card is marked complete</option>
                         <option value="member_assigned">Member is assigned...</option>
                         <option value="attachment_added">Attachment is added</option>
+                        <option value="files_locked">Files are locked</option>
                     </optgroup>
                     <optgroup label="Content">
                         <option value="desc_contains">Description contains text...</option>
@@ -7230,6 +7231,7 @@
         currentEditingTask._mondayAttachLocked = true;
         const taskIdx = appData.tasks.findIndex(t => t.id === currentEditingTask.id);
         if (taskIdx !== -1) appData.tasks[taskIdx]._mondayAttachLocked = true;
+        processAutomations(currentEditingTask, 'files_locked');
         renderAttachments();
         saveData();
         showToast('🔒 Files locked — Monday.com will no longer update attachments for this card');
@@ -8537,6 +8539,7 @@
                 case 'label_removed':       if (eventType === 'label_removed' && eventData.labelText?.toLowerCase() === rule.triggerValue.toLowerCase()) triggered = true; break;
                 case 'member_assigned':     if (eventType === 'member_assigned') { if (!rule.triggerValue || eventData.memberName?.toLowerCase() === rule.triggerValue.toLowerCase()) triggered = true; } break;
                 case 'attachment_added':    if (eventType === 'attachment_added') triggered = true; break;
+                case 'files_locked':        if (eventType === 'files_locked') triggered = true; break;
                 case 'checklist_completed': if (eventType === 'checklist_completed') { if (task.checklist?.length > 0 && task.checklist.every(c => c.done)) triggered = true; } break;
                 case 'due_soon':
                     if (eventType === 'due_soon_check' && task.dueDate) {
@@ -8768,6 +8771,7 @@
             priority_set:        `priority set to <b>${a.triggerValue}</b>`,
             member_assigned:     a.triggerValue ? `<b>${a.triggerValue}</b> is assigned` : 'any member is assigned',
             attachment_added:    'attachment is added',
+            files_locked:        '🔒 files are locked',
             checklist_completed: 'all checklist items completed',
             due_soon:            `event is within <b>${a.triggerValue} days</b>`,
             card_stale:          `card not updated in <b>${a.triggerValue} days</b>`,
@@ -8794,7 +8798,7 @@
             append_description: () => `append to description`,
             notify:             () => `show notification`,
             send_push:          () => `send push notification`,
-            lock_monday_sync:   () => `lock Monday sync`,
+            lock_monday_sync:   () => `lock files`,
         };
         return (map[act.type] || (() => act.type))();
     }
@@ -8890,7 +8894,7 @@
                     <optgroup label="Other">
                         <option value="notify">🔔 Show notification</option>
                         <option value="send_push">📲 Send push notification</option>
-                        <option value="lock_monday_sync">🔒 Lock Monday sync</option>
+                        <option value="lock_monday_sync">🔒 Lock Files</option>
                     </optgroup>
                 </select>
                 <button type="button" onclick="document.getElementById('actRow_${rowId}').remove()" style="background:none; border:none; color:#FF3B30; font-size:1.2rem; cursor:pointer; padding:0 4px;">✕</button>
@@ -8958,7 +8962,7 @@
             case 'clear_labels':
                 area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">All labels will be removed from the card.</div>`; break;
             case 'lock_monday_sync':
-                area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">Card will be locked from future Monday.com attachment syncs.</div>`; break;
+                area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">Files will be locked — Monday.com will no longer update attachments for this card.</div>`; break;
             default:
                 area.innerHTML = '';
         }
@@ -9021,7 +9025,7 @@
         else if (trigSelect === 'card_moved') triggerVal = document.getElementById('autoTriggerInputSelect').value;
         else if (trigSelect === 'priority_set') triggerVal = document.getElementById('autoTriggerPrioritySelect').value;
         else if (['due_soon','card_stale'].includes(trigSelect)) triggerVal = document.getElementById('autoTriggerDays').value.trim();
-        const noValueTriggers = ['card_created','card_completed','checklist_completed','description_blank','no_attachments','no_comments','attachment_added','member_assigned'];
+        const noValueTriggers = ['card_created','card_completed','checklist_completed','description_blank','no_attachments','no_comments','attachment_added','member_assigned','files_locked'];
         if (!noValueTriggers.includes(trigSelect) && !triggerVal) { showToast('Please fill in the trigger value.'); return; }
         const actionRows = document.querySelectorAll('#autoActionsContainer > div');
         if (actionRows.length === 0) { showToast('Add at least one action.'); return; }
