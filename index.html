@@ -26,6 +26,9 @@
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js"></script>
 
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
     <style>
         :root {
             --bg-dark: #000000;
@@ -151,35 +154,51 @@
         .controls { display: flex; gap: 12px; align-items: center; }
 
         .nav-tabs {
-            position: fixed; 
-            bottom: 30px; 
-            left: 50%; 
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
             transform: translateX(-50%);
-            display: flex; 
-            gap: 12px; 
-            background: rgba(15, 15, 15, 0.85);
-            padding: 10px; 
-            border-radius: 100px; 
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
+            display: flex;
+            align-items: center;
+            background: rgba(18, 18, 20, 0.8);
+            padding: 8px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             z-index: 100;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            width: max-content;
+            max-width: 95vw;
         }
 
         .nav-tab {
-            background: rgba(255,255,255,0.03); 
-            border: 1px solid rgba(255,255,255,0.08); 
-            color: var(--text-muted); 
-            padding: 10px 20px; 
-            border-radius: var(--radius-button); 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: 0.2s; 
-            font-size: 0.9rem;
+            background: #1C1C1E;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #8E8E93;
+            padding: 12px 16px;
+            border-radius: 100px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 0 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
-        .nav-tab:hover { background: rgba(255,255,255,0.08); color: #fff; }
-        .nav-tab.active { background: var(--gradient-accent); color: #fff; border: none; box-shadow: 0 4px 15px rgba(10, 132, 255, 0.2); }
+        .nav-tab:hover { background: #2A2A2D; border-color: rgba(255,255,255,0.1); color: #e5e5e5; }
+        .nav-tab.active {
+            background: linear-gradient(to right, #4A6BFD, #7A51F0, #A442E4);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 20px rgba(122, 81, 240, 0.4);
+        }
+        .nav-tab svg { flex-shrink: 0; }
+        .nav-tab.active svg { fill: currentColor; }
 
         .app-view { display: none; flex-grow: 1; overflow: hidden; padding-bottom: 80px; }
         .app-view.active { display: flex; }
@@ -924,7 +943,7 @@
         .notif-bell { position: relative; background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 6px 12px; font-size: 1.1rem; cursor: pointer; color: #ddd; transition: all 0.2s; }
         .notif-bell:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
         .notif-badge { position: absolute; top: -4px; right: -4px; background: #FF3B30; color: white; font-size: 0.65rem; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid rgba(15,15,15,0.9); }
-        .notif-tab-bell { display: none; }
+        .notif-tab-bell { display: none; position: relative; padding: 0; width: 48px; height: 48px; margin: 0 4px; }
         .notif-panel { position: fixed; top: 0; right: -400px; width: 380px; max-width: 92vw; height: 100vh;
             background: rgba(20, 20, 20, 0.65);
             backdrop-filter: blur(40px) saturate(150%);
@@ -1106,12 +1125,9 @@
             }
 
             /* Mobile Notification Bell - inside bottom nav */
-            .notif-tab-bell {
-                display: flex; position: relative;
-            }
             .notif-tab-bell .notif-badge {
                 top: -2px; right: -2px;
-                border-color: rgba(15, 15, 15, 0.98);
+                border-color: rgba(18, 18, 20, 0.9);
             }
 
             /* Mobile panel slides up from bottom like other modals */
@@ -1127,20 +1143,35 @@
             }
             .notif-panel.open { transform: translateY(0); right: 0; }
 
-            /* Bottom Bar Navigation */
+            /* Floating Pill Navigation — mobile keeps same pill style */
             .nav-tabs {
-                bottom: 0; left: 0; width: 100%; transform: none; 
-                border-radius: 20px 20px 0 0; 
-                padding: 12px 10px calc(15px + env(safe-area-inset-bottom)) 10px; 
-                justify-content: space-around;
-                background: rgba(15, 15, 15, 0.98);
-                border-bottom: none; border-left: none; border-right: none;
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+                bottom: calc(16px + env(safe-area-inset-bottom));
+                left: 50%;
+                transform: translateX(-50%);
+                width: max-content;
+                border-radius: 100px;
+                padding: 8px;
+                justify-content: center;
+                background: rgba(18, 18, 20, 0.85);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             }
-            .nav-tab { 
-                padding: 10px 5px; font-size: 0.75rem; flex: 1; text-align: center; white-space: nowrap;
-                min-height: 44px; display: flex; align-items: center; justify-content: center;
+            .nav-tab {
+                flex: unset;
+                padding: 12px 14px;
+                font-size: 0.875rem;
+                min-height: unset;
+                text-align: left;
             }
+            /* Hide label on inactive tabs on mobile */
+            .nav-tab:not(.active) .nav-tab-label {
+                display: none;
+            }
+            .nav-tab:not(.active) {
+                padding: 12px;
+            }
+            /* Show notification bell in the nav on mobile */
+            .notif-tab-bell { display: flex; }
 
             .app-view { 
                 padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
@@ -1508,14 +1539,32 @@
         </div>
     </div>
 
-    <!-- Shortened tabs for better mobile fit -->
+    <!-- Floating Pill Navigation Bar -->
     <div class="nav-tabs">
-        <button class="nav-tab active" id="tab-board" onclick="switchView('board')">Home</button>
-        <button class="nav-tab" id="tab-calendar" onclick="switchView('calendar')">🗓 Calendar</button>
-        <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')">⚡ Due</button>
-        <button class="nav-tab" id="tab-events" onclick="switchView('events')" style="display:none;">📋 Events</button>
-        <button class="nav-tab notif-tab-bell" onclick="toggleNotifPanel()" id="notifBellTab" style="position:relative;">🔔<span class="notif-badge" id="notifBadgeMobile" style="display:none;">0</span></button>
-        <button class="nav-tab" id="tab-settings" onclick="switchView('settings')">⚙️ Settings</button>
+        <button class="nav-tab active" id="tab-board" onclick="switchView('board')" aria-label="Home">
+            <i data-lucide="house" style="width:20px;height:20px;"></i>
+            <span class="nav-tab-label">Home</span>
+        </button>
+        <button class="nav-tab" id="tab-calendar" onclick="switchView('calendar')" aria-label="Calendar">
+            <i data-lucide="calendar" style="width:20px;height:20px;"></i>
+            <span class="nav-tab-label">Calendar</span>
+        </button>
+        <button class="nav-tab" id="tab-duesoon" onclick="switchView('duesoon')" aria-label="Due">
+            <i data-lucide="zap" style="width:20px;height:20px;"></i>
+            <span class="nav-tab-label">Due</span>
+        </button>
+        <button class="nav-tab notif-tab-bell" onclick="toggleNotifPanel()" id="notifBellTab" aria-label="Notifications">
+            <i data-lucide="bell" style="width:20px;height:20px;"></i>
+            <span class="notif-badge" id="notifBadgeMobile" style="display:none;">0</span>
+        </button>
+        <button class="nav-tab" id="tab-settings" onclick="switchView('settings')" aria-label="Settings">
+            <i data-lucide="settings" style="width:20px;height:20px;"></i>
+            <span class="nav-tab-label">Settings</span>
+        </button>
+        <button class="nav-tab" id="tab-events" onclick="switchView('events')" aria-label="Events" style="display:none;">
+            <i data-lucide="calendar-check" style="width:20px;height:20px;"></i>
+            <span class="nav-tab-label">Events</span>
+        </button>
     </div>
 
     <div class="app-view active board-container" id="view-board"></div>
@@ -9110,6 +9159,7 @@
     }
 
     window.onload = async () => {
+        if (window.lucide) lucide.createIcons();
         _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         await initData();
 
