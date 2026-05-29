@@ -29,6 +29,10 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
             --bg-dark: #000000;
@@ -44,7 +48,7 @@
             --radius-input: 20px;
             --radius-button: 100px;
             --blur: 40px;
-            --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
         }
 
         html {
@@ -76,16 +80,27 @@
             user-select: auto;
         }
 
-        #bg-container { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; 
-            background-color: #050505;
-            background-image: 
-                radial-gradient(circle at 5% 5%, rgba(10, 132, 255, 0.12) 0%, transparent 45%),
-                radial-gradient(circle at 95% 95%, rgba(191, 90, 242, 0.12) 0%, transparent 45%);
+        #bg-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+            background-color: #09090b;
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(120, 50, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 50% 100%, rgba(60, 100, 255, 0.1) 0%, transparent 50%);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             transition: background-image 0.5s ease;
+        }
+
+        .light-beam {
+            position: fixed;
+            top: 0;
+            width: 15vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, rgba(160, 100, 255, 0.05) 0%, transparent 100%);
+            transform-origin: top;
+            pointer-events: none;
+            z-index: -1;
         }
 
         .frosted {
@@ -124,6 +139,11 @@
             padding: 0 40px;
             display: flex;
             flex-direction: column;
+        }
+
+        /* Mobile-only floating header */
+        #mobile-header {
+            display: none;
         }
 
         .topbar {
@@ -200,8 +220,12 @@
         .nav-tab svg { flex-shrink: 0; }
         .nav-tab.active svg { fill: currentColor; }
 
+        @keyframes appViewFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .app-view { display: none; flex-grow: 1; overflow: hidden; padding-bottom: 80px; }
-        .app-view.active { display: flex; }
+        .app-view.active { display: flex; animation: appViewFadeIn 0.25s ease-out forwards; }
 
         .btn-action { 
             background: var(--gradient-accent); 
@@ -1143,6 +1167,84 @@
             }
             .notif-panel.open { transform: translateY(0); right: 0; }
 
+            /* Mobile-only floating header */
+            #mobile-header {
+                display: block;
+                position: fixed;
+                top: 0; left: 0; right: 0;
+                z-index: 90;
+                padding: calc(env(safe-area-inset-top, 10px) + 8px) 16px 10px;
+                background: rgba(9, 9, 11, 0.82);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+            }
+            #mobile-header.hidden { display: none; }
+            .mobile-header-inner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: rgba(18, 18, 20, 0.85);
+                border: 1px solid rgba(255,255,255,0.07);
+                border-radius: 24px;
+                padding: 10px 14px;
+            }
+            .mobile-header-left {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .mobile-header-avatar {
+                width: 38px; height: 38px;
+                border-radius: 50%;
+                border: 2px solid rgba(168, 66, 228, 0.5);
+                overflow: hidden;
+                background: linear-gradient(135deg, #4A6BFD, #A442E4);
+                display: flex; align-items: center; justify-content: center;
+                font-weight: 800; font-size: 0.9rem; color: #fff;
+                flex-shrink: 0;
+            }
+            .mobile-header-avatar img {
+                width: 100%; height: 100%;
+                object-fit: cover; border-radius: 50%;
+                display: none;
+            }
+            .mobile-header-avatar.has-image img { display: block; }
+            .mobile-header-avatar.has-image span { display: none; }
+            .mobile-header-title {
+                font-size: 1rem; font-weight: 800; line-height: 1.2; color: #fff;
+            }
+            .mobile-header-name {
+                font-size: 0.65rem; color: #60a5fa;
+                font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+            }
+            .mobile-header-right {
+                display: flex; align-items: center; gap: 6px;
+            }
+            .mobile-header-badge {
+                display: flex; align-items: center; gap: 4px;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 8px;
+                padding: 4px 8px;
+                cursor: pointer;
+            }
+            .mobile-header-badge span {
+                font-size: 0.6rem; font-weight: 800;
+                text-transform: uppercase; letter-spacing: 0.05em; color: #d1d5db;
+            }
+            .mobile-header-workspace {
+                font-size: 0.65rem; font-weight: 700; color: #9ca3af;
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 8px;
+                padding: 4px 8px;
+                cursor: pointer;
+                max-width: 90px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
             /* Floating Pill Navigation — mobile keeps same pill style */
             .nav-tabs {
                 bottom: calc(16px + env(safe-area-inset-bottom));
@@ -1163,34 +1265,44 @@
                 min-height: unset;
                 text-align: left;
             }
-            /* Hide label on inactive tabs on mobile */
+            /* Inactive tabs = fixed-size circles */
             .nav-tab:not(.active) .nav-tab-label {
                 display: none;
             }
-            .nav-tab:not(.active) {
-                padding: 12px;
+            .nav-tab:not(.active):not(.notif-tab-bell) {
+                width: 52px;
+                height: 52px;
+                padding: 0;
             }
             /* Show notification bell in the nav on mobile */
             .notif-tab-bell { display: flex; }
 
-            .app-view { 
-                padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
-                padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important; 
-            } 
+            .app-view {
+                padding-top: calc(76px + env(safe-area-inset-top, 0px)) !important;
+                padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+            }
 
             /* Snap-scrolling Kanban Columns */
             .board-container {
-                padding: calc(40px + env(safe-area-inset-top, 0px)) 7.5vw calc(110px + env(safe-area-inset-bottom)) 7.5vw !important;
+                padding: calc(76px + env(safe-area-inset-top, 0px)) 7.5vw calc(110px + env(safe-area-inset-bottom)) 7.5vw !important;
                 scroll-snap-type: x mandatory; scroll-padding: 7.5vw; gap: 16px;
                 align-items: stretch !important;
             }
-            .kanban-column, .add-col-btn { 
-                min-width: 85vw; 
-                width: 85vw; 
-                scroll-snap-align: center; 
+            .kanban-column, .add-col-btn {
+                min-width: 85vw;
+                width: 85vw;
+                scroll-snap-align: center;
                 max-height: 100%;
+                border-radius: 32px;
+                border: 1px solid rgba(168, 66, 228, 0.2);
+                background: rgba(18, 18, 20, 0.6);
             }
-            .task-card { padding: 14px; }
+            .task-card {
+                padding: 14px;
+                border-radius: 20px;
+                border: 1px solid rgba(255,255,255,0.06);
+                background: linear-gradient(160deg, rgba(28,28,32,0.8) 0%, rgba(15,15,18,0.6) 100%);
+            }
             .complete-btn { width: 28px; height: 28px; font-size: 0.9rem; } 
 
             /* Bottom-Sheet Modals */
@@ -1399,6 +1511,9 @@
 
 <div class="mention-dropdown" id="mentionDropdown"></div>
 <div id="bg-container"></div>
+<div class="light-beam" style="left: 20%; transform: rotate(-15deg);"></div>
+<div class="light-beam" style="left: 50%; transform: rotate(0deg); width: 30vw; background: linear-gradient(to bottom, rgba(100, 150, 255, 0.05) 0%, transparent 100%);"></div>
+<div class="light-beam" style="right: 20%; left: auto; transform: rotate(15deg);"></div>
 <div id="toast">Notification</div>
 
 <!-- Notification Panel -->
@@ -1536,6 +1651,31 @@
             <button onclick="openModal('automationsModal')" class="btn-outline" style="border-color: #BF5AF2; color: #BF5AF2; font-weight: 800;">✨ Automations</button>
             <button class="notif-bell" onclick="toggleNotifPanel()" id="notifBellBtn">🔔<span class="notif-badge" id="notifBadge" style="display:none;">0</span></button>
             <button onclick="switchView('settings')" class="btn-outline">Settings</button>
+        </div>
+    </div>
+
+    <!-- Mobile-only Header -->
+    <div id="mobile-header">
+        <div class="mobile-header-inner">
+            <div class="mobile-header-left">
+                <div class="mobile-header-avatar" id="mobileHeaderAvatar">
+                    <img id="mobileHeaderImg" src="" alt="" />
+                    <span id="mobileHeaderInitial">?</span>
+                </div>
+                <div>
+                    <div class="mobile-header-title">Staff</div>
+                    <div class="mobile-header-name" id="mobileHeaderName">Loading...</div>
+                </div>
+            </div>
+            <div class="mobile-header-right">
+                <div class="mobile-header-badge" onclick="switchView('duesoon')">
+                    <i data-lucide="zap" style="width:11px;height:11px;color:#60a5fa;"></i>
+                    <span>Due</span>
+                </div>
+                <div class="mobile-header-workspace" id="mobileHeaderWorkspace" onclick="openModal('workspaceModal')">
+                    Loading...
+                </div>
+            </div>
         </div>
     </div>
 
@@ -3057,6 +3197,38 @@
         }
     }
 
+    function renderMobileHeader() {
+        const nameEl = document.getElementById('mobileHeaderName');
+        const avatarEl = document.getElementById('mobileHeaderAvatar');
+        const imgEl = document.getElementById('mobileHeaderImg');
+        const initialEl = document.getElementById('mobileHeaderInitial');
+        const workspaceEl = document.getElementById('mobileHeaderWorkspace');
+
+        const displayName = currentUserName || currentUserEmail || '?';
+        if (nameEl) nameEl.textContent = displayName.toUpperCase();
+        if (initialEl) initialEl.textContent = displayName.charAt(0).toUpperCase();
+
+        const pic = currentUserEmail ? getCurrentUserProfilePicture() : '';
+        if (avatarEl && imgEl) {
+            if (pic) {
+                imgEl.src = pic;
+                imgEl.onload = () => avatarEl.classList.add('has-image');
+                imgEl.onerror = () => { avatarEl.classList.remove('has-image'); imgEl.removeAttribute('src'); };
+            } else {
+                avatarEl.classList.remove('has-image');
+                imgEl.removeAttribute('src');
+            }
+        }
+
+        if (workspaceEl && appData.boards) {
+            const board = appData.boards.find(b => b.id === appData.activeBoardId);
+            workspaceEl.textContent = board ? board.year : 'Workspace';
+        }
+
+        // Re-init icons inside the header
+        if (window.lucide) lucide.createIcons({ nodes: [document.getElementById('mobile-header')] });
+    }
+
     async function changeMyPassword() {
         if (currentUserRole === 'admin') {
             changePassword(); 
@@ -3187,6 +3359,7 @@
                 pictureEl.classList.remove('has-image');
             }
         }
+        renderMobileHeader();
     }
 
     function toggleHideListsPreference() {
@@ -3232,6 +3405,11 @@
         const topbar = document.querySelector('.topbar');
         if (topbar) {
             topbar.style.display = viewName === 'calendar' ? 'none' : 'flex';
+        }
+
+        const mobileHeader = document.getElementById('mobile-header');
+        if (mobileHeader) {
+            mobileHeader.classList.toggle('hidden', viewName === 'calendar');
         }
 
         if (viewName === 'board') renderBoard();
@@ -3342,6 +3520,7 @@
         checkDueSoonAutomations();
         applyBoardBackground();
         renderTopbar();
+        renderMobileHeader();
         const eventsTab = document.getElementById('tab-events');
         if (eventsTab) eventsTab.style.display = currentUserRole === 'admin' ? 'inline-block' : 'none';
         switchView(currentView);
@@ -3353,14 +3532,17 @@
         if (activeBoard && activeBoard.backgroundImage) {
             bgContainer.style.backgroundImage = `linear-gradient(rgba(5, 5, 5, 0.3), rgba(5, 5, 5, 0.5)), url('${activeBoard.backgroundImage}')`;
         } else {
-            bgContainer.style.backgroundImage = `radial-gradient(circle at 5% 5%, rgba(10, 132, 255, 0.12) 0%, transparent 45%), radial-gradient(circle at 95% 95%, rgba(191, 90, 242, 0.12) 0%, transparent 45%)`;
+            bgContainer.style.backgroundImage = `radial-gradient(circle at 50% 0%, rgba(120, 50, 255, 0.15) 0%, transparent 50%), radial-gradient(circle at 50% 100%, rgba(60, 100, 255, 0.1) 0%, transparent 50%)`;
         }
     }
 
     function renderTopbar() {
         const pill = document.getElementById('workspacePillText');
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
-        if (pill) pill.innerText = activeBoard ? activeBoard.year : 'No Workspace';
+        const label = activeBoard ? activeBoard.year : 'No Workspace';
+        if (pill) pill.innerText = label;
+        const mobileWs = document.getElementById('mobileHeaderWorkspace');
+        if (mobileWs) mobileWs.textContent = label;
     }
 
     function renderWorkspaceModal() {
