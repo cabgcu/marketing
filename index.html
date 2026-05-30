@@ -6333,7 +6333,25 @@
             // Store subscription in appData so the Edge Function can look it up
             if (!appData.pushSubscriptions) appData.pushSubscriptions = {};
             appData.pushSubscriptions[currentUserName] = sub.toJSON();
-            await saveData();
+            // Targeted merge-save: read remote first, overlay our subscription, write back.
+            // This prevents overwriting other users' subscriptions with our local-only copy.
+            if (_supabase) {
+                try {
+                    const { data: current } = await _supabase.from('app_state').select('data').eq('id', 1).single();
+                    if (current && current.data) {
+                        const merged = { ...(current.data.pushSubscriptions || {}), [currentUserName]: sub.toJSON() };
+                        current.data.pushSubscriptions = merged;
+                        await _supabase.from('app_state').update({ data: current.data }).eq('id', 1);
+                        appData.pushSubscriptions = merged;
+                    } else {
+                        await saveData();
+                    }
+                } catch {
+                    await saveData();
+                }
+            } else {
+                await saveData();
+            }
             console.log('Push subscription stored for', currentUserName);
         } catch (err) {
             console.warn('Push subscription failed:', err);
@@ -6678,6 +6696,13 @@
             if (data.data.columns) appData.columns = data.data.columns;
             if (data.data.boards) appData.boards = data.data.boards;
             if (data.data.notifPrefs) appData.notifPrefs = data.data.notifPrefs;
+            // Sync push subscriptions — remote is authoritative for all users except the current
+            // user's own entry (kept local so a fresh re-subscribe isn't overwritten by stale remote)
+            if (data.data.pushSubscriptions) {
+                const localOwnSub = (appData.pushSubscriptions || {})[currentUserName];
+                appData.pushSubscriptions = { ...data.data.pushSubscriptions };
+                if (localOwnSub) appData.pushSubscriptions[currentUserName] = localOwnSub;
+            }
             // Sync read/cleared status back to Supabase so other tabs and future polls stay in sync
             if (readStatusChanged || _clearedNotifIds.size > 0) {
                 data.data.notifications[currentUserName] = remoteNotifs;
