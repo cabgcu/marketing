@@ -1068,42 +1068,6 @@
         .due-row:hover { background: linear-gradient(145deg, rgba(10,132,255,0.12) 0%, rgba(191,90,242,0.12) 100%); transform: translateX(4px); }
         .due-countdown { font-size: 0.75rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 
-        /* EVENTS VIEW */
-        .events-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 8px 4px 120px 4px; }
-        .events-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 12px 4px; }
-        .events-header h2 { font-size: 1.1rem; font-weight: 800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .events-table { width: 100%; border-collapse: separate; border-spacing: 0; background: rgba(30,30,30,0.95); border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-        .events-table thead th {
-            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;
-            color: #ddd; padding: 10px 10px; text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.15); position: sticky; top: 0;
-            background: rgba(40,40,40,0.98); z-index: 2;
-        }
-        .events-table tbody tr { transition: 0.15s; background: rgba(25,25,25,0.95); }
-        .events-table tbody tr:hover { background: rgba(45,45,50,0.95); }
-        .events-table tbody tr:nth-child(even) { background: rgba(32,32,32,0.95); }
-        .events-table td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: middle; }
-        .events-table .ev-input {
-            background: transparent; border: 1px solid transparent; color: #fff; font-size: 0.85rem;
-            padding: 5px 8px; border-radius: 8px; width: 100%; font-family: inherit;
-            transition: 0.15s;
-        }
-        .events-table .ev-input:focus { border-color: rgba(10,132,255,0.5); background: rgba(255,255,255,0.08); outline: none; }
-        .events-table .ev-input::placeholder { color: rgba(255,255,255,0.35); }
-        .events-table select.ev-input { cursor: pointer; appearance: auto; color: #fff; }
-        .ev-delete-btn {
-            background: none; border: none; color: rgba(255,59,48,0.6); cursor: pointer;
-            font-size: 1rem; padding: 4px 8px; border-radius: 8px; transition: 0.15s;
-        }
-        .ev-delete-btn:hover { color: #ff3b30; background: rgba(255,59,48,0.1); }
-        .ev-add-row {
-            background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.12);
-            border-radius: 10px; padding: 10px; text-align: center; margin-top: 6px;
-            cursor: pointer; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; transition: 0.15s;
-        }
-        .ev-add-row:hover { background: rgba(10,132,255,0.08); color: #fff; border-color: rgba(10,132,255,0.3); }
-        .ev-readonly { font-size: 0.85rem; padding: 5px 8px; display: block; color: #ddd; }
-
         /* ================= MOBILE OPTIMIZATIONS ================= */
         @media (max-width: 900px) {
             .view-toggle-wrap { display: none !important; }
@@ -1561,20 +1525,12 @@
             <i data-lucide="settings" style="width:20px;height:20px;"></i>
             <span class="nav-tab-label">Settings</span>
         </button>
-        <button class="nav-tab" id="tab-events" onclick="switchView('events')" aria-label="Events" style="display:none;">
-            <i data-lucide="calendar-check" style="width:20px;height:20px;"></i>
-            <span class="nav-tab-label">Events</span>
-        </button>
     </div>
 
     <div class="app-view active board-container" id="view-board"></div>
     <div class="app-view" id="view-calendar"><div class="calendar-wrapper" id="calendar-main-wrapper"></div></div>
     <div class="app-view" id="view-duesoon" style="padding: 0 4px;">
         <div class="due-soon-wrapper" id="due-soon-content"></div>
-    </div>
-
-    <div class="app-view" id="view-events" style="padding: 0 4px;">
-        <div class="events-wrapper" id="events-content"></div>
     </div>
 
     <!-- BULK ACTION BAR -->
@@ -3238,7 +3194,6 @@
         if (viewName === 'calendar') renderCalendar();
         if (viewName === 'settings') { renderSettings(); renderUserProfile(); }
         if (viewName === 'duesoon') renderDueSoon();
-        if (viewName === 'events') renderEvents();
     }
 
     let searchQuery = '';
@@ -3342,8 +3297,6 @@
         checkDueSoonAutomations();
         applyBoardBackground();
         renderTopbar();
-        const eventsTab = document.getElementById('tab-events');
-        if (eventsTab) eventsTab.style.display = currentUserRole === 'admin' ? 'inline-block' : 'none';
         switchView(currentView);
     }
 
@@ -9422,76 +9375,6 @@
         return showDialog({ type: 'combo', title, message, options, confirmText: 'Save' });
     }
 
-    /* ================= EVENTS (Admin Only) ================= */
-    /* Events tab is a spreadsheet view over real task cards.
-       Adding a row creates a card. Editing updates the card. Deleting removes it. */
-
-    let evSaveTimer = null;
-
-    function renderEvents() {
-        const container = document.getElementById('events-content');
-        if (!container) return;
-
-        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
-        const listOpts = boardCols.map(c => `<option value="${c.id}">${escapeAttr(c.title)}</option>`).join('');
-
-        // Get all tasks from the active board that have a dueDate, sorted by date
-        const allTasks = appData.tasks
-            .filter(t => t.boardId === appData.activeBoardId)
-            .sort((a, b) => {
-                const da = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
-                const db = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
-                return da - db;
-            });
-
-        let html = `<div class="events-header">
-            <h2>📋 Events</h2>
-        </div>
-        <table class="events-table">
-            <thead><tr>
-                <th style="width:24%;">Event Name</th>
-                <th style="width:14%;">Date</th>
-                <th style="width:11%;">Time</th>
-                <th style="width:20%;">Location</th>
-                <th style="width:22%;">Task Board</th>
-                <th style="width:9%;"></th>
-            </tr></thead>
-            <tbody>`;
-
-        allTasks.forEach(t => {
-            const dtVal = t.dueDate || '';
-            const dateVal = dtVal ? dtVal.slice(0, 10) : '';
-            const timeVal = dtVal ? dtVal.slice(11, 16) : '';
-
-            html += `<tr data-tid="${t.id}">
-                <td><input class="ev-input" type="text" value="${escapeAttr(t.title || '')}" placeholder="Event name" onchange="updateEventTask('${t.id}','title',this.value)" oninput="scheduleEventTaskSave('${t.id}','title',this.value)"></td>
-                <td><input class="ev-input" type="date" value="${dateVal}" onchange="updateEventTaskDate('${t.id}', this.value)"></td>
-                <td><input class="ev-input" type="time" value="${timeVal}" onchange="updateEventTaskTime('${t.id}', this.value)"></td>
-                <td><input class="ev-input" type="text" value="${escapeAttr(t.eventLocation || '')}" placeholder="Location" onchange="updateEventTask('${t.id}','eventLocation',this.value)" oninput="scheduleEventTaskSave('${t.id}','eventLocation',this.value)"></td>
-                <td><select class="ev-input" onchange="updateEventTask('${t.id}','columnId',this.value)">
-                    ${listOpts}
-                </select></td>
-                <td style="text-align:center;"><button class="ev-delete-btn" onclick="deleteEventTask('${t.id}')" title="Delete">✕</button></td>
-            </tr>`;
-        });
-
-        html += `</tbody></table>
-        <div class="ev-add-row" onclick="addEventRow()">+ Add Event</div>`;
-
-        container.innerHTML = html;
-
-        // Set selected list for each task
-        allTasks.forEach(t => {
-            const sel = container.querySelector(`tr[data-tid="${t.id}"] select`);
-            if (sel) sel.value = t.columnId;
-        });
-    }
-
-    function fmtTime12(t) {
-        const [h, m] = t.split(':').map(Number);
-        return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + (h >= 12 ? ' PM' : ' AM');
-    }
-
     function escapeAttr(str) {
         return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
@@ -9500,84 +9383,6 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
-    }
-
-    function addEventRow() {
-        const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a, b) => a.order - b.order);
-        const firstCol = boardCols[0];
-        if (!firstCol) { showToast('Create a task board first.'); return; }
-
-        const newTask = {
-            id: generateId(),
-            boardId: appData.activeBoardId,
-            columnId: firstCol.id,
-            title: '',
-            description: '',
-            text: '',
-            dueDate: '',
-            eventLocation: '',
-            priority: '',
-            postingSchedule: { story: [], photo: [], reel: [] },
-            customFields: [],
-            attachments: [],
-            coverImage: '',
-            checklist: [],
-            members: [],
-            labels: [],
-            comments: [],
-            completed: false
-        };
-        appData.tasks.push(newTask);
-        saveData();
-        renderEvents();
-
-        // Focus the new row's name input
-        const rows = document.querySelectorAll('.events-table tbody tr');
-        if (rows.length > 0) {
-            const lastInput = rows[rows.length - 1].querySelector('input[type="text"]');
-            if (lastInput) lastInput.focus();
-        }
-    }
-
-    function updateEventTask(taskId, field, value) {
-        const t = appData.tasks.find(t => t.id === taskId);
-        if (!t) return;
-        t[field] = value;
-        saveData();
-        if (currentView === 'board') renderBoard();
-    }
-
-    function updateEventTaskDate(taskId, dateVal) {
-        const t = appData.tasks.find(t => t.id === taskId);
-        if (!t) return;
-        const timeVal = t.dueDate ? t.dueDate.slice(11, 16) : '00:00';
-        t.dueDate = dateVal ? dateVal + 'T' + timeVal : '';
-        saveData();
-    }
-
-    function updateEventTaskTime(taskId, timeVal) {
-        const t = appData.tasks.find(t => t.id === taskId);
-        if (!t) return;
-        const dateVal = t.dueDate ? t.dueDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
-        t.dueDate = dateVal + 'T' + (timeVal || '00:00');
-        saveData();
-    }
-
-    function scheduleEventTaskSave(taskId, field, value) {
-        const t = appData.tasks.find(t => t.id === taskId);
-        if (!t) return;
-        t[field] = value;
-        clearTimeout(evSaveTimer);
-        evSaveTimer = setTimeout(() => { saveData(); if (currentView === 'board') renderBoard(); }, 1000);
-    }
-
-    async function deleteEventTask(taskId) {
-        const confirmed = await showConfirm('Delete Event', 'This will delete the card from its task board. Continue?', 'Delete', true);
-        if (!confirmed) return;
-        appData.tasks = appData.tasks.filter(t => t.id !== taskId);
-        saveData();
-        renderEvents();
-        showToast('Event & card deleted.');
     }
 </script>
 <!-- SHARED CARD PREVIEW -->
