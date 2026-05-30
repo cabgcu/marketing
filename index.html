@@ -2736,7 +2736,7 @@
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
         if (user && user.password === pass) {
             isAuthenticated = true;
-            currentUserRole = 'user';
+            currentUserRole = user.role === 'admin' ? 'admin' : 'user';
             currentUserEmail = email;
             currentUserName = user.name || email.split('@')[0];
             user.lastActive = Date.now();
@@ -2846,7 +2846,7 @@
 
             saveData();
             isAuthenticated = true;
-            currentUserRole = 'user';
+            currentUserRole = user.role === 'admin' ? 'admin' : 'user';
             currentUserEmail = email;
             currentUserName = name;
             localStorage.setItem('cab_auth_email', email);
@@ -4564,11 +4564,12 @@
         container.innerHTML = appData.settings.users.map(u => `
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email}</div>
+                    <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email} ${u.role === 'admin' ? '<span style="font-size:0.7rem;font-weight:800;background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ADMIN</span>' : ''}</div>
                     <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'}; margin-bottom: 4px;">${u.password ? 'Active' : 'Awaiting Setup'}</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted);">Last active: ${formatTimeAgo(u.lastActive)}</div>
                 </div>
-                <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                <div style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; ${u.role === 'admin' ? 'border-color: rgba(191,90,242,0.5); color: #BF5AF2;' : ''}" onclick="toggleUserAdmin('${u.email}')">${u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                     ${u.password ? `<button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" onclick="resetUserPassword('${u.email}')">Reset Pass</button>` : ''}
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeUser('${u.email}')">Remove</button>
                 </div>
@@ -4602,6 +4603,19 @@
             renderUserList();
             showToast("User removed.");
         }
+    }
+
+    async function toggleUserAdmin(email) {
+        const user = appData.settings.users.find(u => u.email === email);
+        if (!user) return;
+        const isAdmin = user.role === 'admin';
+        const action = isAdmin ? 'revoke admin access from' : 'grant admin access to';
+        const ok = await showConfirm(isAdmin ? 'Revoke Admin' : 'Grant Admin', `Are you sure you want to ${action} ${email}?`, isAdmin ? 'Revoke' : 'Grant', isAdmin);
+        if (!ok) return;
+        user.role = isAdmin ? 'user' : 'admin';
+        saveData();
+        renderUserList();
+        showToast(isAdmin ? 'Admin access revoked.' : 'Admin access granted.');
     }
 
     async function resetUserPassword(email) {
