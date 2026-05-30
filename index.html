@@ -2154,6 +2154,7 @@
                         <option value="member_assigned">Member is assigned...</option>
                         <option value="attachment_added">Attachment is added</option>
                         <option value="files_locked">Files are locked</option>
+                        <option value="date_set">📅 Event date is set / changed</option>
                     </optgroup>
                     <optgroup label="Content">
                         <option value="desc_contains">Description contains text...</option>
@@ -8446,6 +8447,7 @@
                 }
 
                 if (priority && priority !== prevPriority) processAutomations(appData.tasks[taskIndex], 'priority_set', { priority });
+                if (dueDate && dueDate !== (task.dueDate || '')) processAutomations(appData.tasks[taskIndex], 'date_set');
                 processAutomations(appData.tasks[taskIndex], 'task_saved');
             }
         } else {
@@ -8552,6 +8554,9 @@
                         const daysSinceUpdate = Math.floor((Date.now() - new Date(task.updatedAt).getTime()) / 86400000);
                         if (daysSinceUpdate >= parseInt(rule.triggerValue)) triggered = true;
                     }
+                    break;
+                case 'date_set':
+                    if (eventType === 'date_set' && task.dueDate) triggered = true;
                     break;
             }
             if (!triggered) return;
@@ -8740,6 +8745,66 @@
                         modified = true; showToast('🤖 Monday sync locked');
                         break;
                     }
+                    case 'auto_schedule_posts': {
+                        if (!task.dueDate) { showToast('🤖 Skipped: no event date on card'); break; }
+                        if (!task.postingSchedule) task.postingSchedule = { story: [], photo: [], reel: [] };
+                        const ps = normalizePostingSchedule(task.postingSchedule);
+                        const eventDate = new Date(task.dueDate);
+                        // Parse "story:14,photo:7,reel:3" — values are days BEFORE event
+                        const offsets = {};
+                        act.value.split(',').forEach(part => {
+                            const idx = part.indexOf(':');
+                            if (idx < 0) return;
+                            const k = part.slice(0, idx).trim();
+                            const v = part.slice(idx + 1).trim();
+                            if (k && v !== '') offsets[k] = parseInt(v);
+                        });
+                        let scheduled = false;
+                        ['story', 'photo', 'reel'].forEach(type => {
+                            if (offsets[type] === undefined || isNaN(offsets[type])) return;
+                            const d = new Date(eventDate);
+                            d.setDate(d.getDate() - offsets[type]);
+                            const iso = d.toISOString().slice(0, 10) + 'T09:00';
+                            if (!ps[type].includes(iso)) { ps[type].push(iso); scheduled = true; }
+                        });
+                        if (scheduled) {
+                            task.postingSchedule = ps;
+                            modified = true;
+                            showToast('🤖 Posting schedule auto-set from event date');
+                            if (isCurrentEditing) renderPostingSchedule();
+                        }
+                        break;
+                    }
+                    case 'set_checklist_dates': {
+                        if (!task.dueDate) { showToast('🤖 Skipped: no event date on card'); break; }
+                        if (!task.checklist || task.checklist.length === 0) break;
+                        const eventDate = new Date(task.dueDate);
+                        // Parse "start:21,end:3"
+                        const params = {};
+                        act.value.split(',').forEach(part => {
+                            const idx = part.indexOf(':');
+                            if (idx < 0) return;
+                            const k = part.slice(0, idx).trim();
+                            const v = part.slice(idx + 1).trim();
+                            if (k && v !== '') params[k] = parseInt(v);
+                        });
+                        const startBefore = isNaN(params.start) ? 14 : params.start;
+                        const endBefore   = isNaN(params.end)   ? 3  : params.end;
+                        const undoneItems = task.checklist.filter(i => !i.done);
+                        const total = undoneItems.length;
+                        if (total === 0) break;
+                        undoneItems.forEach((item, i) => {
+                            const ratio = total > 1 ? i / (total - 1) : 0;
+                            const daysBefore = Math.round(startBefore + ratio * (endBefore - startBefore));
+                            const d = new Date(eventDate);
+                            d.setDate(d.getDate() - daysBefore);
+                            item.dueDate = d.toISOString().slice(0, 10);
+                        });
+                        modified = true;
+                        showToast('🤖 Checklist dates set from event date');
+                        if (isCurrentEditing) renderChecklist();
+                        break;
+                    }
                 }
             });
         });
@@ -8775,6 +8840,7 @@
             checklist_completed: 'all checklist items completed',
             due_soon:            `event is within <b>${a.triggerValue} days</b>`,
             card_stale:          `card not updated in <b>${a.triggerValue} days</b>`,
+            date_set:            'event date is set or changed',
         };
         return map[a.trigger] || a.trigger;
     }
@@ -8799,6 +8865,17 @@
             notify:             () => `show notification`,
             send_push:          () => `send push notification`,
             lock_monday_sync:   () => `lock files`,
+            auto_schedule_posts: () => {
+                const parts = {};
+                act.value.split(',').forEach(p => { const [k,v] = p.split(':'); if (k && v) parts[k.trim()] = v.trim(); });
+                const desc = ['story','photo','reel'].filter(t => parts[t]).map(t => `${t} −${parts[t]}d`).join(', ');
+                return `auto-schedule posts <b>${desc || '...'}</b> before event`;
+            },
+            set_checklist_dates: () => {
+                const params = {};
+                act.value.split(',').forEach(p => { const [k,v] = p.split(':'); if (k && v) params[k.trim()] = v.trim(); });
+                return `set checklist dates <b>−${params.start || '?'} to −${params.end || '?'} days</b> before event`;
+            },
         };
         return (map[act.type] || (() => act.type))();
     }
@@ -8891,6 +8968,10 @@
                         <option value="add_checklist_template">📋 Apply checklist template</option>
                         <option value="set_due_offset">📅 Set due date (days from now)</option>
                     </optgroup>
+                    <optgroup label="Scheduling">
+                        <option value="auto_schedule_posts">🗓 Auto-schedule posts from event date</option>
+                        <option value="set_checklist_dates">☑️ Set checklist dates from event date</option>
+                    </optgroup>
                     <optgroup label="Other">
                         <option value="notify">🔔 Show notification</option>
                         <option value="send_push">📲 Send push notification</option>
@@ -8963,6 +9044,24 @@
                 area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">All labels will be removed from the card.</div>`; break;
             case 'lock_monday_sync':
                 area.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:4px 0;">Files will be locked — Monday.com will no longer update attachments for this card.</div>`; break;
+            case 'auto_schedule_posts':
+                area.innerHTML = `<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:6px;">
+                    <div><label style="font-size:0.73rem; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Story</label>
+                    <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="modern-input act-val-story" placeholder="14" min="0" max="365" style="width:70px; font-size:14px;"><span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">days before</span></div></div>
+                    <div><label style="font-size:0.73rem; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Photo</label>
+                    <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="modern-input act-val-photo" placeholder="7" min="0" max="365" style="width:70px; font-size:14px;"><span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">days before</span></div></div>
+                    <div><label style="font-size:0.73rem; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Reel</label>
+                    <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="modern-input act-val-reel" placeholder="3" min="0" max="365" style="width:70px; font-size:14px;"><span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">days before</span></div></div>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">Leave a field blank to skip that post type. Dates are set relative to the card's event date.</div>`; break;
+            case 'set_checklist_dates':
+                area.innerHTML = `<div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:6px;">
+                    <div><label style="font-size:0.73rem; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">First item</label>
+                    <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="modern-input act-val-text" placeholder="21" min="0" max="365" style="width:80px; font-size:14px;"><span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">days before</span></div></div>
+                    <div><label style="font-size:0.73rem; color:var(--text-muted); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Last item</label>
+                    <div style="display:flex; align-items:center; gap:4px;"><input type="number" class="modern-input act-val-end" placeholder="3" min="0" max="365" style="width:80px; font-size:14px;"><span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">days before</span></div></div>
+                </div>
+                <div style="font-size:0.78rem; color:var(--text-muted);">Dates are distributed evenly across all checklist items between the two offsets. Requires event date on card.</div>`; break;
             default:
                 area.innerHTML = '';
         }
@@ -9013,6 +9112,9 @@
             case 'card_stale':
                 trigDaysWrap.style.display = 'flex';
                 document.getElementById('autoTriggerDays').placeholder = 'e.g. 7'; break;
+            case 'date_set':
+                // No value needed — fires whenever a card's event date is set or changed
+                break;
         }
     }
 
@@ -9025,7 +9127,7 @@
         else if (trigSelect === 'card_moved') triggerVal = document.getElementById('autoTriggerInputSelect').value;
         else if (trigSelect === 'priority_set') triggerVal = document.getElementById('autoTriggerPrioritySelect').value;
         else if (['due_soon','card_stale'].includes(trigSelect)) triggerVal = document.getElementById('autoTriggerDays').value.trim();
-        const noValueTriggers = ['card_created','card_completed','checklist_completed','description_blank','no_attachments','no_comments','attachment_added','member_assigned','files_locked'];
+        const noValueTriggers = ['card_created','card_completed','checklist_completed','description_blank','no_attachments','no_comments','attachment_added','member_assigned','files_locked','date_set'];
         if (!noValueTriggers.includes(trigSelect) && !triggerVal) { showToast('Please fill in the trigger value.'); return; }
         const actionRows = document.querySelectorAll('#autoActionsContainer > div');
         if (actionRows.length === 0) { showToast('Add at least one action.'); return; }
@@ -9050,6 +9152,17 @@
             } else if (type === 'add_checklist_template') {
                 value = row.querySelector('.act-val-template')?.value || '';
                 if (!value) { showToast('Select a checklist template.'); valid = false; return; }
+            } else if (type === 'auto_schedule_posts') {
+                const story = row.querySelector('.act-val-story')?.value.trim();
+                const photo = row.querySelector('.act-val-photo')?.value.trim();
+                const reel  = row.querySelector('.act-val-reel')?.value.trim();
+                if (!story && !photo && !reel) { showToast('Enter at least one post offset.'); valid = false; return; }
+                value = `story:${story || ''},photo:${photo || ''},reel:${reel || ''}`;
+            } else if (type === 'set_checklist_dates') {
+                const start = row.querySelector('.act-val-text')?.value.trim();
+                const end   = row.querySelector('.act-val-end')?.value.trim();
+                if (!start) { showToast('Enter the "first item" day offset.'); valid = false; return; }
+                value = `start:${start},end:${end || start}`;
             } else {
                 value = row.querySelector('.act-val-text')?.value.trim() || '';
                 const noValActions = ['mark_complete','clear_labels','lock_monday_sync'];
