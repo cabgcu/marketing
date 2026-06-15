@@ -97,15 +97,20 @@ Deno.serve(async (req) => {
   let sentReminders: Record<string, string> = appData.scheduledRemindersSent || {};
 
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  const tomorrowDate = new Date(now);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = tomorrowDate.toISOString().split("T")[0];
+  const TZ = "America/Denver"; // MST/MDT — handles daylight saving automatically
+
+  function toMSTDateStr(d: Date): string {
+    // en-CA locale gives YYYY-MM-DD format
+    return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  }
+
+  const todayStr = toMSTDateStr(now);
+  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowStr = toMSTDateStr(tomorrowDate);
 
   // Purge reminder keys older than 2 days to keep the object small
-  const twoDaysAgo = new Date(now);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-  const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
+  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const twoDaysAgoStr = toMSTDateStr(twoDaysAgo);
   for (const key of Object.keys(sentReminders)) {
     const m = key.match(/(\d{4}-\d{2}-\d{2})/);
     if (m && m[1] < twoDaysAgoStr) delete sentReminders[key];
@@ -180,6 +185,7 @@ Deno.serve(async (req) => {
         const timeStr = eventDate.toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
+          timeZone: TZ,
         });
         const title = "Starting soon: " + ((task.title as string) || "Untitled");
         const body = "Event starts at " + timeStr;
@@ -227,6 +233,7 @@ Deno.serve(async (req) => {
           const timeStr = itemDate.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit",
+            timeZone: TZ,
           });
           const title = "Due soon: " + ((item.text as string) || "Checklist item");
           const body =
