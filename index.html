@@ -451,11 +451,43 @@
         .user-profile-info .user-email { font-size: 0.9rem; color: var(--text-muted); }
 
         @media (max-width: 900px) {
-            .settings-card.admin-only { display: none; }
             #view-settings { padding-left: 16px; padding-right: 16px; }
             .settings-wrapper { padding-top: 8px; }
             .settings-wrapper > h2 { padding-left: 4px; padding-right: 4px; }
             .settings-card { padding: 20px; }
+        }
+
+        .user-management-row {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-management-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 600px) {
+            .user-management-row {
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .user-management-actions {
+                flex-shrink: 1;
+                width: 100%;
+                justify-content: flex-start;
+                padding-left: 52px;
+            }
         }
 
         /* Settings UI Improvements */
@@ -4568,14 +4600,14 @@
                 ? `<img src="${pic}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentNode.innerHTML='${initials}'">`
                 : initials;
             return `
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+            <div class="user-management-row">
                 <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0A84FF,#BF5AF2);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:600;color:white;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email} ${u.role === 'admin' ? '<span style="font-size:0.7rem;font-weight:800;background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ADMIN</span>' : ''}</div>
                     <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'}; margin-bottom: 4px;">${u.password ? 'Active' : 'Awaiting Setup'}</div>
                     <div style="font-size: 0.7rem; color: var(--text-muted);">Last active: ${formatTimeAgo(u.lastActive)}</div>
                 </div>
-                <div style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end;">
+                <div class="user-management-actions">
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; ${u.role === 'admin' ? 'border-color: rgba(191,90,242,0.5); color: #BF5AF2;' : ''}" onclick="toggleUserAdmin('${u.email}')">${u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                     ${u.password ? `<button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" onclick="resetUserPassword('${u.email}')">Reset Pass</button>` : ''}
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" onclick="removeUser('${u.email}')">Remove</button>
