@@ -1228,6 +1228,10 @@
             .attachment-details { flex-basis: calc(100% - 60px); }
             .attachment-actions { width: 100%; justify-content: flex-end; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
 
+            /* Keep the attachment lightbox centered instead of the bottom-sheet layout other modals use */
+            #attachmentPreviewModal.modal-overlay { align-items: center; justify-content: center; padding: 20px; }
+            #attachmentPreviewModal img { max-width: 92vw; max-height: 80vh; max-height: 80dvh; }
+
             .modal-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 5px; min-width: 0; }
             .form-row { grid-template-columns: 1fr; gap: 8px; min-width: 0; }
             .stat-label { margin-top: 8px !important; margin-bottom: 4px; }
