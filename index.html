@@ -4607,19 +4607,26 @@
             container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No additional users added.</div>';
             return;
         }
+        const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
         container.innerHTML = appData.settings.users.map(u => {
             const pic = u.profilePicture || '';
             const initials = getInitials(u.name || u.email);
             const avatarHtml = pic
                 ? `<img src="${pic}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentNode.innerHTML='${initials}'">`
                 : initials;
+            const isOnline = !!u.lastActive && (Date.now() - u.lastActive) < ONLINE_THRESHOLD_MS;
+            const presenceColor = isOnline ? '#34C759' : 'var(--text-muted)';
+            const presenceText = isOnline ? 'Active now' : `Last active: ${formatTimeAgo(u.lastActive)}`;
             return `
             <div class="user-management-row">
                 <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0A84FF,#BF5AF2);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:600;color:white;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email} ${u.role === 'admin' ? '<span style="font-size:0.7rem;font-weight:800;background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ADMIN</span>' : ''}</div>
-                    <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'}; margin-bottom: 4px;">${u.password ? 'Active' : 'Awaiting Setup'}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted);">Last active: ${formatTimeAgo(u.lastActive)}</div>
+                    <div style="font-size: 0.75rem; color: ${u.password ? '#34C759' : '#FF9500'}; margin-bottom: 4px;">${u.password ? 'Enabled' : 'Awaiting Setup'}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: ${presenceColor}; flex-shrink: 0;"></span>
+                        <span style="color: ${presenceColor};">${presenceText}</span>
+                    </div>
                 </div>
                 <div class="user-management-actions">
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; ${u.role === 'admin' ? 'border-color: rgba(191,90,242,0.5); color: #BF5AF2;' : ''}" onclick="toggleUserAdmin('${u.email}')">${u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
@@ -4641,7 +4648,7 @@
             return;
         }
 
-        appData.settings.users.push({ email: email, password: null, lastActive: Date.now() });
+        appData.settings.users.push({ email: email, password: null, lastActive: null });
         saveData();
         renderUserList();
         input.value = '';
@@ -6756,8 +6763,27 @@
                 appData.pushSubscriptions = { ...data.data.pushSubscriptions };
                 if (localOwnSub) appData.pushSubscriptions[currentUserName] = localOwnSub;
             }
-            // Sync read/cleared status back to Supabase so other tabs and future polls stay in sync
-            if (readStatusChanged || _clearedNotifIds.size > 0) {
+            // Presence heartbeat: stamp our own "last active" in the remote copy, and pull
+            // everyone else's latest timestamp into local state so the UI stays fresh without
+            // requiring a full-document saveData() (which would clobber other users' data).
+            let presenceChanged = false;
+            if (data.data.settings && Array.isArray(data.data.settings.users)) {
+                const emailKey = (currentUserEmail || '').toLowerCase();
+                data.data.settings.users.forEach(remoteUser => {
+                    if ((remoteUser.email || '').toLowerCase() === emailKey) {
+                        remoteUser.lastActive = Date.now();
+                        presenceChanged = true;
+                    }
+                });
+                if (appData.settings && Array.isArray(appData.settings.users)) {
+                    appData.settings.users.forEach(localUser => {
+                        const match = data.data.settings.users.find(u => (u.email || '').toLowerCase() === (localUser.email || '').toLowerCase());
+                        if (match && match.lastActive) localUser.lastActive = match.lastActive;
+                    });
+                }
+            }
+            // Sync read/cleared status and presence back to Supabase so other tabs and future polls stay in sync
+            if (readStatusChanged || _clearedNotifIds.size > 0 || presenceChanged) {
                 data.data.notifications[currentUserName] = remoteNotifs;
                 await _supabase.from('app_state').update({ data: data.data }).eq('id', 1);
             }
