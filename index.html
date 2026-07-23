@@ -845,13 +845,17 @@
             flex-wrap: wrap;
         }
         .attachment-item:hover { background: rgba(255,255,255,0.05); }
-        .attachment-thumb { 
-            width: 48px; height: 48px; 
-            border-radius: 8px; 
-            background-size: cover; background-position: center; 
-            flex-shrink: 0; 
+        .attachment-thumb {
+            width: 48px; height: 48px;
+            border-radius: 8px;
+            background-size: cover; background-position: center;
+            flex-shrink: 0;
             border: 1px solid rgba(255,255,255,0.1);
         }
+        .attachment-thumb.clickable { cursor: zoom-in; transition: 0.2s; }
+        .attachment-thumb.clickable:hover { transform: scale(1.05); border-color: rgba(255,255,255,0.3); }
+        .attachment-preview-overlay { padding: 40px; }
+        .attachment-preview-overlay img { max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 30px 60px rgba(0,0,0,0.6); object-fit: contain; cursor: default; }
         .attachment-details { flex: 1 1 0; min-width: 0; max-width: 180px; overflow: hidden; flex-basis: calc(100% - 60px); }
         .attachment-name { 
             font-weight: 700; font-size: 0.88rem; 
@@ -2322,6 +2326,12 @@
             <button class="btn-outline" onclick="skipAttachmentSave()" style="padding: 12px;">⏭️ Keep Original Links</button>
         </div>
     </div>
+</div>
+
+<!-- Attachment Preview Modal (lightbox) -->
+<div id="attachmentPreviewModal" class="modal-overlay attachment-preview-overlay" onclick="closeModal(event, 'attachmentPreviewModal')">
+    <button class="close-modal" onclick="closeModal(null, 'attachmentPreviewModal')" style="top: 20px; right: 20px;">&times;</button>
+    <img id="attachmentPreviewImg" src="" alt="Attachment preview" onclick="event.stopPropagation()">
 </div>
 
 <script>
@@ -7280,7 +7290,8 @@
             } else {
                 const isImage = att.mimeType ? att.mimeType.startsWith('image/') : att.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
                 if (isImage) {
-                    thumbHtml = `<div class="attachment-thumb" style="background-image: url('${displayUrl}')"></div>`;
+                    const safeUrl = displayUrl.replace(/'/g, "\\'");
+                    thumbHtml = `<div class="attachment-thumb clickable" style="background-image: url('${displayUrl}')" onclick="event.preventDefault(); event.stopPropagation(); openAttachmentPreview('${safeUrl}')" title="Click to preview"></div>`;
                 } else {
                     thumbHtml = `<div class="attachment-thumb" style="background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:1.4rem;">📄</div>`;
                 }
@@ -9174,8 +9185,19 @@
         setTimeout(() => { modal.style.display = 'none'; }, 250);
     }
 
+    function openAttachmentPreview(url) {
+        if (!url) return;
+        document.getElementById('attachmentPreviewImg').src = url;
+        openModal('attachmentPreviewModal');
+    }
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+            const previewModal = document.getElementById('attachmentPreviewModal');
+            if (previewModal && previewModal.classList.contains('show')) {
+                closeModal(null, 'attachmentPreviewModal');
+                return;
+            }
             ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal', 'importModal', 'importSummaryModal', 'attachmentStorageModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && m.classList.contains('show')) closeModal(null, id);
