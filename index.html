@@ -2452,47 +2452,99 @@
         return getInitials(name);
     }
 
+    // Google Apps Script web apps reject/choke on very large single POST bodies
+    // (undocumented ~50MB request-size ceiling, plus front-end timeouts on slow
+    // uploads). Large requests that fail this way surface in the browser as a
+    // misleading "CORS"/"Failed to fetch" error instead of a clear size/timeout
+    // error, which is what breaks video uploads. Chunking keeps every individual
+    // POST small and reliable, and a hard cap avoids requests Apps Script can't
+    // realistically reassemble within its execution limits.
+    const DRIVE_UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB raw per chunk (~5.4MB base64)
+    const DRIVE_UPLOAD_MAX_SIZE = 150 * 1024 * 1024; // 150MB hard cap
+
+    function readBlobAsBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result.split(',')[1]);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function uploadFileDirect(file) {
+        const base64Data = await readBlobAsBase64(file);
+        const response = await fetch(GAS_UPLOAD_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ filename: file.name, mimeType: file.type, base64: base64Data })
+        });
+        return response.json();
+    }
+
+    async function uploadFileInChunks(file) {
+        const uploadId = generateId() + Date.now();
+        const totalChunks = Math.ceil(file.size / DRIVE_UPLOAD_CHUNK_SIZE);
+        let lastResult = null;
+        for (let i = 0; i < totalChunks; i++) {
+            const chunkBlob = file.slice(i * DRIVE_UPLOAD_CHUNK_SIZE, (i + 1) * DRIVE_UPLOAD_CHUNK_SIZE);
+            const chunkBase64 = await readBlobAsBase64(chunkBlob);
+            showToast(`Uploading file... ${Math.round(((i + 1) / totalChunks) * 100)}%`);
+            const response = await fetch(GAS_UPLOAD_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    uploadId,
+                    chunkIndex: i,
+                    totalChunks,
+                    filename: file.name,
+                    mimeType: file.type,
+                    chunk: chunkBase64
+                })
+            });
+            lastResult = await response.json();
+            if (!lastResult.success) return lastResult;
+        }
+        return lastResult;
+    }
+
     async function handleDriveUpload(event) {
         const fileInput = event.target;
         const file = fileInput.files[0];
         if (!file) return;
-        showToast("Uploading file... Please wait.");
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const base64Data = e.target.result.split(',')[1];
-            try {
-                const response = await fetch(GAS_UPLOAD_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ filename: file.name, mimeType: file.type, base64: base64Data })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    if (!currentEditingTask.attachments) currentEditingTask.attachments = [];
-                    let directUrl = toDirectDriveUrl(result.url);
-                    currentEditingTask.attachments.push({
-                        id: generateId(),
-                        name: result.name,
-                        url: directUrl,
-                        viewerUrl: result.url,
-                        size: (file.size / 1024 / 1024).toFixed(2),
-                        mimeType: file.type,
-                        isLink: false,
-                        date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
-                    });
-                    renderAttachments();
-                    autoSaveAttachments();
-                    showToast("File uploaded successfully!");
-                } else {
-                    showToast("Upload failed: " + result.error);
-                }
-            } catch (err) {
-                console.error("Drive upload error:", err);
-                showToast("Network error during upload.");
-            }
+        if (file.size > DRIVE_UPLOAD_MAX_SIZE) {
+            showToast(`File is too large (${(file.size / 1024 / 1024).toFixed(0)}MB). Max is ${DRIVE_UPLOAD_MAX_SIZE / 1024 / 1024}MB — upload it to Drive and use "Attach Link" instead.`);
             fileInput.value = '';
-        };
-        reader.readAsDataURL(file);
+            return;
+        }
+        showToast("Uploading file... Please wait.");
+        try {
+            const result = file.size > DRIVE_UPLOAD_CHUNK_SIZE
+                ? await uploadFileInChunks(file)
+                : await uploadFileDirect(file);
+            if (result.success) {
+                if (!currentEditingTask.attachments) currentEditingTask.attachments = [];
+                let directUrl = toDirectDriveUrl(result.url);
+                currentEditingTask.attachments.push({
+                    id: generateId(),
+                    name: result.name,
+                    url: directUrl,
+                    viewerUrl: result.url,
+                    size: (file.size / 1024 / 1024).toFixed(2),
+                    mimeType: file.type,
+                    isLink: false,
+                    date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
+                });
+                renderAttachments();
+                autoSaveAttachments();
+                showToast("File uploaded successfully!");
+            } else {
+                showToast("Upload failed: " + result.error);
+            }
+        } catch (err) {
+            console.error("Drive upload error:", err);
+            showToast("Upload failed — check your connection and try again, or use \"Attach Link\" for large videos.");
+        }
+        fileInput.value = '';
     }
 
     async function autoSaveAttachments() {
