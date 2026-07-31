@@ -1276,16 +1276,17 @@
             }
             .notif-panel.open { transform: translateY(0); right: 0; }
 
-            /* Floating Night Glass Navigation — mobile keeps same glass style */
+            /* Floating Night Glass Navigation — mobile matches the width of the lists above it */
             .nav-tabs {
                 bottom: calc(16px + env(safe-area-inset-bottom));
                 left: 50%;
                 transform: translateX(-50%);
-                width: max-content;
+                width: 85vw;
                 min-width: 0;
+                max-width: 85vw;
                 border-radius: 28px;
                 padding: 8px 10px;
-                justify-content: center;
+                justify-content: space-around;
                 gap: 0;
                 background: rgba(15, 23, 42, .5);
                 border: 1px solid rgba(167, 139, 250, .35);
