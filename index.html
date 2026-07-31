@@ -35,8 +35,8 @@
     <style>
         :root {
             --bg-dark: #020617;
-            --glass-surface: rgba(15, 23, 42, .55);
-            --glass-border: rgba(167, 139, 250, .25);
+            --glass-surface: linear-gradient(135deg, rgba(168,85,247,.18), rgba(37,99,235,.14)), rgba(15, 23, 42, .55);
+            --glass-border: rgba(167, 139, 250, .32);
             --text-main: #ffffff;
             --text-muted: #a1a1aa;
             --gradient-accent: linear-gradient(135deg, #a855f7, #6366f1, #2563eb);
@@ -83,9 +83,9 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
             background-color: #020617;
             background-image:
-                linear-gradient(135deg, #020617, #0f172a, #1e1b4b),
-                radial-gradient(circle at 5% 5%, rgba(168, 85, 247, 0.14) 0%, transparent 45%),
-                radial-gradient(circle at 95% 95%, rgba(37, 99, 235, 0.14) 0%, transparent 45%);
+                linear-gradient(135deg, #1e1b4b 0%, #1e293b 45%, #020617 100%),
+                radial-gradient(circle at 5% 5%, rgba(168, 85, 247, 0.28) 0%, transparent 50%),
+                radial-gradient(circle at 95% 95%, rgba(37, 99, 235, 0.28) 0%, transparent 50%);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -134,7 +134,7 @@
         }
 
         .login-box {
-            background: rgba(15, 23, 42, .45);
+            background: linear-gradient(135deg, rgba(168,85,247,.16), rgba(37,99,235,.12)), rgba(15, 23, 42, .45);
             border: 1px solid rgba(167, 139, 250, .35);
             padding: 42px 40px 45px; border-radius: 36px; width: 100%; max-width: 420px;
             margin: auto;
@@ -257,7 +257,7 @@
             align-items: center;
             justify-content: space-around;
             gap: 8px;
-            background: rgba(15, 23, 42, .42);
+            background: linear-gradient(135deg, rgba(168,85,247,.16), rgba(37,99,235,.12)), rgba(15, 23, 42, .42);
             padding: 10px 28px;
             border-radius: 32px;
             border: 1px solid rgba(167, 139, 250, .35);
@@ -398,7 +398,7 @@
         .board-container::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
         .kanban-column {
-            background: rgba(15, 23, 42, .45);
+            background: linear-gradient(135deg, rgba(168,85,247,.14), rgba(37,99,235,.1)), rgba(15, 23, 42, .45);
             border: 1px solid rgba(167, 139, 250, .25);
             border-radius: 28px;
             min-width: 340px;
@@ -522,7 +522,7 @@
         }
         .add-col-btn:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: #0A84FF; }
 
-        .calendar-wrapper { width: 100%; flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.35); border: 1px solid var(--glass-border); border-radius: var(--radius-card); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); padding: 15px 20px; overflow: hidden; margin-top: 15px; }
+        .calendar-wrapper { width: 100%; flex: 1; min-height: 0; display: flex; flex-direction: column; background: linear-gradient(135deg, rgba(168,85,247,.14), rgba(37,99,235,.1)), rgba(15, 23, 42, 0.35); border: 1px solid var(--glass-border); border-radius: var(--radius-card); backdrop-filter: blur(12px) saturate(120%); -webkit-backdrop-filter: blur(12px) saturate(120%); padding: 15px 20px; overflow: hidden; margin-top: 15px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: max-content repeat(6, minmax(0, 1fr)); gap: 8px; flex: 1; min-height: 0; }
@@ -568,7 +568,7 @@
         .post-date-empty { font-size: 0.78rem; color: var(--text-muted); padding: 6px 2px; font-style: italic; }
 
         .settings-wrapper { width: 100%; max-width: 600px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
-        .settings-card { background: rgba(15,23,42,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
+        .settings-card { background: linear-gradient(135deg, rgba(168,85,247,.14), rgba(37,99,235,.1)), rgba(15,23,42,0.6); border: 1px solid var(--glass-border); padding: 30px; border-radius: var(--radius-card); margin-bottom: 20px; backdrop-filter: blur(var(--blur)); }
 
         .user-profile-section { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 20px; margin-bottom: 20px; }
         .user-profile-picture { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #0A84FF, #BF5AF2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 600; color: white; border: 3px solid rgba(255,255,255,0.2); overflow: hidden; position: relative; flex-shrink: 0; }
@@ -636,7 +636,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            background: rgba(15,23,42,0.6);
+            background: linear-gradient(135deg, rgba(168,85,247,.14), rgba(37,99,235,.1)), rgba(15,23,42,0.6);
             border: 1px solid var(--glass-border);
             padding: 20px;
             border-radius: var(--radius-card);
@@ -797,7 +797,7 @@
                 padding: 12px 16px;
                 margin-bottom: 16px;
                 border: 1px solid rgba(255,255,255,0.1);
-                background: rgba(15,23,42,0.6);
+                background: linear-gradient(135deg, rgba(168,85,247,.14), rgba(37,99,235,.1)), rgba(15,23,42,0.6);
                 border-radius: 12px;
                 backdrop-filter: blur(10px);
                 width: 100%;
@@ -879,7 +879,7 @@
             opacity: 0; transition: opacity 0.2s ease;
         }
         .modal-content {
-            background: rgba(15, 23, 42, .7);
+            background: linear-gradient(135deg, rgba(168,85,247,.16), rgba(37,99,235,.12)), rgba(15, 23, 42, .7);
             backdrop-filter: blur(40px) saturate(150%);
             -webkit-backdrop-filter: blur(40px) saturate(150%);
             box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 80px rgba(99,102,241,.15);
@@ -1111,7 +1111,7 @@
         .notif-badge { position: absolute; top: -4px; right: -4px; background: #FF3B30; color: white; font-size: 0.65rem; font-weight: 800; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid rgba(15,15,15,0.9); }
         .notif-tab-bell { display: none; position: relative; padding: 0; width: 48px; height: 48px; margin: 0 4px; }
         .notif-panel { position: fixed; top: 0; right: -400px; width: 380px; max-width: 92vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.65);
+            background: linear-gradient(135deg, rgba(168,85,247,.16), rgba(37,99,235,.12)), rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(40px) saturate(150%);
             -webkit-backdrop-filter: blur(40px) saturate(150%);
             box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
@@ -1289,7 +1289,7 @@
                 padding: 8px 10px;
                 justify-content: space-around;
                 gap: 0;
-                background: rgba(15, 23, 42, .5);
+                background: linear-gradient(135deg, rgba(168,85,247,.16), rgba(37,99,235,.12)), rgba(15, 23, 42, .5);
                 border: 1px solid rgba(167, 139, 250, .35);
                 box-shadow: 0 25px 60px rgba(0,0,0,.65), 0 0 60px rgba(99,102,241,.2);
             }
