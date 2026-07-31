@@ -21,6 +21,9 @@
     <!-- Confetti SDK -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
+    <!-- GSAP (login screen animations) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
     <!-- Mobile Drag and Drop Polyfill -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
@@ -97,25 +100,102 @@
 
         #login-overlay {
             position: fixed; inset: 0; z-index: 999999;
-            background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             display: flex; align-items: center; justify-content: center; flex-direction: column;
             transition: opacity 0.5s ease;
             padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 10px rgba(10, 132, 255, 0.15), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.15); }
-            50% { box-shadow: 0 0 25px rgba(191, 90, 242, 0.3), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(191, 90, 242, 0.25); }
-            100% { box-shadow: 0 0 10px rgba(10, 132, 255, 0.15), inset 0 1px 2px rgba(255,255,255,0.1); border-color: rgba(10, 132, 255, 0.15); }
+        #login-bg-photo {
+            position: absolute; inset: 0;
+            background-image: url("https://i.imgur.com/IMiv0pU.jpeg");
+            background-size: cover;
+            background-position: center;
+            filter: brightness(.55) contrast(1.05);
+            z-index: -2;
+            animation: loginBgZoom 25s infinite alternate;
+        }
+
+        @keyframes loginBgZoom {
+            from { transform: scale(1); }
+            to { transform: scale(1.07); }
+        }
+
+        #login-bg-overlay {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, .35);
+            z-index: -1;
+        }
+
+        @keyframes loginLogoGlow {
+            50% { transform: scale(1.18); opacity: 1; }
         }
 
         .login-box {
-            background: rgba(20, 20, 20, 0.65); border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 40px; border-radius: var(--radius-card); width: 100%; max-width: 400px;
-            text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
-            backdrop-filter: blur(30px) saturate(150%);
-            -webkit-backdrop-filter: blur(30px) saturate(150%);
-            animation: pulseGlow 4s infinite alternate ease-in-out;
+            background: rgba(15, 23, 42, .45);
+            border: 1px solid rgba(167, 139, 250, .35);
+            padding: 42px 40px 45px; border-radius: 36px; width: 100%; max-width: 420px;
+            margin: auto;
+            text-align: center;
+            box-shadow: 0 50px 100px rgba(0,0,0,.65), 0 0 80px rgba(124,58,237,.25);
+            backdrop-filter: blur(25px) saturate(150%);
+            -webkit-backdrop-filter: blur(25px) saturate(150%);
+        }
+
+        .login-logo-box {
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+            height: 90px;
+            margin-bottom: 20px;
+        }
+
+        .login-logo-box::before {
+            content: "";
+            position: absolute;
+            width: 150px; height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168,85,247,.85), rgba(99,102,241,.65), rgba(37,99,235,.45), transparent 75%);
+            filter: blur(22px);
+            animation: loginLogoGlow 4s infinite;
+        }
+
+        .login-box .login-logo-img {
+            width: 80px; height: 80px; object-fit: contain;
+            position: relative; z-index: 2;
+            border-radius: 8px;
+            filter: drop-shadow(0 15px 30px rgba(0,0,0,.8));
+        }
+
+        .login-box .modern-input {
+            height: 54px;
+            padding: 0 18px;
+            border-radius: 16px;
+        }
+
+        .login-box .modern-input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 30px rgba(96,165,250,.45);
+        }
+
+        .login-box .btn-action {
+            height: 54px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #a855f7, #6366f1, #2563eb);
+            font-size: 16px;
+            box-shadow: 0 20px 45px rgba(99,102,241,.45);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .login-box .btn-action:hover { transform: translateY(-3px); }
+
+        @media (max-width: 480px) {
+            .login-box { padding: 32px 24px 34px; border-radius: 28px; }
+            .login-box h1 { font-size: 24px; }
+            .login-logo-box { height: 76px; }
+            .login-logo-box::before { width: 120px; height: 120px; }
+            .login-box .login-logo-img { width: 66px; height: 66px; }
         }
 
         .app-container {
@@ -1456,9 +1536,40 @@
             }
         } catch(e) {}
     })();
+
+    // Night Glass login entrance animation: plays for a fresh login card AND
+    // for a silently auto-logging-in returning user (see tryAutoLogin()).
+    function playLoginEntrance() {
+        try {
+            if (!window.gsap) return;
+            var panel = document.querySelector('#login-overlay .login-box:not([style*="display: none"])')
+                || document.getElementById('login-overlay-email');
+            if (!panel || panel.dataset.entranceDone) return;
+            panel.dataset.entranceDone = '1';
+
+            var logo = panel.querySelector('.login-logo-img');
+            var textEls = panel.querySelectorAll('h1, p');
+
+            var tl = gsap.timeline();
+            tl.from(panel, { opacity: 0, y: 80, duration: 1.2, ease: 'power4.out' });
+            if (logo) {
+                tl.from(logo, { scale: 0, rotation: 360, duration: 1, ease: 'elastic.out(1,.4)' }, '-=0.5');
+            }
+            if (textEls.length) {
+                tl.from(textEls, { opacity: 0, y: 25, stagger: 0.15, duration: 0.5 }, '-=0.6');
+            }
+            if (logo) {
+                gsap.to(logo, { y: -8, duration: 2, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+            }
+        } catch (e) {}
+    }
+    document.addEventListener('DOMContentLoaded', playLoginEntrance);
     </script>
+    <div id="login-bg-photo"></div>
+    <div id="login-bg-overlay"></div>
+
     <div class="login-box frosted" id="login-overlay-email">
-        <img id="login-brand-logo" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <div class="login-logo-box"><img id="login-brand-logo" class="login-logo-img" src="" style="display: none;" alt="Logo"></div>
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Marketing</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Enter workspace email to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkEmailStep()">
@@ -1466,7 +1577,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-password" style="display: none;">
-        <img id="login-brand-logo-pwd" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <div class="login-logo-box"><img id="login-brand-logo-pwd" class="login-logo-img" src="" style="display: none;" alt="Logo"></div>
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;" id="pwdEmailDisplay"></p>
         <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') checkLogin()">
@@ -1476,7 +1587,7 @@
     </div>
 
     <div class="login-box frosted" id="login-overlay-setup" style="display: none;">
-        <img id="login-brand-logo-setup" src="" style="height: 60px; width: auto; display: none; border-radius: 8px; margin-bottom: 15px; margin-left: auto; margin-right: auto;" alt="Logo">
+        <div class="login-logo-box"><img id="login-brand-logo-setup" class="login-logo-img" src="" style="display: none;" alt="Logo"></div>
         <h1 style="margin-top:0; font-weight:800; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome!</h1>
         <p style="color:var(--text-muted); margin-bottom: 10px;">Create a password for your account:</p>
         <p style="font-weight: 800; margin-bottom: 25px;" id="setupEmailDisplay"></p>
@@ -9242,7 +9353,9 @@
         if (savedEmail !== null && savedPass !== null) {
             pendingLoginEmail = savedEmail;
             document.getElementById('loginPassword').value = savedPass;
-            checkLogin(true);
+            if (typeof playLoginEntrance === 'function') playLoginEntrance();
+            // Let the entrance animation play out before silently signing the user in.
+            setTimeout(() => checkLogin(true), 1400);
         }
     }
 
