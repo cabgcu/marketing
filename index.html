@@ -1078,8 +1078,8 @@
 
         #taskModal .modal-content {
             padding: 0;
-            max-width: 1040px;
-            width: 95vw;
+            max-width: 860px;
+            width: 92vw;
             height: 90vh;
             max-height: 90vh;
             display: flex;
@@ -1200,7 +1200,7 @@
         .task-avatar-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .task-avatar-add { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.06); border: 1px dashed var(--glass-border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
         .task-avatar-add:hover { background: rgba(124,58,237,.15); border-color: rgba(167,139,250,.5); color: #fff; }
-        .task-meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .task-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
         .task-meta-input { width: 100%; }
 
         .task-section { margin-bottom: 20px; }
@@ -1234,7 +1234,7 @@
 
         /* Comments panel */
         .task-modal-comments {
-            width: 340px; flex-shrink: 0;
+            width: 280px; flex-shrink: 0;
             background: rgba(2,6,23,.4);
             border-left: 1px solid var(--glass-border);
             display: flex; flex-direction: column; min-height: 0;
