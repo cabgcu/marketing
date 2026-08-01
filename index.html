@@ -1316,43 +1316,72 @@
 
         /* Cabbie AI Assistant */
         .cabbie-fab { position: fixed; right: 22px; bottom: 22px; z-index: 9998; width: 58px; height: 58px; border-radius: 50%;
-            background: var(--gradient-accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            background: var(--gradient-accent); border: 1px solid rgba(255,255,255,0.12); cursor: pointer; display: flex; align-items: center; justify-content: center;
             font-size: 1.6rem; box-shadow: 0 10px 30px rgba(79,70,229,0.5), 0 0 0 1px rgba(255,255,255,0.08); transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .cabbie-fab:hover { transform: scale(1.07); box-shadow: 0 14px 36px rgba(79,70,229,0.65), 0 0 0 1px rgba(255,255,255,0.1); }
         .cabbie-fab.hidden { display: none; }
-        .cabbie-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .cabbie-overlay { position: fixed; inset: 0; z-index: 10000; opacity: 0; pointer-events: none; }
         .cabbie-overlay.open { opacity: 1; pointer-events: auto; }
-        .cabbie-panel { position: fixed; top: 0; right: -420px; width: 400px; max-width: 94vw; height: 100vh;
-            background: rgba(8, 13, 28, .88);
-            backdrop-filter: blur(40px) saturate(110%);
-            -webkit-backdrop-filter: blur(40px) saturate(110%);
+        .cabbie-panel {
+            position: fixed; right: 22px; bottom: 96px; z-index: 10001;
+            width: 400px; max-width: calc(100vw - 32px);
+            height: min(min(640px, calc(100vh - 140px)), 720px);
+            background: var(--glass-surface);
+            backdrop-filter: blur(var(--blur)) saturate(110%);
+            -webkit-backdrop-filter: blur(var(--blur)) saturate(110%);
             box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
-            border-left: 1px solid var(--glass-border);
-            z-index: 10001; transition: right 0.3s ease; display: flex; flex-direction: column; }
-        .cabbie-panel.open { right: 0; }
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-card);
+            display: flex; flex-direction: column; overflow: hidden;
+            opacity: 0; transform: translateY(24px) scale(0.96); pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .cabbie-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
         .cabbie-header { padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .cabbie-header-title { display: flex; align-items: center; gap: 10px; }
-        .cabbie-header-title .icon { width: 38px; height: 38px; border-radius: 12px; background: var(--gradient-accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+        .cabbie-header-title .icon { width: 38px; height: 38px; border-radius: var(--radius-input); background: var(--gradient-accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
         .cabbie-header h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
         .cabbie-header .sub { margin: 0; font-size: 0.72rem; color: var(--text-muted); }
         .cabbie-messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-        .cabbie-msg { max-width: 88%; padding: 10px 14px; border-radius: 16px; font-size: 0.88rem; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
-        .cabbie-msg.user { align-self: flex-end; background: var(--gradient-accent); color: #fff; border-bottom-right-radius: 4px; }
-        .cabbie-msg.bot { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: #eee; border-bottom-left-radius: 4px; }
-        .cabbie-msg.system-note { align-self: center; background: none; color: var(--text-muted); font-size: 0.75rem; font-style: italic; text-align: center; padding: 4px 10px; }
-        .cabbie-msg.error { border-color: rgba(255,59,48,0.4); background: rgba(255,59,48,0.08); }
-        .cabbie-actions-tag { display: inline-block; margin-top: 6px; font-size: 0.7rem; padding: 3px 8px; border-radius: 100px; background: rgba(52,199,89,0.15); color: #34C759; border: 1px solid rgba(52,199,89,0.3); }
-        .cabbie-typing { align-self: flex-start; display: flex; gap: 4px; padding: 10px 14px; }
+        .cabbie-msg {
+            max-width: 88%; padding: 11px 15px; border-radius: var(--radius-input); font-size: 0.88rem; line-height: 1.45;
+            white-space: pre-wrap; word-wrap: break-word;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25), inset 0 1px 1px rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+        }
+        .cabbie-msg.user { align-self: flex-end; background: var(--gradient-accent); border: 1px solid rgba(255,255,255,0.12); color: #fff; }
+        .cabbie-msg.bot { align-self: flex-start; background: linear-gradient(160deg, rgba(35,35,45,0.6) 0%, rgba(15,15,20,0.4) 100%); border: 1px solid var(--glass-border); color: #eee; }
+        .cabbie-msg.system-note { align-self: center; background: none; box-shadow: none; backdrop-filter: none; color: var(--text-muted); font-size: 0.75rem; font-style: italic; text-align: center; padding: 4px 10px; }
+        .cabbie-msg.error { border-color: rgba(255,59,48,0.4); background: rgba(255,59,48,0.1); }
+        .cabbie-actions-tag { display: inline-block; margin-top: 6px; font-size: 0.7rem; padding: 3px 8px; border-radius: var(--radius-button); background: rgba(52,199,89,0.15); color: #34C759; border: 1px solid rgba(52,199,89,0.3); }
+        .cabbie-typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 16px; border-radius: var(--radius-input); background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); }
         .cabbie-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: cabbie-bounce 1.2s infinite ease-in-out; }
         .cabbie-typing span:nth-child(2) { animation-delay: 0.15s; }
         .cabbie-typing span:nth-child(3) { animation-delay: 0.3s; }
         @keyframes cabbie-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
-        .cabbie-input-area { padding: 14px; border-top: 1px solid var(--glass-border); flex-shrink: 0; background: rgba(8, 13, 28, .55); display: flex; gap: 8px; align-items: flex-end; }
-        .cabbie-input-area textarea { flex: 1; resize: none; max-height: 100px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); border-radius: 14px; color: #fff; padding: 10px 14px; font-size: 0.88rem; font-family: inherit; }
-        .cabbie-input-area textarea:focus { outline: none; border-color: rgba(124,58,237,0.5); }
-        .cabbie-send-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--gradient-accent); color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .cabbie-input-area { padding: 14px; border-top: 1px solid var(--glass-border); flex-shrink: 0; display: flex; gap: 8px; align-items: flex-end; }
+        .cabbie-input-area textarea {
+            flex: 1; resize: none; max-height: 100px; width: auto;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: var(--radius-input);
+            color: #fff; padding: 12px 16px; font-size: 0.88rem !important; font-family: inherit; outline: none; transition: all 0.2s; box-sizing: border-box;
+        }
+        .cabbie-input-area textarea:focus { border-color: rgba(124,58,237,0.5); background: rgba(255,255,255,0.08); }
+        .cabbie-send-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--gradient-accent); color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .cabbie-send-btn:active { transform: scale(0.94); }
         .cabbie-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .cabbie-setup-note { margin: 14px 16px 0; padding: 12px 14px; border-radius: 14px; background: rgba(255,149,0,0.1); border: 1px solid rgba(255,149,0,0.3); color: #FF9500; font-size: 0.8rem; line-height: 1.4; }
+        .cabbie-setup-note { margin: 14px 16px 0; padding: 12px 14px; border-radius: var(--radius-input); background: rgba(255,149,0,0.1); border: 1px solid rgba(255,149,0,0.3); color: #FF9500; font-size: 0.8rem; line-height: 1.4; }
+
+        @media (max-width: 900px) {
+            .cabbie-panel {
+                right: 0; bottom: 0; left: 0; top: auto;
+                width: 100%; max-width: 100%; height: auto; max-height: 88dvh;
+                border-radius: 28px 28px 0 0; border-bottom: none;
+                transform: translateY(100%) scale(1);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            .cabbie-panel.open { transform: translateY(0) scale(1); }
+            .cabbie-fab { bottom: calc(16px + env(safe-area-inset-bottom)); }
+        }
 
         #sync-indicator {
             display: none; 
@@ -1835,7 +1864,7 @@
             <div class="icon">🚕</div>
             <div>
                 <h2>Cabbie AI</h2>
-                <p class="sub">Built by Chris Hinojosa · for this workspace only</p>
+                <p class="sub">Your workspace assistant</p>
             </div>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -6207,7 +6236,7 @@
             const note = document.getElementById('cabbieSetupNote');
             if (note) note.style.display = hasKey ? 'none' : 'block';
             if (cabbieHistory.length === 0) {
-                appendCabbieMessage('bot', `Hey${currentUserName ? ' ' + currentUserName : ''}! I'm Cabbie AI 🚕, built by Chris Hinojosa. Ask me about due dates, posting schedules, labels, or cards on this board — or tell me to make a change, like "move Put Your Records On to Completed" or "label it Priority in red".`);
+                appendCabbieMessage('bot', `Hey${currentUserName ? ' ' + currentUserName : ''}! I'm Cabbie AI 🚕. Ask me about due dates, posting schedules, labels, or cards on this board — or tell me to make a change, like "move Put Your Records On to Completed" or "label it Priority in red".`);
             }
             const input = document.getElementById('cabbieInput');
             if (input) setTimeout(() => input.focus(), 300);
@@ -6319,7 +6348,7 @@
 
     function cabbieSystemPrompt() {
         return [
-            `You are "Cabbie AI", an assistant built by Chris Hinojosa that lives inside a marketing content-calendar web app used by a student Campus Activities Board (CAB) marketing team.`,
+            `You are "Cabbie AI", an assistant that lives inside a marketing content-calendar web app used by a student Campus Activities Board (CAB) marketing team. You were built by Chris Hinojosa — only mention this if someone explicitly asks who made/built/created you; never bring it up on your own.`,
             `Your ONLY job is to help with THIS app and its data: cards/tasks, lists, due dates, Instagram Story/Photo/Reel posting schedules, labels, checklists, and comments. You know nothing else and have no other purpose. If someone asks something unrelated to this workspace (general trivia, coding help, other topics), politely decline and steer them back to what you can help with here.`,
             `You can both ANSWER questions using the board data given to you below, and EXECUTE actions on the board when asked (e.g. "move X to Completed", "label Y as Priority in red", "set the due date for X to next Friday", "mark X done", "add a comment to X").`,
             `Resolve relative dates (like "next Friday" or "tomorrow") into an absolute YYYY-MM-DD date yourself using today's date given below.`,
