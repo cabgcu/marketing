@@ -1109,7 +1109,7 @@
             background: linear-gradient(to top, rgba(8,13,28,.97), rgba(8,13,28,.55) 55%, transparent);
         }
         .modal-cover-actions {
-            position: absolute; top: 16px; right: 16px;
+            position: absolute; top: 16px; right: 64px;
             display: flex; align-items: center; gap: 8px;
             z-index: 3;
         }
@@ -1129,9 +1129,26 @@
             white-space: nowrap;
         }
         .cover-action-btn:hover { background: rgba(124,58,237,.35); border-color: rgba(167,139,250,.5); }
-        .cover-action-btn.cover-action-icon { padding: 8px 10px; font-size: 1rem; line-height: 1; }
 
         #removeCoverBtn:hover { background: rgba(255, 59, 48, 0.8); border-color: #FF3B30; }
+
+        .modal-cover-close-btn {
+            position: absolute; top: 16px; right: 16px;
+            z-index: 4;
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(8,13,28,.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            font-size: 1.3rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .modal-cover-close-btn:hover { background: rgba(255, 59, 48, 0.8); border-color: #FF3B30; }
 
         .modal-cover-title-wrap {
             position: absolute; left: 24px; right: 24px; bottom: 20px;
@@ -1534,6 +1551,13 @@
                 padding: 10px 16px 0;
             }
             .cover-action-btn { padding: 5px 9px; font-size: 0.68rem; }
+            .modal-cover-close-btn {
+                top: calc(10px + env(safe-area-inset-top));
+                right: 10px;
+                width: 32px;
+                height: 32px;
+                font-size: 1.15rem;
+            }
             .task-modal-body { flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
             .task-modal-main-wrap { padding: 14px 16px; overflow: visible; }
             .task-meta-block { gap: 12px; margin-bottom: 16px; padding-bottom: 14px; }
@@ -2301,6 +2325,7 @@
             <div class="modal-cover-wrap">
                 <div id="taskModalCover" class="modal-cover">
                     <div class="modal-cover-scrim"></div>
+                    <button type="button" class="modal-cover-close-btn" onclick="closeModal(null, 'taskModal')" aria-label="Close">&times;</button>
                     <div class="modal-cover-title-wrap">
                         <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
                         <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span> <span id="autoSaveIndicator" style="opacity:0; transition:opacity 0.4s; color:#86efac; font-weight:600;">✓ Saved</span></p>
@@ -2339,7 +2364,6 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="cover-action-btn cover-action-icon" onclick="closeModal(null, 'taskModal')">&times;</button>
                 </div>
             </div>
 
