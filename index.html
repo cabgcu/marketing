@@ -3357,6 +3357,7 @@
         }
         // Reload cleared notification IDs for the now-logged-in user
         _loadClearedIds();
+        resetCabbieChatState();
         renderApp();
         // Re-subscribe to Web Push on each login (subscriptions can expire)
         ensurePushSubscription();
@@ -3638,6 +3639,7 @@
         currentUserRole = null;
         currentUserEmail = null;
         currentUserName = null;
+        resetCabbieChatState();
         pendingLoginEmail = '';
         localStorage.removeItem('cab_auth_email');
         localStorage.removeItem('cab_auth_pass');
@@ -6346,6 +6348,20 @@
         const list = document.getElementById('cabbieMessages');
         if (list) list.innerHTML = '';
         appendCabbieMessage('bot', `Chat cleared. What would you like to know about the board?`);
+    }
+
+    // Cabbie's chat only ever lives in this tab's memory (never saved to the shared
+    // workspace data), but this app allows switching users in-place without a page
+    // reload — so wipe it on every login/logout to stop one person's conversation
+    // from being visible to whoever logs in next on the same device.
+    function resetCabbieChatState() {
+        cabbieHistory = [];
+        const messages = document.getElementById('cabbieMessages');
+        if (messages) messages.innerHTML = '';
+        const panel = document.getElementById('cabbiePanel');
+        const overlay = document.getElementById('cabbieOverlay');
+        if (panel) panel.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
     }
 
     function handleCabbieKeydown(evt) {
