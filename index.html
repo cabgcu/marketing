@@ -6323,8 +6323,10 @@
         const tasks = appData.tasks.filter(t => t.boardId === board.id);
         lines.push(`There are ${tasks.length} cards on this board.`);
         const colName = id => (columns.find(c => c.id === id)?.title) || 'Unknown List';
+        const stripHtml = html => (html || '').replace(/<br\s*\/?>/gi, ' • ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
         const taskLines = tasks.slice(0, 400).map(t => {
             const parts = [`- "${t.title}"`, `list: ${colName(t.columnId)}`];
+            if (t.eventLocation) parts.push(`location: ${t.eventLocation}`);
             if (t.dueDate) parts.push(`due: ${t.dueDate}`);
             if (t.completed) parts.push('completed: yes');
             if (t.priority) parts.push(`priority: ${t.priority}`);
@@ -6339,6 +6341,8 @@
                 const done = t.checklist.filter(c => c.done).length;
                 parts.push(`checklist: ${done}/${t.checklist.length} done`);
             }
+            const desc = stripHtml(t.description).slice(0, 320);
+            if (desc) parts.push(`details: ${desc}${stripHtml(t.description).length > 320 ? '…' : ''}`);
             return parts.join(' | ');
         });
         lines.push('Cards:');
@@ -6346,13 +6350,53 @@
         return lines.join('\n');
     }
 
+    function cabbieAppKnowledge() {
+        return [
+            `- Grant/revoke admin: Settings -> User Management (admin-only) -> find the user in the list -> click "Make Admin" / "Revoke Admin".`,
+            `- Add a user: Settings -> User Management -> type their email -> "Add User". They set their own password on first login.`,
+            `- Remove a user: Settings -> User Management -> that user's row -> "Remove".`,
+            `- Reset a user's password: Settings -> User Management -> that user's row -> "Reset Pass" (only shown once they've set one).`,
+            `- Change the shared workspace password: Settings -> Password (admin-only) -> "Change Workspace Password".`,
+            `- Change your own login password: Settings -> My Account -> "Change My Password".`,
+            `- Set which workspace loads by default: Settings -> Password/Security section -> "Default Workspace" dropdown (admin-only).`,
+            `- Create a card: click "+ Add Task" at the bottom of any list on the board.`,
+            `- Create a list/column: board view -> "+ Add List" at the end of the columns.`,
+            `- Rename/reassign/reorder a list: click that list's edit icon -> "Edit List".`,
+            `- Add/remove a label on a card: open the card -> Labels "+" (or Options -> Labels) to add; click the "x" on a label chip to remove.`,
+            `- Set a due date: open the card -> Details tab -> Due Date field.`,
+            `- Set the event location: open the card -> "Event Location" field next to the due date.`,
+            `- Set IG Story/Photo/Reel posting dates: open the card -> Details tab -> Posting Schedule section -> "+ Add Date" under Story/Photo/Reel. Or from Calendar view, click a date -> "Schedule Post".`,
+            `- Move a card to another list: drag and drop it on the board, or open the card -> Options -> Settings tab -> "Move to List", or multi-select cards and use the bulk-move bar.`,
+            `- Mark a card complete: click the circular checkmark button on the card, or inside the card modal.`,
+            `- Add a comment: open the card -> comment box at the bottom -> type and submit (supports @mentions).`,
+            `- Add an attachment: open the card -> Options -> "Attach Link" (paste a URL) or "Upload File" (goes to Google Drive).`,
+            `- Create/switch/rename/delete a workspace ("year"): topbar workspace pill -> Workspace panel. New/Rename/Delete are admin-only.`,
+            `- Automations (trigger -> action rules, e.g. "when a label is added, move to Completed"): topbar "Automations" button -> "+ Create Rule", pick a trigger and one or more actions, "Save Rule".`,
+            `- Control which lists a user can hide: Settings -> User Management -> "List Visibility Control" (admin-only). Users toggle "Hide lists I'm not part of" in Settings -> My Account.`,
+            `- Connect Monday.com: Settings -> Integrations -> "Monday.com Integration" (admin-only): API token, board ID, team name, field mapping, then "Save Settings" / "Fetch Now".`,
+            `- Sync to Google Calendar: Settings -> Integrations -> "Google Calendar Sync" (admin-only): paste a webhook URL, "Save Settings" or "Sync to Google Calendar".`,
+            `- Change branding (logo, app icon, board background image): Settings -> Branding (admin-only).`,
+            `- Back up or restore data: Settings -> Data (admin-only): "Export Data (JSON)"/"Import Data" for local files, or "Save Cloud Backup"/"Restore from Cloud" for a Supabase snapshot (auto-backs up once a day too).`,
+            `- Import from Trello: Workspace panel -> "Import" -> paste Trello JSON, either as a whole new workspace or as cards added to the current one.`,
+            `- Select multiple cards at once: shift-click cards on the board to multi-select, then use the bulk action bar at the bottom to move or delete them together.`,
+            `- Search cards: the search bar in the topbar filters the current board's cards by title, description, location, and label text.`,
+            `- Notifications: bell icon opens the notification panel; notification preferences (assign, comment, due date, move, checklist, labels) are toggled there too.`,
+            `- See what's coming up: the "Due" tab shows overdue cards and everything due in the next 30 days.`,
+            `- Checklists: inside a card, add/reorder/check off items, assign items to a user, view them as a list or as a mini calendar, and save/load reusable checklist templates.`
+        ].join('\n');
+    }
+
     function cabbieSystemPrompt() {
         return [
             `You are "Cabbie AI", an assistant that lives inside a marketing content-calendar web app used by a student Campus Activities Board (CAB) marketing team. You were built by Chris Hinojosa — only mention this if someone explicitly asks who made/built/created you; never bring it up on your own.`,
-            `Your ONLY job is to help with THIS app and its data: cards/tasks, lists, due dates, Instagram Story/Photo/Reel posting schedules, labels, checklists, and comments. You know nothing else and have no other purpose. If someone asks something unrelated to this workspace (general trivia, coding help, other topics), politely decline and steer them back to what you can help with here.`,
-            `You can both ANSWER questions using the board data given to you below, and EXECUTE actions on the board when asked (e.g. "move X to Completed", "label Y as Priority in red", "set the due date for X to next Friday", "mark X done", "add a comment to X").`,
+            `Your ONLY job is to help with THIS app: its features (how to do things in it) and its data (cards/tasks, lists, due dates, event locations, Instagram Story/Photo/Reel posting schedules, labels, checklists, comments, users/admins, automations, integrations). You know nothing else and have no other purpose. If someone asks something unrelated to this app (general trivia, coding help, other topics), politely decline and steer them back to what you can help with here.`,
+            `You can ANSWER questions about the board data below, EXPLAIN how to do something in the app using the HOW THIS APP WORKS reference below (e.g. "how do I make someone an admin", "where do I add a due date"), and EXECUTE actions on the board when asked (e.g. "move X to Completed", "label Y as Priority in red", "set the due date for X to next Friday", "mark X done", "add a comment to X").`,
+            `When a question is about how to use the app (a "how do I..." / "where is..." question about a feature, not about a specific card's data), answer directly from the HOW THIS APP WORKS reference with "actions": []. Don't say you don't know how the app works — that reference covers the app's main features.`,
             `Resolve relative dates (like "next Friday" or "tomorrow") into an absolute YYYY-MM-DD date yourself using today's date given below.`,
             `Available label colors: ${CABBIE_LABEL_COLORS.join(', ')}. Pick a sensible one if the user doesn't specify.`,
+            ``,
+            `HOW THIS APP WORKS (use this to answer "how do I..." / "where is..." questions about the app itself):`,
+            cabbieAppKnowledge(),
             ``,
             `CURRENT BOARD DATA:`,
             buildCabbieContext(),
@@ -6363,6 +6407,7 @@
             `- {"type":"add_label","task":"<card title or close match>","label":"<label text>","color":"<one of the colors above>"}`,
             `- {"type":"remove_label","task":"<card title>","label":"<label text>"}`,
             `- {"type":"set_due_date","task":"<card title>","date":"YYYY-MM-DD"}`,
+            `- {"type":"set_location","task":"<card title>","location":"<physical/event location>"}`,
             `- {"type":"add_posting_date","task":"<card title>","postType":"story|photo|reel","date":"YYYY-MM-DD"}`,
             `- {"type":"move_task","task":"<card title>","list":"<destination list name>"}`,
             `- {"type":"set_completed","task":"<card title>","completed":true|false}`,
@@ -6412,6 +6457,10 @@
             case 'set_due_date': {
                 task.dueDate = action.date || '';
                 return { ok: true, msg: `Set due date for "${task.title}" to ${task.dueDate || '(cleared)'}.` };
+            }
+            case 'set_location': {
+                task.eventLocation = action.location || '';
+                return { ok: true, msg: `Set location for "${task.title}" to ${task.eventLocation || '(cleared)'}.` };
             }
             case 'add_posting_date': {
                 const type = ['story','photo','reel'].includes(action.postType) ? action.postType : null;
