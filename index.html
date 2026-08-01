@@ -1844,8 +1844,8 @@
         <h1 style="margin-top:0; font-weight:800; color: #ffffff;">Welcome Back</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Sign in to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email Address" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
-        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') playLoginZoomSequence()">
-        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="playLoginZoomSequence()">
+        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') playLoginZoomSequence(() => handleLoginSubmit(false, true))">
+        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="playLoginZoomSequence(() => handleLoginSubmit(false, true))">
             <span class="btn-text">Sign In</span>
             <span class="btn-loader"></span>
         </button>
@@ -1873,7 +1873,10 @@
             </div>
         </div>
 
-        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">Save &amp; Enter</button>
+        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="createNewPassword()">
+            <span class="btn-text">Save &amp; Enter</span>
+            <span class="btn-loader"></span>
+        </button>
         <button class="btn-outline" style="width:100%; border: none;" onclick="cancelSetup()">Cancel</button>
     </div>
 
@@ -3243,11 +3246,13 @@
 
     // "Welcome Home" sequence: the form morphs into an "Authenticating" state,
     // then zooms into a full-screen welcome message before the real app is
-    // revealed. Used both for the auto-login of returning users and for a
-    // manual email/password sign-in.
-    function playLoginZoomSequence(isAuto = false) {
-        const panel = document.getElementById('login-overlay-main');
-        if (!panel || !window.gsap) { handleLoginSubmit(isAuto); return; }
+    // revealed. Shared by returning-user auto-login, manual email/password
+    // sign-in, and first-time account setup — performAction runs the actual
+    // auth logic (sync or async) and should resolve truthy on success.
+    function playLoginZoomSequence(performAction, panelId = 'login-overlay-main', options = {}) {
+        const { authenticatingText = 'Authenticating', revertText = 'Sign In', delayMs = 2500 } = options;
+        const panel = document.getElementById(panelId);
+        if (!panel || !window.gsap) { performAction(); return; }
 
         const btn = panel.querySelector('.btn-action');
         const btnText = btn ? btn.querySelector('.btn-text') : null;
@@ -3255,19 +3260,19 @@
         const forgotLink = panel.querySelector('.login-forgot-link');
 
         if (btn) btn.classList.add('loading');
-        if (btnText) btnText.textContent = 'Authenticating';
+        if (btnText) btnText.textContent = authenticatingText;
 
         gsap.to(inputs, { opacity: 0, y: -20, duration: .5, stagger: .1 });
         if (forgotLink) gsap.to(forgotLink, { opacity: 0, duration: .4 });
         gsap.to(panel, { scale: 1.03, duration: .8, ease: 'power2.out' });
 
-        setTimeout(() => {
-            const success = handleLoginSubmit(isAuto, true);
+        setTimeout(async () => {
+            const success = await performAction();
 
             if (!success) {
-                // Bad/expired saved credentials: revert back to an editable login form.
+                // Bad credentials / failed setup: revert back to an editable form.
                 if (btn) btn.classList.remove('loading');
-                if (btnText) btnText.textContent = 'Sign In';
+                if (btnText) btnText.textContent = revertText;
                 gsap.to(inputs, { opacity: 1, y: 0, duration: .4, stagger: .05 });
                 if (forgotLink) gsap.to(forgotLink, { opacity: 1, duration: .4 });
                 gsap.to(panel, { scale: 1, duration: .4 });
@@ -3284,7 +3289,7 @@
                     document.getElementById('login-overlay').style.opacity = '0';
                     setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
                 }, null, '-=.6');
-        }, 2500);
+        }, delayMs);
     }
 
     let setupProfilePictureFile = null;
@@ -3316,7 +3321,7 @@
         reader.readAsDataURL(file);
     }
 
-    async function createNewPassword() {
+    function createNewPassword() {
         const name = document.getElementById('setupName').value.trim();
         const pass1 = document.getElementById('newPassword1').value;
         const pass2 = document.getElementById('newPassword2').value;
@@ -3325,56 +3330,65 @@
         if (pass1 !== pass2) { showToast("Passwords do not match!"); return; }
         if (pass1.length < 6) { showToast("Password must be at least 6 characters."); return; }
 
+        playLoginZoomSequence(() => finishAccountSetup(name, pass1), 'login-overlay-setup', {
+            authenticatingText: 'Creating Account',
+            revertText: 'Save & Enter',
+            delayMs: 600,
+        });
+    }
+
+    async function finishAccountSetup(name, pass1) {
         const email = document.getElementById('setupEmailDisplay').innerText;
         const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
-        if (user) {
-            user.name = name;
-            user.password = pass1;
-            user.lastActive = Date.now();
+        if (!user) return false;
 
-            // Upload profile picture if provided
-            if (setupProfilePictureFile) {
-                showToast('Uploading profile picture...');
-                const uploadResult = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const base64Data = e.target.result.split(',')[1];
-                            const response = await fetch(GAS_UPLOAD_URL, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                body: JSON.stringify({
-                                    filename: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
-                                    mimeType: setupProfilePictureFile.type,
-                                    base64: base64Data
-                                })
-                            });
-                            const result = await response.json();
-                            resolve(result);
-                        } catch (err) {
-                            console.error('Upload error:', err);
-                            resolve({ success: false, error: err.message });
-                        }
-                    };
-                    reader.readAsDataURL(setupProfilePictureFile);
-                });
+        user.name = name;
+        user.password = pass1;
+        user.lastActive = Date.now();
 
-                if (uploadResult.success) {
-                    user.profilePicture = toDirectDriveUrl(uploadResult.url);
-                }
-                setupProfilePictureFile = null;
+        // Upload profile picture if provided
+        if (setupProfilePictureFile) {
+            showToast('Uploading profile picture...');
+            const uploadResult = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const base64Data = e.target.result.split(',')[1];
+                        const response = await fetch(GAS_UPLOAD_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                filename: `profile-${email}-${Date.now()}.${setupProfilePictureFile.name.split('.').pop()}`,
+                                mimeType: setupProfilePictureFile.type,
+                                base64: base64Data
+                            })
+                        });
+                        const result = await response.json();
+                        resolve(result);
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        resolve({ success: false, error: err.message });
+                    }
+                };
+                reader.readAsDataURL(setupProfilePictureFile);
+            });
+
+            if (uploadResult.success) {
+                user.profilePicture = toDirectDriveUrl(uploadResult.url);
             }
-
-            saveData();
-            isAuthenticated = true;
-            currentUserRole = user.role === 'admin' ? 'admin' : 'user';
-            currentUserEmail = email;
-            currentUserName = name;
-            localStorage.setItem('cab_auth_email', email);
-            localStorage.setItem('cab_auth_pass', pass1);
-            closeLoginOverlay();
-            showToast("Account ready!");
+            setupProfilePictureFile = null;
         }
+
+        saveData();
+        isAuthenticated = true;
+        currentUserRole = user.role === 'admin' ? 'admin' : 'user';
+        currentUserEmail = email;
+        currentUserName = name;
+        localStorage.setItem('cab_auth_email', email);
+        localStorage.setItem('cab_auth_pass', pass1);
+        closeLoginOverlay(true);
+        showToast("Account ready!");
+        return true;
     }
 
     function cancelSetup() {
@@ -3516,6 +3530,36 @@
         document.getElementById('login-overlay-setup').style.display = 'none';
         document.getElementById('login-overlay-main').style.display = 'block';
         document.getElementById('login-overlay').style.display = 'flex';
+
+        // The GSAP zoom sequence leaves the panel/inputs scaled up and faded
+        // to 0 opacity once sign-in finishes — clear those leftover inline
+        // styles or the login form re-appears invisible behind the overlay.
+        const defaultBtnText = { 'login-overlay-main': 'Sign In', 'login-overlay-setup': 'Save & Enter' };
+        ['login-overlay-main', 'login-overlay-setup'].forEach(id => {
+            const panel = document.getElementById(id);
+            if (!panel) return;
+            panel.style.transform = '';
+            panel.style.opacity = '';
+            const btn = panel.querySelector('.btn-action');
+            if (btn) {
+                btn.classList.remove('loading');
+                const btnText = btn.querySelector('.btn-text');
+                if (btnText) btnText.textContent = defaultBtnText[id];
+            }
+            panel.querySelectorAll('.modern-input').forEach(inp => {
+                inp.style.opacity = '';
+                inp.style.transform = '';
+            });
+            const forgotLink = panel.querySelector('.login-forgot-link');
+            if (forgotLink) forgotLink.style.opacity = '';
+        });
+        const bgPhoto = document.getElementById('login-bg-photo');
+        if (bgPhoto) {
+            bgPhoto.style.transform = '';
+            bgPhoto.style.opacity = '';
+            bgPhoto.style.animation = '';
+        }
+
         setTimeout(() => { document.getElementById('login-overlay').style.opacity = '1'; }, 10);
     }
 
@@ -9751,7 +9795,7 @@
             if (typeof playLoginEntrance === 'function') playLoginEntrance();
             // Let the entrance animation play out, then run the "Welcome Home" auto-login sequence.
             setTimeout(() => {
-                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(true);
+                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(() => handleLoginSubmit(true, true));
                 else handleLoginSubmit(true);
             }, 1400);
         }
