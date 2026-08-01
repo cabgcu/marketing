@@ -1517,12 +1517,12 @@
 
             /* Task Modal (new layout) on mobile — tightened to feel closer to the shared-card preview's compact sizing */
             #taskModal .modal-content { height: auto; max-height: 96dvh !important; overflow: hidden; display: flex; flex-direction: column; }
-            .modal-cover { height: 90px; }
-            .modal-cover.has-cover-image { height: 150px; }
+            .modal-cover { height: calc(90px + env(safe-area-inset-top)); }
+            .modal-cover.has-cover-image { height: calc(150px + env(safe-area-inset-top)); }
             .modal-cover-title-input { font-size: 1.15rem; }
             .modal-cover-title-wrap { left: 16px; right: 16px; bottom: 10px; }
             .modal-cover-listline { font-size: 0.78rem; margin-top: 3px; }
-            .modal-cover-actions { top: 8px; right: 8px; gap: 6px; }
+            .modal-cover-actions { top: calc(8px + env(safe-area-inset-top)); right: 8px; gap: 6px; }
             .cover-action-btn { padding: 5px 9px; font-size: 0.68rem; }
             .task-modal-body { flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
             .task-modal-main-wrap { padding: 14px 16px; overflow: visible; }
