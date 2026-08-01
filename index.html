@@ -1844,8 +1844,8 @@
         <h1 style="margin-top:0; font-weight:800; color: #ffffff;">Welcome Back</h1>
         <p style="color:var(--text-muted); margin-bottom: 25px;">Sign in to continue</p>
         <input type="email" id="loginEmail" class="modern-input" placeholder="Email Address" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
-        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') handleLoginSubmit()">
-        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="handleLoginSubmit()">
+        <input type="password" id="loginPassword" class="modern-input" placeholder="Password" style="margin-bottom: 15px; text-align: center;" onkeydown="if(event.key==='Enter') playLoginZoomSequence()">
+        <button class="btn-action" style="width:100%; margin-bottom: 10px;" onclick="playLoginZoomSequence()">
             <span class="btn-text">Sign In</span>
             <span class="btn-loader"></span>
         </button>
@@ -3241,12 +3241,13 @@
         autoPromptNotifPermission();
     }
 
-    // "Welcome Home" sequence played for returning users with saved credentials:
-    // the form morphs into an "Authenticating" state, then zooms into a
-    // full-screen welcome message before the real app is revealed.
-    function playAutoLoginSequence() {
+    // "Welcome Home" sequence: the form morphs into an "Authenticating" state,
+    // then zooms into a full-screen welcome message before the real app is
+    // revealed. Used both for the auto-login of returning users and for a
+    // manual email/password sign-in.
+    function playLoginZoomSequence(isAuto = false) {
         const panel = document.getElementById('login-overlay-main');
-        if (!panel || !window.gsap) { handleLoginSubmit(true); return; }
+        if (!panel || !window.gsap) { handleLoginSubmit(isAuto); return; }
 
         const btn = panel.querySelector('.btn-action');
         const btnText = btn ? btn.querySelector('.btn-text') : null;
@@ -3261,7 +3262,7 @@
         gsap.to(panel, { scale: 1.03, duration: .8, ease: 'power2.out' });
 
         setTimeout(() => {
-            const success = handleLoginSubmit(true, true);
+            const success = handleLoginSubmit(isAuto, true);
 
             if (!success) {
                 // Bad/expired saved credentials: revert back to an editable login form.
@@ -9750,7 +9751,7 @@
             if (typeof playLoginEntrance === 'function') playLoginEntrance();
             // Let the entrance animation play out, then run the "Welcome Home" auto-login sequence.
             setTimeout(() => {
-                if (typeof playAutoLoginSequence === 'function') playAutoLoginSequence();
+                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(true);
                 else handleLoginSubmit(true);
             }, 1400);
         }
