@@ -238,8 +238,7 @@
         .brand { display: flex; align-items: center; gap: 16px; }
         .brand-text h1 {
             font-size: 1.4rem; font-weight: 800; margin: 0;
-            background: var(--gradient-accent);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            color: #ffffff;
             line-height: 1.2;
         }
 
@@ -1062,34 +1061,194 @@
             display: block;
         }
 
+        #taskModal .modal-content {
+            padding: 0;
+            max-width: 1400px;
+            width: 95vw;
+            height: 90vh;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #taskModal .close-modal { display: none; }
+        #taskModal #taskForm { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+
         .modal-cover {
-            width: calc(100% + 60px);
-            margin: -30px -30px 20px -30px;
+            position: relative;
+            width: 100%;
             height: 220px;
+            flex-shrink: 0;
+            background-color: #0b1120;
+            background-image: linear-gradient(135deg, rgba(124,58,237,.35), rgba(29,78,216,.3));
             background-size: cover;
             background-position: center;
-            border-radius: var(--radius-card) var(--radius-card) 0 0;
-            position: relative;
-            display: none;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid var(--glass-border);
+            display: block;
         }
+        .modal-cover-scrim {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(2,6,23,.95), rgba(2,6,23,.5) 55%, transparent);
+        }
+        .modal-cover-actions {
+            position: absolute; top: 16px; right: 16px;
+            display: flex; align-items: center; gap: 8px;
+            z-index: 3;
+        }
+        .cover-action-btn {
+            background: rgba(8,13,28,.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .cover-action-btn:hover { background: rgba(124,58,237,.35); border-color: rgba(167,139,250,.5); }
+        .cover-action-btn.cover-action-icon { padding: 8px 10px; font-size: 1rem; line-height: 1; }
 
         .remove-cover-btn {
             position: absolute;
-            bottom: 15px;
-            right: 15px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.2);
+            bottom: 16px; right: 16px;
+            z-index: 3;
+            background: rgba(8,13,28,.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
             color: white;
             padding: 6px 12px;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            backdrop-filter: blur(4px);
+            font-size: 0.78rem;
+            font-weight: 700;
             transition: 0.2s;
         }
         .remove-cover-btn:hover { background: rgba(255, 59, 48, 0.8); border-color: #FF3B30; }
+
+        .modal-cover-title-wrap {
+            position: absolute; left: 24px; right: 24px; bottom: 20px;
+            z-index: 2;
+        }
+        .modal-cover-title-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 2rem;
+            font-weight: 800;
+            padding: 0;
+            letter-spacing: -0.01em;
+        }
+        .modal-cover-title-input::placeholder { color: rgba(255,255,255,.5); }
+        .modal-cover-listline {
+            color: rgba(255,255,255,.6);
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+        .modal-cover-listline span { color: #a78bfa; text-decoration: underline; cursor: pointer; font-weight: 600; }
+
+        /* Options dropdown */
+        .task-options-wrap { position: relative; }
+        .task-options-dropdown {
+            display: none;
+            position: absolute; right: 0; top: calc(100% + 8px);
+            width: 260px;
+            background: rgba(8,13,28,.95);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,.65), 0 0 40px rgba(99,102,241,.15);
+            z-index: 50;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .task-options-dropdown.open { display: flex; }
+        .task-options-scroll { max-height: 55vh; overflow-y: auto; padding: 8px; }
+        .task-options-group + .task-options-group { border-top: 1px solid var(--glass-border); margin-top: 4px; padding-top: 8px; }
+        .task-options-label {
+            display: block; padding: 6px 8px 8px;
+            font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--text-muted);
+        }
+        .task-option-btn {
+            width: 100%; text-align: left; background: none; border: none;
+            color: #e5e7eb; padding: 8px 10px; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: 0.15s;
+        }
+        .task-option-btn:hover { background: rgba(255,255,255,.06); }
+        .task-option-btn.active { color: #c4b5fd; background: rgba(124,58,237,.15); }
+        .task-options-footer {
+            padding: 10px; border-top: 1px solid var(--glass-border);
+            background: rgba(0,0,0,.2);
+        }
+
+        /* Body layout */
+        .task-modal-body { flex: 1; display: flex; min-height: 0; }
+        .task-modal-main-wrap { flex: 1; overflow-y: auto; padding: 24px; min-width: 0; }
+
+        .task-meta-block { display: flex; flex-direction: column; gap: 20px; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--glass-border); }
+        .task-meta-row { display: flex; flex-wrap: wrap; gap: 24px; }
+        .task-meta-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 10px; }
+        .task-avatar-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .task-avatar-add { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.06); border: 1px dashed var(--glass-border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .task-avatar-add:hover { background: rgba(124,58,237,.15); border-color: rgba(167,139,250,.5); color: #fff; }
+        .task-meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .task-meta-input { width: 100%; }
+
+        .task-section { margin-bottom: 28px; }
+        .task-section-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .task-section-heading h3 { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0; }
+        .task-section-heading-split { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .task-section-heading-split .task-section-heading { margin-bottom: 0; }
+
+        .task-rich-box { background: rgba(255,255,255,.03); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s; }
+        .task-rich-box:focus-within { border-color: rgba(167,139,250,.5); }
+        .task-rich-toolbar { display: flex; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,.02); flex-wrap: wrap; }
+        .task-rich-divider { width: 1px; height: 18px; background: var(--glass-border); margin: 0 4px; }
+        .task-rich-editor { border: none; border-radius: 0; min-height: 130px; background: transparent; padding: 14px; }
+
+        .task-lock-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,59,48,0.4); background: rgba(255,59,48,0.1); color: #FF3B30; font-size: 0.78rem; cursor: pointer; font-weight: 700; }
+        .task-locked-badge { padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(52,199,89,0.4); background: rgba(52,199,89,0.1); color: #34C759; font-size: 0.78rem; font-weight: 700; }
+
+        /* Posting schedule accordion */
+        .posting-accordion { background: rgba(255,255,255,.02); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; }
+        .posting-accordion-item { border-bottom: 1px solid var(--glass-border); }
+        .posting-accordion-item:last-child { border-bottom: none; }
+        .posting-accordion-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; background: none; border: none; padding: 14px 16px; cursor: pointer; color: #fff; transition: background 0.15s; }
+        .posting-accordion-toggle:hover { background: rgba(255,255,255,.03); }
+        .posting-accordion-label { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 700; }
+        .posting-accordion-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ps-color); box-shadow: 0 0 8px var(--ps-color); flex-shrink: 0; }
+        .posting-accordion-count { color: var(--text-muted); font-weight: 500; font-size: 0.78rem; }
+        .posting-accordion-chevron { color: var(--text-muted); transition: transform 0.2s; font-size: 0.9rem; display: inline-block; }
+        .posting-accordion-item.open .posting-accordion-chevron { transform: rotate(180deg); }
+        .posting-accordion-body { padding: 0 16px 16px; display: none; }
+        .posting-accordion-item.open .posting-accordion-body { display: flex; flex-direction: column; gap: 10px; }
+
+        /* Comments panel */
+        .task-modal-comments {
+            width: 340px; flex-shrink: 0;
+            background: rgba(2,6,23,.4);
+            border-left: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; min-height: 0;
+        }
+        .task-comments-header { display: flex; align-items: center; gap: 8px; padding: 18px 20px; border-bottom: 1px solid var(--glass-border); flex-shrink: 0; }
+        .task-comments-header h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #fff; }
+        .task-comments-list { flex: 1; overflow-y: auto; padding: 18px 20px; }
+        .task-comments-input { padding: 14px; border-top: 1px solid var(--glass-border); flex-shrink: 0; display: flex; gap: 10px; }
+        .task-comment-box { flex: 1; background: rgba(255,255,255,.04); border: 1px solid var(--glass-border); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; transition: border-color 0.2s; min-width: 0; }
+        .task-comment-box:focus-within { border-color: rgba(167,139,250,.5); }
+        .task-comment-box textarea { width: 100%; background: transparent; border: none; outline: none; resize: none; min-height: 50px; color: #fff; font-size: 0.85rem; font-family: inherit; }
+        .task-comment-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+        .task-comment-post { background: var(--gradient-accent); border: none; color: #fff; padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+        .task-comment-post:hover { opacity: 0.9; }
 
         .editable-label { border-bottom: 1px dashed rgba(255,255,255,0.3); cursor: text; padding-bottom: 2px; transition: 0.2s; }
         .editable-label:focus { border-bottom: 1px solid #0A84FF; outline: none; }
@@ -1354,8 +1513,21 @@
             #taskDueDateNative { display: none !important; }
             #taskDueDateBtn   { display: flex !important; }
 
-            .modal-cover { margin: -24px -20px 15px -20px; width: calc(100% + 40px); border-radius: 28px 28px 0 0; height: 140px; }
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
+
+            /* Task Modal (new layout) on mobile */
+            #taskModal .modal-content { height: auto; max-height: 96dvh !important; overflow: hidden; display: flex; flex-direction: column; }
+            .modal-cover { height: 160px; }
+            .modal-cover-title-input { font-size: 1.4rem; }
+            .modal-cover-title-wrap { left: 16px; right: 16px; bottom: 14px; }
+            .modal-cover-actions { top: 10px; right: 10px; gap: 6px; }
+            .cover-action-btn { padding: 6px 10px; font-size: 0.7rem; }
+            .task-modal-body { flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+            .task-modal-main-wrap { padding: 18px; overflow: visible; }
+            .task-meta-row { gap: 16px; }
+            .task-meta-grid { grid-template-columns: 1fr; gap: 12px; }
+            .task-modal-comments { width: 100%; border-left: none; border-top: 1px solid var(--glass-border); max-height: 420px; }
+            .task-options-dropdown { width: 220px; }
 
             .attachment-item { flex-wrap: wrap; gap: 8px; }
             .attachment-details { flex-basis: calc(100% - 60px); }
@@ -2101,112 +2273,179 @@
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="close-modal" onclick="closeModal(null, 'taskModal')">&times;</button>
         <form id="taskForm" onsubmit="handleSaveTask(event)">
-            <div id="taskModalCover" class="modal-cover">
-                <button type="button" class="remove-cover-btn" onclick="removeCover()">Remove Cover</button>
-            </div>
             <input type="hidden" id="taskModalColId">
             <input type="hidden" id="taskModalTaskId">
-            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 5px;">
-                <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modern-input" style="font-size: 1.6rem !important; font-weight: 800; padding: 8px 0; background: transparent; border-color: transparent; border-bottom: 1px solid transparent; border-radius: 0; transition: 0.2s;" placeholder="Task Name" required onfocus="this.style.borderBottomColor='var(--glass-border)'" onblur="this.style.borderBottomColor='transparent'">
-            </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 25px;">in list <span id="taskModalListName" style="text-decoration: underline; color: #fff;">List Name</span></p>
-            <div class="modal-grid">
-                <div class="modal-main">
-                    <div id="modalTabDetails">
-                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Members</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskMembersList">
-                                    <button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" onclick="addMember()">+</button>
+
+            <div id="taskModalCover" class="modal-cover">
+                <div class="modal-cover-scrim"></div>
+                <div class="modal-cover-actions">
+                    <button type="button" class="cover-action-btn" onclick="document.getElementById('coverUploadInput').click()">🖼️ Change Cover</button>
+                    <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
+                    <div class="task-options-wrap">
+                        <button type="button" class="cover-action-btn" onclick="toggleTaskOptionsMenu(event)">⚙️ Options</button>
+                        <div id="taskOptionsDropdown" class="task-options-dropdown">
+                            <div class="task-options-scroll custom-scrollbar">
+                                <div class="task-options-group">
+                                    <span class="task-options-label">Views</span>
+                                    <button type="button" class="task-option-btn active" id="btnTabDetails" onclick="switchTaskTab('details')">Details</button>
+                                    <button type="button" class="task-option-btn" id="btnTabSettings" onclick="switchTaskTab('settings')">Settings</button>
+                                </div>
+                                <div class="task-options-group">
+                                    <span class="task-options-label">Add to card</span>
+                                    <button type="button" class="task-option-btn" onclick="addMember()">Members</button>
+                                    <button type="button" class="task-option-btn" onclick="addLabel()">Labels</button>
+                                    <button type="button" class="task-option-btn" onclick="showChecklistInput()">Checklist</button>
+                                    <button type="button" class="task-option-btn" onclick="document.getElementById('taskDueDateNative').focus()">Dates</button>
+                                    <button type="button" class="task-option-btn" onclick="addCustomField()">Custom Fields</button>
+                                    <button type="button" class="task-option-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
+                                    <button type="button" class="task-option-btn" onclick="promptAttachLink()">Attach Link</button>
+                                    <button type="button" class="task-option-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
+                                    <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
+                                </div>
+                                <div class="task-options-group">
+                                    <span class="task-options-label">Actions</span>
+                                    <button type="button" class="task-option-btn" onclick="copyTask()">Copy</button>
+                                    <button type="button" class="task-option-btn" onclick="shareCard()">Share</button>
                                 </div>
                             </div>
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Labels</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="taskLabelsList">
-                                    <button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" onclick="addLabel()">+</button>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="stat-label" style="margin-top: 0;">Priority</div>
-                                <select id="taskPriority" onchange="scheduleAutoSave()" class="modern-input" style="height:40px; padding:0 36px 0 14px; font-size:16px;">
-                                    <option value="">None</option>
-                                    <option value="high">🔴 High</option>
-                                    <option value="med">🟡 Medium</option>
-                                    <option value="low">🟢 Low</option>
-                                </select>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div class="stat-label" style="margin-top: 0;">Event Date &amp; Time</div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <input type="datetime-local" id="taskDueDateNative" onchange="scheduleAutoSave()" class="modern-input" style="padding: 6px 12px; min-width: 180px; flex-grow: 1; font-size: 16px;">
-                                    <button type="button" id="taskDueDateBtn" onclick="openCustomDatePicker()" class="modern-input" style="padding: 10px 14px; flex-grow: 1; text-align: left; cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 12px; font-size: 0.95rem; min-height: 44px;">
-                                        <span id="taskDueDateBtnLabel" style="color: var(--text-muted);">Set date &amp; time…</span>
-                                    </button>
-                                    <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
-                                </div>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div class="stat-label" style="margin-top: 0;">Event Location</div>
-                                <input type="text" id="taskEventLocation" oninput="scheduleAutoSave()" class="modern-input" placeholder="e.g. The Quad" style="padding: 6px 12px; font-size: 16px;">
+                            <div class="task-options-footer">
+                                <button type="submit" class="btn-action" style="width: 100%;">Save Task</button>
+                                <div id="autoSaveIndicator" style="text-align:center; font-size:0.72rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
                             </div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <h3 class="section-title">Description</h3>
-                            <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; background: rgba(255,255,255,0.02); overflow: hidden;">
-                                <div style="display: flex; gap: 5px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); flex-wrap: wrap;">
+                    </div>
+                    <button type="button" class="cover-action-btn cover-action-icon" onclick="closeModal(null, 'taskModal')">&times;</button>
+                </div>
+                <button type="button" class="remove-cover-btn" id="removeCoverBtn" onclick="removeCover()" style="display:none;">Remove Cover</button>
+                <div class="modal-cover-title-wrap">
+                    <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
+                    <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span></p>
+                </div>
+            </div>
+
+            <div class="task-modal-body">
+                <div class="task-modal-main-wrap custom-scrollbar">
+                    <div id="modalTabDetails">
+                        <div class="task-meta-block">
+                            <div class="task-meta-row">
+                                <div>
+                                    <div class="task-meta-label">Members</div>
+                                    <div class="task-avatar-row" id="taskMembersList">
+                                        <button type="button" class="task-avatar-add" onclick="addMember()">+</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="task-meta-label">Labels</div>
+                                    <div class="task-avatar-row" id="taskLabelsList">
+                                        <button type="button" class="task-avatar-add" onclick="addLabel()">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="task-meta-grid">
+                                <div>
+                                    <div class="task-meta-label">Priority</div>
+                                    <select id="taskPriority" onchange="scheduleAutoSave()" class="modern-input task-meta-input" style="height:42px; padding:0 36px 0 14px; font-size:16px;">
+                                        <option value="">None</option>
+                                        <option value="high">🔴 High</option>
+                                        <option value="med">🟡 Medium</option>
+                                        <option value="low">🟢 Low</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="task-meta-label">Event Date &amp; Time</div>
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <input type="datetime-local" id="taskDueDateNative" onchange="scheduleAutoSave()" class="modern-input task-meta-input" style="padding: 6px 12px; min-width: 150px; flex-grow: 1; font-size: 16px;">
+                                        <button type="button" id="taskDueDateBtn" onclick="openCustomDatePicker()" class="modern-input task-meta-input" style="padding: 10px 14px; flex-grow: 1; min-width: 150px; text-align: left; cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 12px; font-size: 0.95rem; min-height: 44px;">
+                                            <span id="taskDueDateBtnLabel" style="color: var(--text-muted);">Set date &amp; time…</span>
+                                        </button>
+                                        <span class="badge warning" id="taskTimeLeft" style="display:none;">3w 2d left</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="task-meta-label">Event Location</div>
+                                    <input type="text" id="taskEventLocation" oninput="scheduleAutoSave()" class="modern-input task-meta-input" placeholder="e.g. The Quad" style="padding: 6px 12px; font-size: 16px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="task-section">
+                            <div class="task-section-heading"><h3>Description</h3></div>
+                            <div class="task-rich-box">
+                                <div class="task-rich-toolbar">
                                     <button type="button" class="rt-btn" onclick="formatText('bold')" title="Bold" style="min-height:44px;min-width:44px;"><b>B</b></button>
                                     <button type="button" class="rt-btn" onclick="formatText('italic')" title="Italic" style="min-height:44px;min-width:44px;"><i>I</i></button>
-                                    <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 4px 5px;"></div>
+                                    <div class="task-rich-divider"></div>
                                     <button type="button" class="rt-btn" onclick="formatText('createLink')" title="Add Link" style="min-height:44px;">🔗 Link</button>
                                     <button type="button" class="rt-btn" onclick="formatText('unlink')" title="Remove Link" style="min-height:44px;">🚫 Unlink</button>
                                 </div>
-                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor" placeholder="Add a more detailed description..." style="border: none; border-radius: 0; min-height: 150px; font-size: 16px; line-height: 1.6; background: transparent; outline: none; overflow-y: auto; word-break: break-word;" onclick="handleRichTextClick(event)"></div>
+                                <div id="taskContentInput" contenteditable="true" oninput="scheduleAutoSave()" class="modern-input rich-text-editor task-rich-editor" placeholder="Add a more detailed description..." style="font-size: 16px; line-height: 1.6; outline: none; overflow-y: auto; word-break: break-word;" onclick="handleRichTextClick(event)"></div>
                             </div>
                         </div>
-                        <div id="customFieldsSection" style="margin-top: 20px;">
-                            <h3 class="section-title">Custom Fields</h3>
-                            <div class="form-row" id="customFieldsContainer" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);"></div>
+
+                        <div id="customFieldsSection" class="task-section">
+                            <div class="task-section-heading"><h3>Custom Fields</h3></div>
+                            <div class="form-row task-rich-box" id="customFieldsContainer" style="padding: 20px;"></div>
                         </div>
-                        <div id="attachmentsSection" style="margin-top: 20px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                                <h3 class="section-title" style="margin: 0;">File Links &amp; Attachments</h3>
-                                <button type="button" id="lockMondayFilesBtn" onclick="lockMondayFiles()" style="display:none; padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,59,48,0.4); background: rgba(255,59,48,0.1); color: #FF3B30; font-size: 0.8rem; cursor: pointer; font-weight: 600;">🔒 Lock Files</button>
-                                <div id="mondayFilesLockedBadge" style="display:none; padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(52,199,89,0.4); background: rgba(52,199,89,0.1); color: #34C759; font-size: 0.8rem; font-weight: 600;">🔒 Files Locked</div>
+
+                        <div id="attachmentsSection" class="task-section">
+                            <div class="task-section-heading-split">
+                                <div class="task-section-heading"><h3>File Links &amp; Attachments</h3></div>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <button type="button" id="lockMondayFilesBtn" onclick="lockMondayFiles()" class="task-lock-btn" style="display:none;">🔒 Lock Files</button>
+                                    <div id="mondayFilesLockedBadge" class="task-locked-badge" style="display:none;">🔒 Files Locked</div>
+                                </div>
                             </div>
                             <div id="attachmentsContainer"></div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <h3 class="section-title">Posting Schedule</h3>
-                            <div class="posting-schedule-grid" style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border);">
-                                <div class="posting-schedule-col" data-type="story" style="--ps-color: #BF5AF2;">
-                                    <label class="stat-label" style="margin-top:0; color: #BF5AF2;">IG Story</label>
-                                    <div class="post-date-list" id="postStoryList"></div>
-                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('story')">+ Add Date</button>
+
+                        <div class="task-section">
+                            <div class="task-section-heading"><h3>Posting Schedule</h3></div>
+                            <div class="posting-accordion">
+                                <div class="posting-accordion-item open" data-type="story" style="--ps-color: #BF5AF2;">
+                                    <button type="button" class="posting-accordion-toggle" onclick="togglePostingSection('story')">
+                                        <span class="posting-accordion-label"><span class="posting-accordion-dot"></span> IG Story <span class="posting-accordion-count" id="storyDateCount"></span></span>
+                                        <span class="posting-accordion-chevron" id="storyChevron">⌄</span>
+                                    </button>
+                                    <div class="posting-accordion-body" id="storyAccordionBody">
+                                        <div class="post-date-list" id="postStoryList"></div>
+                                        <button type="button" class="post-date-add-btn" onclick="addPostDate('story')">+ Add Date</button>
+                                    </div>
                                 </div>
-                                <div class="posting-schedule-col" data-type="photo" style="--ps-color: #0A84FF;">
-                                    <label class="stat-label" style="margin-top:0; color: #0A84FF;">IG Photo</label>
-                                    <div class="post-date-list" id="postPhotoList"></div>
-                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('photo')">+ Add Date</button>
+                                <div class="posting-accordion-item" data-type="photo" style="--ps-color: #0A84FF;">
+                                    <button type="button" class="posting-accordion-toggle" onclick="togglePostingSection('photo')">
+                                        <span class="posting-accordion-label"><span class="posting-accordion-dot"></span> IG Photo <span class="posting-accordion-count" id="photoDateCount"></span></span>
+                                        <span class="posting-accordion-chevron" id="photoChevron">⌄</span>
+                                    </button>
+                                    <div class="posting-accordion-body" id="photoAccordionBody">
+                                        <div class="post-date-list" id="postPhotoList"></div>
+                                        <button type="button" class="post-date-add-btn" onclick="addPostDate('photo')">+ Add Date</button>
+                                    </div>
                                 </div>
-                                <div class="posting-schedule-col" data-type="reel" style="--ps-color: #FF2D55;">
-                                    <label class="stat-label" style="margin-top:0; color: #FF2D55;">IG Reel</label>
-                                    <div class="post-date-list" id="postReelList"></div>
-                                    <button type="button" class="post-date-add-btn" onclick="addPostDate('reel')">+ Add Date</button>
+                                <div class="posting-accordion-item" data-type="reel" style="--ps-color: #FF2D55;">
+                                    <button type="button" class="posting-accordion-toggle" onclick="togglePostingSection('reel')">
+                                        <span class="posting-accordion-label"><span class="posting-accordion-dot"></span> IG Reel <span class="posting-accordion-count" id="reelDateCount"></span></span>
+                                        <span class="posting-accordion-chevron" id="reelChevron">⌄</span>
+                                    </button>
+                                    <div class="posting-accordion-body" id="reelAccordionBody">
+                                        <div class="post-date-list" id="postReelList"></div>
+                                        <button type="button" class="post-date-add-btn" onclick="addPostDate('reel')">+ Add Date</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <div class="cl-section-header" style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+
+                        <div class="task-section">
+                            <div class="cl-section-header" style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
                                 <div class="cl-section-title-group" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                    <h3 class="section-title" style="margin: 0;">Marketing Checklist</h3>
+                                    <div class="task-section-heading" style="margin-bottom: 0;"><h3>Marketing Checklist</h3></div>
                                     <div class="cl-view-toggle" role="tablist" aria-label="Checklist view">
                                         <button type="button" class="cl-view-toggle-btn active" id="clViewListBtn" onclick="setChecklistView('list')" title="List view">List</button>
                                         <button type="button" class="cl-view-toggle-btn" id="clViewCalBtn" onclick="setChecklistView('calendar')" title="Calendar view">📅 Calendar</button>
                                     </div>
                                 </div>
                                 <div class="checklist-actions" style="display: flex; gap: 5px; flex-shrink: 0;">
-                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(10,132,255,0.4); color: #0A84FF;" onclick="saveChecklistAsTemplate()">Save</button>
-                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(191,90,242,0.4); color: #BF5AF2;" onclick="loadChecklistTemplate()">Load</button>
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(29,78,216,0.4); color: #60a5fa;" onclick="saveChecklistAsTemplate()">Save</button>
+                                    <button type="button" class="btn-outline cl-btn" style="border-color: rgba(124,58,237,0.4); color: #c4b5fd;" onclick="loadChecklistTemplate()">Load</button>
                                     <button type="button" class="btn-outline cl-btn" style="border-color: rgba(52,199,89,0.4); color: #34C759;" onclick="copyChecklistToCards()">Copy</button>
                                     <button type="button" class="btn-outline cl-btn" style="border-color: rgba(255, 59, 48, 0.4); color: #FF3B30;" onclick="clearChecklist()">Clear</button>
                                 </div>
@@ -2227,25 +2466,13 @@
                             <button type="button" class="sidebar-btn" id="showChecklistInputBtn" style="margin-top: 10px; width: fit-content;" onclick="showChecklistInput()">+ Add an item</button>
                             <div id="checklistCalendarContainer" style="display:none; margin-top: 16px;"></div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3 class="section-title">Activity</h3>
-                            </div>
-                            <div class="activity-item" style="margin-top: 15px;">
-                                <div class="avatar" id="currentUserAvatar">Me</div>
-                                <div style="flex-grow:1; display:flex; flex-direction:column; gap:8px;">
-                                    <textarea id="commentInput" class="modern-input" rows="2" placeholder="Press Enter to post a comment..." style="font-size:16px; resize:none; background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.1);" onkeydown="if(event.key==='Enter' && !event.shiftKey) { var dd=document.getElementById('mentionDropdown'); if(dd && dd.style.display!=='none') return; event.preventDefault(); submitComment(); }"></textarea>
-                                </div>
-                            </div>
-                            <div id="activityLog" style="margin-top: 20px;"></div>
-                        </div>
                     </div>
-                    <div id="modalTabSettings" style="display: none;">
-                        <h3 class="section-title">Card Settings</h3>
-                        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); margin-top: 20px;">
+                    <div id="modalTabSettings" class="task-section" style="display: none;">
+                        <div class="task-section-heading"><h3>Card Settings</h3></div>
+                        <div class="task-rich-box" style="padding: 20px;">
                             <label class="stat-label" style="margin-top: 0;">Move to List</label>
                             <select id="settingMoveList" class="modern-input" style="margin-bottom: 20px; font-size:16px;"></select>
-                            
+
                             <label class="stat-label">Position in List</label>
                             <select id="settingTaskPosition" class="modern-input" style="margin-bottom: 30px; font-size:16px;" onchange="scheduleAutoSave()"></select>
 
@@ -2255,27 +2482,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-sidebar">
-                    <h4 class="stat-label" style="margin-top: 0;">Views</h4>
-                    <button type="button" class="sidebar-btn" id="btnTabDetails" onclick="switchTaskTab('details')">Details</button>
-                    <button type="button" class="sidebar-btn" id="btnTabSettings" onclick="switchTaskTab('settings')">Settings</button>
-                    <h4 class="stat-label">Add to card</h4>
-                    <button type="button" class="sidebar-btn" onclick="addMember()">Members</button>
-                    <button type="button" class="sidebar-btn" onclick="addLabel()">Labels</button>
-                    <button type="button" class="sidebar-btn" onclick="showChecklistInput()">Checklist</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('taskDueDateNative').focus()">Dates</button>
-                    <button type="button" class="sidebar-btn" onclick="addCustomField()">Custom Fields</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('coverUploadInput').click()">Cover</button>
-                    <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
-                    <button type="button" class="sidebar-btn" onclick="promptAttachLink()">Attach Link</button>
-                    <button type="button" class="sidebar-btn" onclick="importMondayFormToCard()">Import Monday Form</button>
-                    <button type="button" class="sidebar-btn" onclick="document.getElementById('driveUploadInput').click()">Upload File</button>
-                    <input type="file" id="driveUploadInput" style="display: none;" onchange="handleDriveUpload(event)">
-                    <h4 class="stat-label">Actions</h4>
-                    <button type="button" class="sidebar-btn" onclick="copyTask()">Copy</button>
-                    <button type="button" class="sidebar-btn" onclick="shareCard()">Share</button>
-                    <button type="submit" class="btn-action" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 0.95rem;">Save Task</button>
-                    <div id="autoSaveIndicator" style="text-align:center; font-size:0.78rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
+
+                <div class="task-modal-comments">
+                    <div class="task-comments-header"><h3>Comments</h3></div>
+                    <div class="task-comments-list custom-scrollbar" id="activityLog"></div>
+                    <div class="task-comments-input">
+                        <div class="avatar" id="currentUserAvatar" style="flex-shrink:0;">Me</div>
+                        <div class="task-comment-box">
+                            <textarea id="commentInput" placeholder="Write a comment..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { var dd=document.getElementById('mentionDropdown'); if(dd && dd.style.display!=='none') return; event.preventDefault(); submitComment(); }"></textarea>
+                            <div class="task-comment-actions">
+                                <button type="button" class="task-comment-post" onclick="submitComment()">Post</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
@@ -7018,10 +7237,31 @@
     function switchTaskTab(tab) {
         document.getElementById('modalTabDetails').style.display = tab === 'details' ? 'block' : 'none';
         document.getElementById('modalTabSettings').style.display = tab === 'settings' ? 'block' : 'none';
-        document.getElementById('btnTabDetails').style.background = tab === 'details' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)';
-        document.getElementById('btnTabDetails').style.borderColor = tab === 'details' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)';
-        document.getElementById('btnTabSettings').style.background = tab === 'settings' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)';
-        document.getElementById('btnTabSettings').style.borderColor = tab === 'settings' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)';
+        document.getElementById('btnTabDetails').classList.toggle('active', tab === 'details');
+        document.getElementById('btnTabSettings').classList.toggle('active', tab === 'settings');
+        closeTaskOptionsMenu();
+    }
+
+    function toggleTaskOptionsMenu(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById('taskOptionsDropdown');
+        if (dropdown) dropdown.classList.toggle('open');
+    }
+
+    function closeTaskOptionsMenu() {
+        const dropdown = document.getElementById('taskOptionsDropdown');
+        if (dropdown) dropdown.classList.remove('open');
+    }
+
+    document.addEventListener('click', (event) => {
+        const dropdown = document.getElementById('taskOptionsDropdown');
+        if (!dropdown || !dropdown.classList.contains('open')) return;
+        if (!event.target.closest('.task-options-wrap')) closeTaskOptionsMenu();
+    }, true);
+
+    function togglePostingSection(type) {
+        const item = document.querySelector('.posting-accordion-item[data-type="' + type + '"]');
+        if (item) item.classList.toggle('open');
     }
 
     let currentEditingTask = null;
@@ -7049,6 +7289,8 @@
             const list = document.getElementById('post' + type.charAt(0).toUpperCase() + type.slice(1) + 'List');
             if (!list) return;
             const dates = currentEditingTask.postingSchedule[type];
+            const countEl = document.getElementById(type + 'DateCount');
+            if (countEl) countEl.textContent = '(' + dates.length + (dates.length === 1 ? ' Date' : ' Dates') + ')';
             list.innerHTML = '';
             if (dates.length === 0) {
                 const empty = document.createElement('div');
@@ -7171,14 +7413,17 @@
             document.getElementById('taskPriority').value = task.priority || '';
             currentEditingTask.postingSchedule = normalizePostingSchedule(task.postingSchedule);
 
-            if (task.coverImage) { coverEl.style.display = 'block'; coverEl.style.backgroundImage = `url('${task.coverImage}')`; }
-            else { coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none'; }
+            const removeCoverBtn = document.getElementById('removeCoverBtn');
+            if (task.coverImage) { coverEl.style.backgroundImage = `url('${task.coverImage}')`; if (removeCoverBtn) removeCoverBtn.style.display = 'inline-flex'; }
+            else { coverEl.style.backgroundImage = ''; if (removeCoverBtn) removeCoverBtn.style.display = 'none'; }
             renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         } else {
             currentEditingTask = { checklist: [], members: [], labels: [], customFields: [], attachments: [], postingSchedule: { story: [], photo: [], reel: [] } };
             titleEl.value = ''; descEl.innerHTML = ''; dueEl.value = ''; _cdpUpdateBtnLabel(''); document.getElementById('taskEventLocation').value = ''; document.getElementById('taskPriority').value = '';
 
-            coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none';
+            coverEl.style.backgroundImage = '';
+            const removeCoverBtnNew = document.getElementById('removeCoverBtn');
+            if (removeCoverBtnNew) removeCoverBtnNew.style.display = 'none';
             currentEditingTask.comments = []; renderCustomFields(); renderMembers(); renderLabels(); renderChecklist(); renderAttachments(); renderComments(); renderPostingSchedule();
         }
         hideChecklistInput();
@@ -7696,8 +7941,9 @@
                     // FIX: use lh3 direct URL for cover image
                     currentEditingTask.coverImage = toDirectDriveUrl(result.url);
                     const coverEl = document.getElementById('taskModalCover');
-                    coverEl.style.display = 'block';
                     coverEl.style.backgroundImage = "url('" + currentEditingTask.coverImage + "')";
+                    const removeCoverBtn = document.getElementById('removeCoverBtn');
+                    if (removeCoverBtn) removeCoverBtn.style.display = 'inline-flex';
                     autoSaveAttachments(); showToast("Cover image set!");
                 } else {
                     showToast("Cover upload failed: " + result.error);
@@ -7714,7 +7960,9 @@
     function removeCover() {
         if(currentEditingTask) currentEditingTask.coverImage = '';
         const coverEl = document.getElementById('taskModalCover');
-        coverEl.style.display = 'none'; coverEl.style.backgroundImage = 'none';
+        coverEl.style.backgroundImage = '';
+        const removeCoverBtn = document.getElementById('removeCoverBtn');
+        if (removeCoverBtn) removeCoverBtn.style.display = 'none';
         scheduleAutoSave();
     }
 
