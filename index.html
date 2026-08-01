@@ -1513,18 +1513,31 @@
 
             .close-modal { top: 12px; right: 12px; z-index: 100; width: 40px; height: 40px; font-size: 1.8rem; }
 
-            /* Task Modal (new layout) on mobile */
+            /* Task Modal (new layout) on mobile — tightened to feel closer to the shared-card preview's compact sizing */
             #taskModal .modal-content { height: auto; max-height: 96dvh !important; overflow: hidden; display: flex; flex-direction: column; }
-            .modal-cover { height: 160px; }
-            .modal-cover-title-input { font-size: 1.4rem; }
-            .modal-cover-title-wrap { left: 16px; right: 16px; bottom: 14px; }
-            .modal-cover-actions { top: 10px; right: 10px; gap: 6px; }
-            .cover-action-btn { padding: 6px 10px; font-size: 0.7rem; }
+            .modal-cover { height: 110px; }
+            .modal-cover-title-input { font-size: 1.15rem; }
+            .modal-cover-title-wrap { left: 16px; right: 16px; bottom: 10px; }
+            .modal-cover-listline { font-size: 0.78rem; margin-top: 3px; }
+            .modal-cover-actions { top: 8px; right: 8px; gap: 6px; }
+            .cover-action-btn { padding: 5px 9px; font-size: 0.68rem; }
             .task-modal-body { flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-            .task-modal-main-wrap { padding: 18px; overflow: visible; }
+            .task-modal-main-wrap { padding: 14px 16px; overflow: visible; }
+            .task-meta-block { gap: 12px; margin-bottom: 16px; padding-bottom: 14px; }
             .task-meta-row { gap: 16px; }
-            .task-meta-grid { grid-template-columns: 1fr; gap: 12px; }
+            .task-meta-label { margin-bottom: 6px; font-size: 0.66rem; }
+            .task-meta-grid { grid-template-columns: 1fr; gap: 10px; }
+            .task-section { margin-bottom: 18px; }
+            .task-section-heading { margin-bottom: 8px; }
+            .task-section-heading h3 { font-size: 0.95rem; }
+            .task-rich-toolbar { padding: 5px; }
+            .task-rich-editor { padding: 10px; }
+            .posting-accordion-toggle { padding: 12px 14px; }
+            .posting-accordion-body { padding: 0 14px 14px; }
             .task-modal-comments { width: 100%; border-left: none; border-top: 1px solid var(--glass-border); max-height: 420px; }
+            .task-comments-header { padding: 12px 16px; }
+            .task-comments-list { padding: 12px 16px; }
+            .task-comments-input { padding: 10px; }
             .task-options-dropdown { width: 220px; }
 
             .attachment-item { flex-wrap: wrap; gap: 8px; }
