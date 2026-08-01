@@ -1337,7 +1337,7 @@
             transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .cabbie-panel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-        .cabbie-header { padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .cabbie-header { padding: 18px 64px 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .cabbie-header-title { display: flex; align-items: center; gap: 10px; }
         .cabbie-header-title .icon { width: 38px; height: 38px; border-radius: var(--radius-input); background: var(--gradient-accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
         .cabbie-header h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
@@ -1371,16 +1371,24 @@
         .cabbie-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .cabbie-setup-note { margin: 14px 16px 0; padding: 12px 14px; border-radius: var(--radius-input); background: rgba(255,149,0,0.1); border: 1px solid rgba(255,149,0,0.3); color: #FF9500; font-size: 0.8rem; line-height: 1.4; }
 
+        .cabbie-close-btn { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.5); border: none; color: #fff; font-size: 1.4rem; cursor: pointer; z-index: 10; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: 0.2s; flex-shrink: 0; }
+        .cabbie-close-btn:hover { background: rgba(0,0,0,0.8); transform: scale(1.05); }
+
+        /* FAB sits above the floating bottom nav bar (reserved via .app-view padding-bottom) so it never covers the Settings tab */
         @media (max-width: 900px) {
+            .cabbie-fab { right: 16px; bottom: calc(100px + env(safe-area-inset-bottom)); }
+
+            /* Full-screen chat on mobile */
             .cabbie-panel {
-                right: 0; bottom: 0; left: 0; top: auto;
-                width: 100%; max-width: 100%; height: auto; max-height: 88dvh;
-                border-radius: 28px 28px 0 0; border-bottom: none;
+                right: 0; bottom: 0; left: 0; top: 0;
+                width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh;
+                border-radius: 0; border: none;
                 transform: translateY(100%) scale(1);
+                padding-top: env(safe-area-inset-top);
                 padding-bottom: env(safe-area-inset-bottom);
             }
             .cabbie-panel.open { transform: translateY(0) scale(1); }
-            .cabbie-fab { bottom: calc(16px + env(safe-area-inset-bottom)); }
+            .cabbie-close-btn { top: 16px; right: 16px; width: 40px; height: 40px; font-size: 1.6rem; }
         }
 
         #sync-indicator {
@@ -1867,11 +1875,9 @@
                 <p class="sub">Your workspace assistant</p>
             </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn-outline" style="padding:4px 10px; font-size:0.75rem; border-color:rgba(255,59,48,0.4); color:#FF3B30;" onclick="clearCabbieChat()">Clear</button>
-            <button style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer; padding:0 4px;" onclick="toggleCabbiePanel()">&times;</button>
-        </div>
+        <button class="btn-outline" style="padding:4px 10px; font-size:0.75rem; border-color:rgba(255,59,48,0.4); color:#FF3B30;" onclick="clearCabbieChat()">Clear</button>
     </div>
+    <button class="cabbie-close-btn" onclick="toggleCabbiePanel()" aria-label="Close">&times;</button>
     <div id="cabbieSetupNote" class="cabbie-setup-note" style="display:none;">
         Cabbie AI isn't connected yet. Ask an admin to add an OpenRouter API key in Settings → Integrations.
     </div>
