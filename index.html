@@ -1314,6 +1314,46 @@
         .notif-prefs-section { border-top: 1px solid var(--glass-border); padding: 16px 20px; flex-shrink: 0; background: rgba(8, 13, 28, .55); }
         .notif-pref-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 0.85rem; color: #ccc; }
 
+        /* Cabbie AI Assistant */
+        .cabbie-fab { position: fixed; right: 22px; bottom: 22px; z-index: 9998; width: 58px; height: 58px; border-radius: 50%;
+            background: var(--gradient-accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; box-shadow: 0 10px 30px rgba(79,70,229,0.5), 0 0 0 1px rgba(255,255,255,0.08); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .cabbie-fab:hover { transform: scale(1.07); box-shadow: 0 14px 36px rgba(79,70,229,0.65), 0 0 0 1px rgba(255,255,255,0.1); }
+        .cabbie-fab.hidden { display: none; }
+        .cabbie-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 10000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .cabbie-overlay.open { opacity: 1; pointer-events: auto; }
+        .cabbie-panel { position: fixed; top: 0; right: -420px; width: 400px; max-width: 94vw; height: 100vh;
+            background: rgba(8, 13, 28, .88);
+            backdrop-filter: blur(40px) saturate(110%);
+            -webkit-backdrop-filter: blur(40px) saturate(110%);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.1);
+            border-left: 1px solid var(--glass-border);
+            z-index: 10001; transition: right 0.3s ease; display: flex; flex-direction: column; }
+        .cabbie-panel.open { right: 0; }
+        .cabbie-header { padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .cabbie-header-title { display: flex; align-items: center; gap: 10px; }
+        .cabbie-header-title .icon { width: 38px; height: 38px; border-radius: 12px; background: var(--gradient-accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+        .cabbie-header h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+        .cabbie-header .sub { margin: 0; font-size: 0.72rem; color: var(--text-muted); }
+        .cabbie-messages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .cabbie-msg { max-width: 88%; padding: 10px 14px; border-radius: 16px; font-size: 0.88rem; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+        .cabbie-msg.user { align-self: flex-end; background: var(--gradient-accent); color: #fff; border-bottom-right-radius: 4px; }
+        .cabbie-msg.bot { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: #eee; border-bottom-left-radius: 4px; }
+        .cabbie-msg.system-note { align-self: center; background: none; color: var(--text-muted); font-size: 0.75rem; font-style: italic; text-align: center; padding: 4px 10px; }
+        .cabbie-msg.error { border-color: rgba(255,59,48,0.4); background: rgba(255,59,48,0.08); }
+        .cabbie-actions-tag { display: inline-block; margin-top: 6px; font-size: 0.7rem; padding: 3px 8px; border-radius: 100px; background: rgba(52,199,89,0.15); color: #34C759; border: 1px solid rgba(52,199,89,0.3); }
+        .cabbie-typing { align-self: flex-start; display: flex; gap: 4px; padding: 10px 14px; }
+        .cabbie-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: cabbie-bounce 1.2s infinite ease-in-out; }
+        .cabbie-typing span:nth-child(2) { animation-delay: 0.15s; }
+        .cabbie-typing span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes cabbie-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+        .cabbie-input-area { padding: 14px; border-top: 1px solid var(--glass-border); flex-shrink: 0; background: rgba(8, 13, 28, .55); display: flex; gap: 8px; align-items: flex-end; }
+        .cabbie-input-area textarea { flex: 1; resize: none; max-height: 100px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); border-radius: 14px; color: #fff; padding: 10px 14px; font-size: 0.88rem; font-family: inherit; }
+        .cabbie-input-area textarea:focus { outline: none; border-color: rgba(124,58,237,0.5); }
+        .cabbie-send-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--gradient-accent); color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .cabbie-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cabbie-setup-note { margin: 14px 16px 0; padding: 12px 14px; border-radius: 14px; background: rgba(255,149,0,0.1); border: 1px solid rgba(255,149,0,0.3); color: #FF9500; font-size: 0.8rem; line-height: 1.4; }
+
         #sync-indicator {
             display: none; 
             position: fixed; 
@@ -1786,6 +1826,33 @@
 </div>
 <div id="sync-indicator">Syncing...</div>
 
+<!-- Cabbie AI Assistant -->
+<button class="cabbie-fab" id="cabbieFab" onclick="toggleCabbiePanel()" aria-label="Cabbie AI" title="Ask Cabbie AI">🚕</button>
+<div class="cabbie-overlay" id="cabbieOverlay" onclick="toggleCabbiePanel()"></div>
+<div class="cabbie-panel" id="cabbiePanel">
+    <div class="cabbie-header">
+        <div class="cabbie-header-title">
+            <div class="icon">🚕</div>
+            <div>
+                <h2>Cabbie AI</h2>
+                <p class="sub">Built by Chris Hinojosa · for this workspace only</p>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn-outline" style="padding:4px 10px; font-size:0.75rem; border-color:rgba(255,59,48,0.4); color:#FF3B30;" onclick="clearCabbieChat()">Clear</button>
+            <button style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer; padding:0 4px;" onclick="toggleCabbiePanel()">&times;</button>
+        </div>
+    </div>
+    <div id="cabbieSetupNote" class="cabbie-setup-note" style="display:none;">
+        Cabbie AI isn't connected yet. Ask an admin to add an OpenRouter API key in Settings → Integrations.
+    </div>
+    <div class="cabbie-messages" id="cabbieMessages"></div>
+    <div class="cabbie-input-area">
+        <textarea id="cabbieInput" rows="1" placeholder="Ask about tasks, deadlines, labels…" onkeydown="handleCabbieKeydown(event)" oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px';"></textarea>
+        <button class="cabbie-send-btn" id="cabbieSendBtn" onclick="sendCabbieMessage()" aria-label="Send">➤</button>
+    </div>
+</div>
+
 <!-- LOGIN OVERLAY -->
 <div id="login-overlay">
     <script>
@@ -2250,6 +2317,22 @@
                             <button class="btn-action" style="flex:1; min-width: 200px;" onclick="syncBoardToGoogleCalendar()">Sync to Google Calendar</button>
                         </div>
                     </div>
+
+            <div class="settings-card admin-only">
+                <h3 class="section-title">🚕 Cabbie AI Assistant</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+                    Cabbie AI is a built-in assistant (built by Chris Hinojosa) that can answer questions about this workspace — due dates, posting schedules, labels, cards — and make changes for you when asked. It only knows about this app and won't answer unrelated questions. It's powered by <strong>OpenRouter</strong> using the free <code>inclusionai/ling-3.0-flash:free</code> model.
+                </p>
+                <label class="stat-label">OpenRouter API Key</label>
+                <input type="password" id="cabbieApiKey" class="modern-input" placeholder="sk-or-v1-..." style="margin-bottom: 12px;">
+                <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0; margin-bottom: 14px;">
+                    Get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:#0A84FF;">openrouter.ai/keys</a>. The key is stored with the rest of this workspace's settings, the same way the Monday.com token above is.
+                </p>
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer; color:var(--text-primary); font-size:0.92rem;">
+                    <input type="checkbox" id="cabbieEnabled" checked> Enable Cabbie AI for everyone in this workspace
+                </label>
+                <button class="btn-outline" style="width:100%;" onclick="saveCabbieAiSettings()">Save Cabbie AI Settings</button>
+            </div>
                     </div>
 
                     <!-- Data Section -->
@@ -2978,6 +3061,7 @@
                 if (!appData.automations) appData.automations = [];
                 if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
                 if (!appData.settings.users) appData.settings.users = [];
+                if (!appData.settings.cabbieAi) appData.settings.cabbieAi = { apiKey: '', enabled: true };
 
                 // Migrate per-board settings if they exist globally (legacy)
                 const globalMondayToken = appData.settings.mondayApiToken;
@@ -3112,7 +3196,7 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [] },
+            settings: { password: 'Marketing49!', users: [], cabbieAi: { apiKey: '', enabled: true } },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [], fieldEventName: 'text_mkv54kad', fieldDate: 'date_mkv5tftz', fieldTime: 'text_mkv8jajm', fieldDescription: 'long_text_mkv5467b', fieldLocation: 'text_mkv5brpa', fieldSubmittedBy: 'text_mkv8ebee', fieldEmail: 'email_mkv8x9x', fieldInspiration: 'file_mkv5hqye' } }],
@@ -3865,6 +3949,7 @@
         applyBoardBackground();
         renderTopbar();
         switchView(currentView);
+        updateCabbieVisibility();
     }
 
     function applyBoardBackground() {
@@ -5059,6 +5144,11 @@
             const webhookInput = document.getElementById('googleCalendarWebhook');
             if (webhookInput) webhookInput.value = (appData.settings && appData.settings.googleCalendarWebhook) ? appData.settings.googleCalendarWebhook : '';
 
+            const cabbieKeyInput = document.getElementById('cabbieApiKey');
+            if (cabbieKeyInput) cabbieKeyInput.value = (appData.settings.cabbieAi && appData.settings.cabbieAi.apiKey) || '';
+            const cabbieEnabledInput = document.getElementById('cabbieEnabled');
+            if (cabbieEnabledInput) cabbieEnabledInput.checked = !appData.settings.cabbieAi || appData.settings.cabbieAi.enabled !== false;
+
             // Load Monday.com settings for active board
             const boardSettings = appData.boards.find(b => b.id === appData.activeBoardId)?.settings || {};
             const mondayTokenInput = document.getElementById('mondayApiToken');
@@ -6076,6 +6166,351 @@
         appData.settings.googleCalendarAutoSync = autoSyncCheckbox ? autoSyncCheckbox.checked : false;
         await saveData();
         showToast('Google Calendar settings saved.');
+    }
+
+    async function saveCabbieAiSettings() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can change Cabbie AI settings.'); return; }
+        const keyInput = document.getElementById('cabbieApiKey');
+        const enabledInput = document.getElementById('cabbieEnabled');
+        if (!keyInput) return;
+        if (!appData.settings) appData.settings = {};
+        if (!appData.settings.cabbieAi) appData.settings.cabbieAi = {};
+        appData.settings.cabbieAi.apiKey = (keyInput.value || '').trim();
+        appData.settings.cabbieAi.enabled = enabledInput ? enabledInput.checked : true;
+        await saveData();
+        updateCabbieVisibility();
+        showToast('Cabbie AI settings saved.');
+    }
+
+    /* ============================= CABBIE AI ============================= */
+    const CABBIE_MODEL = 'inclusionai/ling-3.0-flash:free';
+    const CABBIE_LABEL_COLORS = ['green','red','yellow','orange','blue','purple','pink','lime','sky','navy','teal','cyan'];
+    let cabbieHistory = [];
+    let cabbieBusy = false;
+
+    function updateCabbieVisibility() {
+        const fab = document.getElementById('cabbieFab');
+        if (!fab) return;
+        const enabled = !appData.settings || !appData.settings.cabbieAi || appData.settings.cabbieAi.enabled !== false;
+        fab.classList.toggle('hidden', !enabled);
+    }
+
+    function toggleCabbiePanel() {
+        const panel = document.getElementById('cabbiePanel');
+        const overlay = document.getElementById('cabbieOverlay');
+        if (!panel || !overlay) return;
+        const opening = !panel.classList.contains('open');
+        panel.classList.toggle('open');
+        overlay.classList.toggle('open');
+        if (opening) {
+            const hasKey = !!(appData.settings && appData.settings.cabbieAi && appData.settings.cabbieAi.apiKey);
+            const note = document.getElementById('cabbieSetupNote');
+            if (note) note.style.display = hasKey ? 'none' : 'block';
+            if (cabbieHistory.length === 0) {
+                appendCabbieMessage('bot', `Hey${currentUserName ? ' ' + currentUserName : ''}! I'm Cabbie AI 🚕, built by Chris Hinojosa. Ask me about due dates, posting schedules, labels, or cards on this board — or tell me to make a change, like "move Put Your Records On to Completed" or "label it Priority in red".`);
+            }
+            const input = document.getElementById('cabbieInput');
+            if (input) setTimeout(() => input.focus(), 300);
+        }
+    }
+
+    function clearCabbieChat() {
+        cabbieHistory = [];
+        const list = document.getElementById('cabbieMessages');
+        if (list) list.innerHTML = '';
+        appendCabbieMessage('bot', `Chat cleared. What would you like to know about the board?`);
+    }
+
+    function handleCabbieKeydown(evt) {
+        if (evt.key === 'Enter' && !evt.shiftKey) {
+            evt.preventDefault();
+            sendCabbieMessage();
+        }
+    }
+
+    function escapeCabbieHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
+    function appendCabbieMessage(role, text, opts) {
+        const list = document.getElementById('cabbieMessages');
+        if (!list) return;
+        const el = document.createElement('div');
+        el.className = 'cabbie-msg ' + (role === 'user' ? 'user' : (opts && opts.error ? 'bot error' : 'bot'));
+        el.innerHTML = escapeCabbieHtml(text).replace(/\n/g, '<br>');
+        if (opts && opts.actionCount) {
+            const tag = document.createElement('span');
+            tag.className = 'cabbie-actions-tag';
+            tag.textContent = `✓ ${opts.actionCount} change${opts.actionCount === 1 ? '' : 's'} made`;
+            el.appendChild(document.createElement('br'));
+            el.appendChild(tag);
+        }
+        list.appendChild(el);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function showCabbieTyping() {
+        const list = document.getElementById('cabbieMessages');
+        if (!list) return;
+        const el = document.createElement('div');
+        el.className = 'cabbie-typing';
+        el.id = 'cabbieTypingIndicator';
+        el.innerHTML = '<span></span><span></span><span></span>';
+        list.appendChild(el);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function hideCabbieTyping() {
+        const el = document.getElementById('cabbieTypingIndicator');
+        if (el) el.remove();
+    }
+
+    function findCabbieTask(query) {
+        if (!query) return null;
+        const board = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!board) return null;
+        const tasks = appData.tasks.filter(t => t.boardId === board.id);
+        const q = String(query).trim().toLowerCase();
+        let match = tasks.find(t => (t.title || '').toLowerCase() === q);
+        if (!match) match = tasks.find(t => (t.title || '').toLowerCase().includes(q));
+        if (!match) match = tasks.find(t => q.includes((t.title || '').toLowerCase()) && t.title);
+        return match || null;
+    }
+
+    function buildCabbieContext() {
+        const board = appData.boards.find(b => b.id === appData.activeBoardId);
+        const now = new Date();
+        const lines = [];
+        lines.push(`Today's date: ${now.toISOString().slice(0,10)} (${now.toLocaleDateString('en-US',{weekday:'long'})}).`);
+        if (!board) {
+            lines.push('No active workspace/board is selected right now.');
+            return lines.join('\n');
+        }
+        lines.push(`Active workspace: "${board.year || board.name || 'Untitled'}".`);
+        const columns = appData.columns.filter(c => c.boardId === board.id).sort((a,b) => a.order - b.order);
+        lines.push(`Lists in this workspace: ${columns.map(c => c.title).join(', ') || '(none)'}.`);
+        const tasks = appData.tasks.filter(t => t.boardId === board.id);
+        lines.push(`There are ${tasks.length} cards on this board.`);
+        const colName = id => (columns.find(c => c.id === id)?.title) || 'Unknown List';
+        const taskLines = tasks.slice(0, 400).map(t => {
+            const parts = [`- "${t.title}"`, `list: ${colName(t.columnId)}`];
+            if (t.dueDate) parts.push(`due: ${t.dueDate}`);
+            if (t.completed) parts.push('completed: yes');
+            if (t.priority) parts.push(`priority: ${t.priority}`);
+            if (t.labels && t.labels.length) parts.push(`labels: ${t.labels.map(l => `${l.text}(${l.color})`).join(', ')}`);
+            const ps = normalizePostingSchedule(t.postingSchedule);
+            const postBits = [];
+            if (ps.story.length) postBits.push(`Story: ${ps.story.join(', ')}`);
+            if (ps.photo.length) postBits.push(`Photo: ${ps.photo.join(', ')}`);
+            if (ps.reel.length) postBits.push(`Reel: ${ps.reel.join(', ')}`);
+            if (postBits.length) parts.push(`posting schedule - ${postBits.join(' | ')}`);
+            if (t.checklist && t.checklist.length) {
+                const done = t.checklist.filter(c => c.done).length;
+                parts.push(`checklist: ${done}/${t.checklist.length} done`);
+            }
+            return parts.join(' | ');
+        });
+        lines.push('Cards:');
+        lines.push(taskLines.join('\n') || '(no cards yet)');
+        return lines.join('\n');
+    }
+
+    function cabbieSystemPrompt() {
+        return [
+            `You are "Cabbie AI", an assistant built by Chris Hinojosa that lives inside a marketing content-calendar web app used by a student Campus Activities Board (CAB) marketing team.`,
+            `Your ONLY job is to help with THIS app and its data: cards/tasks, lists, due dates, Instagram Story/Photo/Reel posting schedules, labels, checklists, and comments. You know nothing else and have no other purpose. If someone asks something unrelated to this workspace (general trivia, coding help, other topics), politely decline and steer them back to what you can help with here.`,
+            `You can both ANSWER questions using the board data given to you below, and EXECUTE actions on the board when asked (e.g. "move X to Completed", "label Y as Priority in red", "set the due date for X to next Friday", "mark X done", "add a comment to X").`,
+            `Resolve relative dates (like "next Friday" or "tomorrow") into an absolute YYYY-MM-DD date yourself using today's date given below.`,
+            `Available label colors: ${CABBIE_LABEL_COLORS.join(', ')}. Pick a sensible one if the user doesn't specify.`,
+            ``,
+            `CURRENT BOARD DATA:`,
+            buildCabbieContext(),
+            ``,
+            `You MUST reply with ONLY a single valid JSON object, no markdown fences, no commentary outside the JSON, matching exactly this shape:`,
+            `{"reply": "<short friendly message to show the user>", "actions": [<zero or more action objects>]}`,
+            `Each action object has a "type" field plus parameters. Supported action types:`,
+            `- {"type":"add_label","task":"<card title or close match>","label":"<label text>","color":"<one of the colors above>"}`,
+            `- {"type":"remove_label","task":"<card title>","label":"<label text>"}`,
+            `- {"type":"set_due_date","task":"<card title>","date":"YYYY-MM-DD"}`,
+            `- {"type":"add_posting_date","task":"<card title>","postType":"story|photo|reel","date":"YYYY-MM-DD"}`,
+            `- {"type":"move_task","task":"<card title>","list":"<destination list name>"}`,
+            `- {"type":"set_completed","task":"<card title>","completed":true|false}`,
+            `- {"type":"add_comment","task":"<card title>","text":"<comment text>"}`,
+            `- {"type":"create_task","title":"<new card title>","list":"<list name, optional>","dueDate":"YYYY-MM-DD (optional)"}`,
+            `If the user is just asking a question, return "actions": [] and put the full answer in "reply", grounded strictly in the CURRENT BOARD DATA above. If you can't find a card or list that matches what they asked for, say so in "reply" instead of guessing an action. Never invent data that isn't in the board data.`
+        ].join('\n');
+    }
+
+    function executeCabbieAction(action) {
+        const board = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!board) return { ok: false, msg: 'No active workspace.' };
+        const columns = appData.columns.filter(c => c.boardId === board.id);
+
+        if (action.type === 'create_task') {
+            if (!action.title) return { ok: false, msg: 'Missing title.' };
+            let col = columns.find(c => (c.title || '').toLowerCase() === String(action.list || '').toLowerCase()) || columns[0];
+            if (!col) return { ok: false, msg: 'No list available to add the card to.' };
+            appData.tasks.push({
+                id: generateId(), boardId: board.id, columnId: col.id,
+                title: action.title, description: '', text: '', dueDate: action.dueDate || '',
+                postingSchedule: { story: [], photo: [], reel: [] },
+                checklist: [], attachments: [], customFields: [], members: [], labels: [], comments: [],
+                coverImage: '', eventLocation: '', priority: '', completed: false
+            });
+            return { ok: true, msg: `Created card "${action.title}" in ${col.title}.` };
+        }
+
+        const task = findCabbieTask(action.task);
+        if (!task) return { ok: false, msg: `Couldn't find a card matching "${action.task}".` };
+
+        switch (action.type) {
+            case 'add_label': {
+                if (!action.label) return { ok: false, msg: 'Missing label text.' };
+                if (!task.labels) task.labels = [];
+                const color = CABBIE_LABEL_COLORS.includes(action.color) ? action.color : 'blue';
+                if (!task.labels.some(l => (l.text || '').toLowerCase() === action.label.toLowerCase())) {
+                    task.labels.push({ text: action.label, color });
+                }
+                return { ok: true, msg: `Added label "${action.label}" to "${task.title}".` };
+            }
+            case 'remove_label': {
+                if (!task.labels) task.labels = [];
+                task.labels = task.labels.filter(l => (l.text || '').toLowerCase() !== String(action.label || '').toLowerCase());
+                return { ok: true, msg: `Removed label "${action.label}" from "${task.title}".` };
+            }
+            case 'set_due_date': {
+                task.dueDate = action.date || '';
+                return { ok: true, msg: `Set due date for "${task.title}" to ${task.dueDate || '(cleared)'}.` };
+            }
+            case 'add_posting_date': {
+                const type = ['story','photo','reel'].includes(action.postType) ? action.postType : null;
+                if (!type || !action.date) return { ok: false, msg: 'Missing posting type or date.' };
+                task.postingSchedule = normalizePostingSchedule(task.postingSchedule);
+                if (!task.postingSchedule[type].includes(action.date)) task.postingSchedule[type].push(action.date);
+                return { ok: true, msg: `Added ${type} posting date ${action.date} to "${task.title}".` };
+            }
+            case 'move_task': {
+                const col = columns.find(c => (c.title || '').toLowerCase() === String(action.list || '').toLowerCase());
+                if (!col) return { ok: false, msg: `Couldn't find a list called "${action.list}".` };
+                task.columnId = col.id;
+                return { ok: true, msg: `Moved "${task.title}" to ${col.title}.` };
+            }
+            case 'set_completed': {
+                task.completed = !!action.completed;
+                return { ok: true, msg: `Marked "${task.title}" as ${task.completed ? 'complete' : 'incomplete'}.` };
+            }
+            case 'add_comment': {
+                if (!action.text) return { ok: false, msg: 'Missing comment text.' };
+                if (!task.comments) task.comments = [];
+                const timeStr = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                task.comments.push({ id: generateId(), user: (currentUserName || 'Cabbie AI') + ' (via Cabbie AI)', text: action.text, time: timeStr });
+                return { ok: true, msg: `Added comment to "${task.title}".` };
+            }
+            default:
+                return { ok: false, msg: `Unknown action "${action.type}".` };
+        }
+    }
+
+    function parseCabbieResponse(content) {
+        let raw = (content || '').trim();
+        raw = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                return { reply: parsed.reply || '', actions: Array.isArray(parsed.actions) ? parsed.actions : [] };
+            }
+        } catch (e) {
+            const match = raw.match(/\{[\s\S]*\}/);
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[0]);
+                    return { reply: parsed.reply || '', actions: Array.isArray(parsed.actions) ? parsed.actions : [] };
+                } catch (e2) { /* fall through */ }
+            }
+        }
+        return { reply: raw, actions: [] };
+    }
+
+    async function sendCabbieMessage() {
+        if (cabbieBusy) return;
+        const input = document.getElementById('cabbieInput');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+
+        const apiKey = appData.settings && appData.settings.cabbieAi && appData.settings.cabbieAi.apiKey;
+        if (!apiKey) {
+            appendCabbieMessage('user', text);
+            input.value = ''; input.style.height = 'auto';
+            appendCabbieMessage('bot', "I'm not connected yet — ask an admin to add an OpenRouter API key in Settings → Integrations → Cabbie AI Assistant.", { error: true });
+            return;
+        }
+
+        appendCabbieMessage('user', text);
+        cabbieHistory.push({ role: 'user', content: text });
+        input.value = ''; input.style.height = 'auto';
+        cabbieBusy = true;
+        const sendBtn = document.getElementById('cabbieSendBtn');
+        if (sendBtn) sendBtn.disabled = true;
+        showCabbieTyping();
+
+        try {
+            const messages = [
+                { role: 'system', content: cabbieSystemPrompt() },
+                ...cabbieHistory.slice(-16)
+            ];
+            const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + apiKey,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': location.origin || 'https://cabmarketing.app',
+                    'X-Title': 'Cabbie AI - CAB Marketing'
+                },
+                body: JSON.stringify({
+                    model: CABBIE_MODEL,
+                    messages,
+                    temperature: 0.3,
+                    max_tokens: 900
+                })
+            });
+
+            if (!resp.ok) {
+                const errText = await resp.text().catch(() => '');
+                throw new Error(`OpenRouter error ${resp.status}: ${errText.slice(0, 200)}`);
+            }
+            const data = await resp.json();
+            const content = data?.choices?.[0]?.message?.content || '';
+            const { reply, actions } = parseCabbieResponse(content);
+
+            let executedCount = 0;
+            const failures = [];
+            for (const action of actions) {
+                if (!action || !action.type) continue;
+                const result = executeCabbieAction(action);
+                if (result.ok) executedCount++;
+                else failures.push(result.msg);
+            }
+            if (executedCount > 0) {
+                await saveData();
+                renderApp();
+            }
+
+            let finalReply = reply || "Done.";
+            if (failures.length) finalReply += `\n\n⚠️ ${failures.join(' ')}`;
+            cabbieHistory.push({ role: 'assistant', content: content });
+            hideCabbieTyping();
+            appendCabbieMessage('bot', finalReply, executedCount > 0 ? { actionCount: executedCount } : undefined);
+        } catch (err) {
+            console.error('Cabbie AI error:', err);
+            hideCabbieTyping();
+            appendCabbieMessage('bot', `Sorry, I ran into an error talking to OpenRouter: ${err.message || err}`, { error: true });
+        } finally {
+            cabbieBusy = false;
+            if (sendBtn) sendBtn.disabled = false;
+        }
     }
 
     let _calSyncTimer = null;
