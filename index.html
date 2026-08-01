@@ -6332,7 +6332,8 @@
             const hasKey = !!(appData.settings && appData.settings.cabbieAi && appData.settings.cabbieAi.apiKey);
             const note = document.getElementById('cabbieSetupNote');
             if (note) note.style.display = hasKey ? 'none' : 'block';
-            if (cabbieHistory.length === 0) {
+            const messages = document.getElementById('cabbieMessages');
+            if (messages && messages.children.length === 0) {
                 appendCabbieMessage('bot', `Hey${currentUserName ? ' ' + currentUserName : ''}! I'm Cabbie AI 🚕. Ask me about due dates, posting schedules, labels, or cards on this board — or tell me to make a change, like "move Put Your Records On to Completed" or "label it Priority in red".`);
             }
             const input = document.getElementById('cabbieInput');
