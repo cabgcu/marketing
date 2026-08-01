@@ -1089,6 +1089,8 @@
         #taskModal .close-modal { display: none; }
         #taskModal #taskForm { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 
+        .modal-cover-wrap { position: relative; flex-shrink: 0; }
+
         .modal-cover {
             position: relative;
             width: 100%;
@@ -1517,12 +1519,20 @@
 
             /* Task Modal (new layout) on mobile — tightened to feel closer to the shared-card preview's compact sizing */
             #taskModal .modal-content { height: auto; max-height: 96dvh !important; overflow: hidden; display: flex; flex-direction: column; }
-            .modal-cover { height: calc(90px + env(safe-area-inset-top)); }
-            .modal-cover.has-cover-image { height: calc(150px + env(safe-area-inset-top)); }
+            .modal-cover { height: calc(70px + env(safe-area-inset-top)); }
+            .modal-cover.has-cover-image { height: calc(130px + env(safe-area-inset-top)); }
             .modal-cover-title-input { font-size: 1.15rem; }
             .modal-cover-title-wrap { left: 16px; right: 16px; bottom: 10px; }
             .modal-cover-listline { font-size: 0.78rem; margin-top: 3px; }
-            .modal-cover-actions { top: calc(8px + env(safe-area-inset-top)); right: 8px; gap: 6px; }
+            /* Move Change Cover/Remove Cover/Options/Close below the title instead of overlapping the cover image (and the Dynamic Island) */
+            .modal-cover-actions {
+                position: static;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 6px;
+                padding: 10px 16px 0;
+            }
             .cover-action-btn { padding: 5px 9px; font-size: 0.68rem; }
             .task-modal-body { flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; }
             .task-modal-main-wrap { padding: 14px 16px; overflow: visible; }
@@ -2288,8 +2298,14 @@
             <input type="hidden" id="taskModalColId">
             <input type="hidden" id="taskModalTaskId">
 
-            <div id="taskModalCover" class="modal-cover">
-                <div class="modal-cover-scrim"></div>
+            <div class="modal-cover-wrap">
+                <div id="taskModalCover" class="modal-cover">
+                    <div class="modal-cover-scrim"></div>
+                    <div class="modal-cover-title-wrap">
+                        <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
+                        <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span> <span id="autoSaveIndicator" style="opacity:0; transition:opacity 0.4s; color:#86efac; font-weight:600;">✓ Saved</span></p>
+                    </div>
+                </div>
                 <div class="modal-cover-actions">
                     <button type="button" class="cover-action-btn" onclick="document.getElementById('coverUploadInput').click()">🖼️ Change Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
@@ -2324,10 +2340,6 @@
                         </div>
                     </div>
                     <button type="button" class="cover-action-btn cover-action-icon" onclick="closeModal(null, 'taskModal')">&times;</button>
-                </div>
-                <div class="modal-cover-title-wrap">
-                    <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
-                    <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span> <span id="autoSaveIndicator" style="opacity:0; transition:opacity 0.4s; color:#86efac; font-weight:600;">✓ Saved</span></p>
                 </div>
             </div>
 
