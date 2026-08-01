@@ -1127,23 +1127,7 @@
         .cover-action-btn:hover { background: rgba(124,58,237,.35); border-color: rgba(167,139,250,.5); }
         .cover-action-btn.cover-action-icon { padding: 8px 10px; font-size: 1rem; line-height: 1; }
 
-        .remove-cover-btn {
-            position: absolute;
-            bottom: 16px; right: 16px;
-            z-index: 3;
-            background: rgba(8,13,28,.6);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid var(--glass-border);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.78rem;
-            font-weight: 700;
-            transition: 0.2s;
-        }
-        .remove-cover-btn:hover { background: rgba(255, 59, 48, 0.8); border-color: #FF3B30; }
+        #removeCoverBtn:hover { background: rgba(255, 59, 48, 0.8); border-color: #FF3B30; }
 
         .modal-cover-title-wrap {
             position: absolute; left: 24px; right: 24px; bottom: 20px;
@@ -2298,6 +2282,7 @@
                 <div class="modal-cover-actions">
                     <button type="button" class="cover-action-btn" onclick="document.getElementById('coverUploadInput').click()">🖼️ Change Cover</button>
                     <input type="file" id="coverUploadInput" accept="image/*" style="display:none;" onchange="handleCoverUpload(event)">
+                    <button type="button" class="cover-action-btn" id="removeCoverBtn" onclick="removeCover()" style="display:none;">🗑️ Remove Cover</button>
                     <div class="task-options-wrap">
                         <button type="button" class="cover-action-btn" onclick="toggleTaskOptionsMenu(event)">⚙️ Options</button>
                         <div id="taskOptionsDropdown" class="task-options-dropdown">
@@ -2333,7 +2318,6 @@
                     </div>
                     <button type="button" class="cover-action-btn cover-action-icon" onclick="closeModal(null, 'taskModal')">&times;</button>
                 </div>
-                <button type="button" class="remove-cover-btn" id="removeCoverBtn" onclick="removeCover()" style="display:none;">Remove Cover</button>
                 <div class="modal-cover-title-wrap">
                     <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
                     <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span></p>
