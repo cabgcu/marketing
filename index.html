@@ -1557,11 +1557,6 @@
             .section-title { margin-top: 15px !important; margin-bottom: 8px; font-size: 1.05rem; }
             #taskContentInput { min-height: 60px !important; overflow-wrap: break-word; }
             .activity-item > div { min-width: 0; }
-            /* Compact Sidebar in Modal */
-            .modal-sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-            .modal-sidebar h4 { grid-column: span 2; margin-top: 10px; margin-bottom: 4px; }
-            .modal-sidebar button { font-size: 0.85rem; padding: 8px 12px; }
-            #autoSaveIndicator { grid-column: span 2; }
 
             /* Scrollable Calendar — mobile agenda layout */
             .calendar-header { flex-direction: column; gap: 14px; align-items: stretch; }
@@ -2326,17 +2321,13 @@
                                     <button type="button" class="task-option-btn" onclick="shareCard()">Share</button>
                                 </div>
                             </div>
-                            <div class="task-options-footer">
-                                <button type="submit" class="btn-action" style="width: 100%;">Save Task</button>
-                                <div id="autoSaveIndicator" style="text-align:center; font-size:0.72rem; color:var(--text-muted); opacity:0; transition:opacity 0.3s; padding-top: 8px;">✓ Saved</div>
-                            </div>
                         </div>
                     </div>
                     <button type="button" class="cover-action-btn cover-action-icon" onclick="closeModal(null, 'taskModal')">&times;</button>
                 </div>
                 <div class="modal-cover-title-wrap">
                     <input type="text" id="taskTitleInput" oninput="scheduleAutoSave()" class="modal-cover-title-input" placeholder="Task Name" required>
-                    <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span></p>
+                    <p class="modal-cover-listline">in list <span id="taskModalListName">List Name</span> <span id="autoSaveIndicator" style="opacity:0; transition:opacity 0.4s; color:#86efac; font-weight:600;">✓ Saved</span></p>
                 </div>
             </div>
 
@@ -2407,7 +2398,9 @@
                         <div id="attachmentsSection" class="task-section">
                             <div class="task-section-heading-split">
                                 <div class="task-section-heading"><h3>File Links &amp; Attachments</h3></div>
-                                <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+                                    <button type="button" class="task-lock-btn" style="border-color: rgba(167,139,250,.4); background: rgba(124,58,237,.1); color: #c4b5fd;" onclick="promptAttachLink()">🔗 Attach Link</button>
+                                    <button type="button" class="task-lock-btn" style="border-color: rgba(167,139,250,.4); background: rgba(124,58,237,.1); color: #c4b5fd;" onclick="document.getElementById('driveUploadInput').click()">📎 Upload</button>
                                     <button type="button" id="lockMondayFilesBtn" onclick="lockMondayFiles()" class="task-lock-btn" style="display:none;">🔒 Lock Files</button>
                                     <div id="mondayFilesLockedBadge" class="task-locked-badge" style="display:none;">🔒 Files Locked</div>
                                 </div>
@@ -9088,7 +9081,6 @@
         if (e) e.preventDefault();
         clearTimeout(_autoSaveTimer);
         doAutoSave(false);
-        showToast("Task saved manually!");
     }
 
     async function deleteTask(id) {
