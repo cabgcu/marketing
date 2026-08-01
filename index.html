@@ -1317,7 +1317,8 @@
         /* Cabbie AI Assistant */
         .cabbie-fab { position: fixed; right: 22px; bottom: 22px; z-index: 9998; width: 58px; height: 58px; border-radius: 50%;
             background: var(--gradient-accent); border: 1px solid rgba(255,255,255,0.12); cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 1.6rem; box-shadow: 0 10px 30px rgba(79,70,229,0.5), 0 0 0 1px rgba(255,255,255,0.08); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+            font-size: 1.6rem; box-shadow: 0 10px 30px rgba(79,70,229,0.5), 0 0 0 1px rgba(255,255,255,0.08); transition: transform 0.2s ease, box-shadow 0.2s ease;
+            touch-action: none; user-select: none; -webkit-user-select: none; }
         .cabbie-fab:hover { transform: scale(1.07); box-shadow: 0 14px 36px rgba(79,70,229,0.65), 0 0 0 1px rgba(255,255,255,0.1); }
         .cabbie-fab.hidden { display: none; }
         .cabbie-overlay { position: fixed; inset: 0; z-index: 10000; opacity: 0; pointer-events: none; }
@@ -1388,7 +1389,7 @@
                 padding-bottom: env(safe-area-inset-bottom);
             }
             .cabbie-panel.open { transform: translateY(0) scale(1); }
-            .cabbie-close-btn { top: 16px; right: 16px; width: 40px; height: 40px; font-size: 1.6rem; }
+            .cabbie-close-btn { top: calc(16px + env(safe-area-inset-top)); right: 16px; width: 40px; height: 40px; font-size: 1.6rem; }
         }
 
         #sync-indicator {
@@ -1864,7 +1865,7 @@
 <div id="sync-indicator">Syncing...</div>
 
 <!-- Cabbie AI Assistant -->
-<button class="cabbie-fab" id="cabbieFab" onclick="toggleCabbiePanel()" aria-label="Cabbie AI" title="Ask Cabbie AI">🚕</button>
+<button class="cabbie-fab" id="cabbieFab" aria-label="Cabbie AI" title="Ask Cabbie AI">🚕</button>
 <div class="cabbie-overlay" id="cabbieOverlay" onclick="toggleCabbiePanel()"></div>
 <div class="cabbie-panel" id="cabbiePanel">
     <div class="cabbie-header">
@@ -6228,6 +6229,96 @@
         if (!fab) return;
         const enabled = !appData.settings || !appData.settings.cabbieAi || appData.settings.cabbieAi.enabled !== false;
         fab.classList.toggle('hidden', !enabled);
+        initCabbieFabDrag();
+    }
+
+    function isCabbieMobileViewport() {
+        return window.innerWidth <= 900;
+    }
+
+    function clampCabbieFabPosition(left, top) {
+        const fab = document.getElementById('cabbieFab');
+        const size = fab ? fab.offsetWidth || 58 : 58;
+        const margin = 8;
+        const maxLeft = Math.max(margin, window.innerWidth - size - margin);
+        const maxTop = Math.max(margin, window.innerHeight - size - margin);
+        return { left: Math.min(Math.max(left, margin), maxLeft), top: Math.min(Math.max(top, margin), maxTop) };
+    }
+
+    function applyCabbieFabPosition(left, top) {
+        const fab = document.getElementById('cabbieFab');
+        if (!fab) return;
+        const clamped = clampCabbieFabPosition(left, top);
+        fab.style.left = clamped.left + 'px';
+        fab.style.top = clamped.top + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    }
+
+    function applyCabbieFabLayout() {
+        const fab = document.getElementById('cabbieFab');
+        if (!fab) return;
+        if (!isCabbieMobileViewport()) {
+            fab.style.left = ''; fab.style.top = ''; fab.style.right = ''; fab.style.bottom = '';
+            return;
+        }
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem('cabbieFabPos') || 'null'); } catch (e) {}
+        if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
+            applyCabbieFabPosition(saved.left, saved.top);
+        } else {
+            fab.style.left = ''; fab.style.top = ''; fab.style.right = ''; fab.style.bottom = '';
+        }
+    }
+
+    function initCabbieFabDrag() {
+        const fab = document.getElementById('cabbieFab');
+        if (!fab || fab.dataset.dragInit) return;
+        fab.dataset.dragInit = '1';
+        applyCabbieFabLayout();
+
+        let pointerDown = false, dragging = false, justDragged = false;
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+        const DRAG_THRESHOLD = 6;
+
+        fab.addEventListener('pointerdown', (e) => {
+            if (!isCabbieMobileViewport()) return;
+            pointerDown = true;
+            dragging = false;
+            const rect = fab.getBoundingClientRect();
+            startX = e.clientX; startY = e.clientY;
+            startLeft = rect.left; startTop = rect.top;
+            try { fab.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+
+        fab.addEventListener('pointermove', (e) => {
+            if (!pointerDown) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) dragging = true;
+            if (dragging) applyCabbieFabPosition(startLeft + dx, startTop + dy);
+        });
+
+        function endDrag() {
+            if (!pointerDown) return;
+            pointerDown = false;
+            if (dragging) {
+                const rect = fab.getBoundingClientRect();
+                try { localStorage.setItem('cabbieFabPos', JSON.stringify({ left: rect.left, top: rect.top })); } catch (e) {}
+                justDragged = true;
+                setTimeout(() => { justDragged = false; }, 50);
+            }
+            dragging = false;
+        }
+        fab.addEventListener('pointerup', endDrag);
+        fab.addEventListener('pointercancel', endDrag);
+
+        fab.addEventListener('click', (e) => {
+            if (justDragged) { e.preventDefault(); e.stopPropagation(); return; }
+            toggleCabbiePanel();
+        });
+
+        window.addEventListener('resize', applyCabbieFabLayout);
     }
 
     function toggleCabbiePanel() {
