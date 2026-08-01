@@ -547,12 +547,27 @@
         .list-view-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
         .list-view-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
         .planner-date-group { margin-bottom: 30px; }
-        .planner-date-header { font-size: 1.2rem; font-weight: 800; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;}
-        .planner-task-row { background: linear-gradient(160deg, rgba(35,35,35,0.6) 0%, rgba(15,15,15,0.4) 100%); border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.15); padding: 15px 20px; border-radius: 20px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.05); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
-        .planner-task-row:hover { background: linear-gradient(160deg, rgba(45,45,45,0.7) 0%, rgba(20,20,20,0.5) 100%); border-color: rgba(255,255,255,0.2); border-top-color: rgba(255,255,255,0.3); transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 32px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.1); }
-        .planner-task-row .planner-row-main { display: flex; align-items: center; gap: 15px; min-width: 0; flex: 1; flex-wrap: wrap; }
-        .planner-task-row .planner-row-title { font-weight: bold; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; flex-wrap: wrap; word-break: break-word; }
+        .planner-date-header { font-size: 1.15rem; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; color: #a78bfa; }
+        .planner-task-row { background: rgba(8, 13, 28, .78); border: 1px solid var(--glass-border); padding: 15px 18px; border-radius: 20px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.3); backdrop-filter: blur(20px) saturate(110%); -webkit-backdrop-filter: blur(20px) saturate(110%); }
+        .planner-task-row:hover { background: rgba(8, 13, 28, .92); border-color: rgba(167,139,250,.4); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(99,102,241,.2); }
+        .planner-task-row .planner-row-main { display: flex; align-items: center; gap: 0; min-width: 0; flex: 1; flex-wrap: wrap; }
+        .planner-task-row .planner-row-title { font-weight: bold; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; flex-wrap: wrap; word-break: break-word; padding-left: 15px; margin-left: 15px; border-left: 1px solid var(--glass-border); }
         .planner-task-row .planner-row-time { color: var(--text-muted); font-family: monospace; font-size: 0.9rem; min-width: 75px; flex-shrink: 0; white-space: nowrap; }
+        .planner-task-row:hover .planner-row-title-text { color: #c4b5fd; }
+
+        .cal-nav-btn {
+            width: 40px; height: 40px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: rgba(8,13,28,.6);
+            border: 1px solid var(--glass-border);
+            color: #cbd5e1;
+            font-size: 1.3rem; line-height: 1;
+            cursor: pointer; transition: 0.2s;
+        }
+        .cal-nav-btn:hover { background: rgba(124,58,237,.25); border-color: rgba(167,139,250,.5); color: #fff; }
+        .calendar-header .col-action-btn { border-radius: 100px; padding: 6px 14px; letter-spacing: 0.03em; }
+        .calendar-header-controls > div { border-radius: 100px !important; }
 
         /* Posting Schedule (multi-date) */
         .posting-schedule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
@@ -1548,9 +1563,11 @@
             .modal-sidebar button { font-size: 0.85rem; padding: 8px 12px; }
             #autoSaveIndicator { grid-column: span 2; }
 
-            /* Scrollable Calendar */
-            .calendar-header { flex-direction: column; gap: 15px; }
-            .calendar-wrapper { padding: 15px; overflow-x: auto; overflow-y: auto; margin-top: 10px; flex: none; height: auto; }
+            /* Scrollable Calendar — mobile agenda layout */
+            .calendar-header { flex-direction: column; gap: 14px; align-items: stretch; }
+            .calendar-header-controls { justify-content: space-between; }
+            .calendar-month-title { font-size: 1.3rem !important; order: 2; }
+            .calendar-wrapper { padding: 18px 16px; overflow-x: auto; overflow-y: auto; margin-top: 10px; flex: none; height: auto; }
             .calendar-grid { min-width: 800px; grid-template-rows: max-content repeat(6, minmax(120px, 1fr)); height: auto; min-height: 100%; padding-bottom: 15px; flex: none; }
             .calendar-day-header { font-size: 0.75rem; }
             
@@ -4678,12 +4695,12 @@
 
         wrapper.innerHTML = `
             <div class="calendar-header">
-                <div style="display: flex; gap: 10px; flex: 1; align-items: center; flex-wrap: wrap;">
-                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(-1)">Prev</button>
-                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="changeMonth(1)">Next</button>
+                <div class="calendar-header-controls" style="display: flex; gap: 10px; flex: 1; align-items: center; flex-wrap: wrap;">
+                    <button class="cal-nav-btn" onclick="changeMonth(-1)" aria-label="Previous month">&#8249;</button>
+                    <button class="cal-nav-btn" onclick="changeMonth(1)" aria-label="Next month">&#8250;</button>
                     ${typeToggleHtml}
                 </div>
-                <h2 style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: ${calendarType === 'events' ? '#0A84FF' : '#BF5AF2'};">${monthYearStr}</h2>
+                <h2 class="calendar-month-title" style="margin: 0; font-weight: 800; font-size: 1.5rem; flex: 2; text-align: center; color: ${calendarType === 'events' ? '#0A84FF' : '#BF5AF2'};">${monthYearStr}</h2>
                 <div class="view-toggle-wrap" style="display: flex; flex: 1; justify-content: flex-end;">
                     <div style="background: rgba(255,255,255,0.05); padding: 4px; border-radius: 8px; display: flex; gap: 4px;">
                         <button class="col-action-btn ${calendarMode === 'grid' ? 'active' : ''}" style="${calendarMode === 'grid' ? 'background:var(--gradient-accent);color:#fff;' : ''}" onclick="setCalendarMode('grid')">Grid</button>
@@ -4739,7 +4756,7 @@
                         
                         let extraHtml = item.task.labels && item.task.labels.length > 0 ? `<span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 8px;">(${item.task.labels[0].text})</span>` : '';
                         
-                        row.innerHTML = `<div class="planner-row-main"><span class="planner-row-time">${time}</span><div class="planner-row-title">${badgeHtml}<span style="word-break:break-word; min-width:0;">${item.task.title}</span>${extraHtml}</div></div>`;
+                        row.innerHTML = `<div class="planner-row-main"><span class="planner-row-time">${time}</span><div class="planner-row-title">${badgeHtml}<span class="planner-row-title-text" style="word-break:break-word; min-width:0;">${item.task.title}</span>${extraHtml}</div></div>`;
                         groupEl.appendChild(row);
                     });
                     listContainer.appendChild(groupEl);
