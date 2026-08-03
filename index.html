@@ -2357,7 +2357,7 @@
             <div class="settings-card admin-only">
                 <h3 class="section-title">🚕 Cabbie AI Assistant</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
-                    Cabbie AI is a built-in assistant (built by Chris Hinojosa) that can answer questions about this workspace — due dates, posting schedules, labels, cards — and make changes for you when asked. It only knows about this app and won't answer unrelated questions. It's powered by <strong>OpenRouter</strong> using the free <code>inclusionai/ling-3.0-flash:free</code> model.
+                    Cabbie AI is a built-in assistant (built by Chris Hinojosa) that can answer questions about this workspace — due dates, posting schedules, labels, cards — and make changes for you when asked. It only knows about this app and won't answer unrelated questions. It's powered by <strong>OpenRouter</strong> using the free <code>poolside/laguna-s-2.1:free</code> model.
                 </p>
                 <label class="stat-label">OpenRouter API Key</label>
                 <input type="password" id="cabbieApiKey" class="modern-input" placeholder="sk-or-v1-..." style="margin-bottom: 12px;">
@@ -6221,7 +6221,7 @@
     }
 
     /* ============================= CABBIE AI ============================= */
-    const CABBIE_MODEL = 'inclusionai/ling-3.0-flash:free';
+    const CABBIE_MODEL = 'poolside/laguna-s-2.1:free';
     const CABBIE_LABEL_COLORS = ['green','red','yellow','orange','blue','purple','pink','lime','sky','navy','teal','cyan'];
     let cabbieHistory = [];
     let cabbieBusy = false;
