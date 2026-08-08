@@ -9540,6 +9540,15 @@
         newTask.columnId = destColId;
         newTask.title = (newTask.title || 'Untitled') + ' (Copy)';
 
+        // Nested items keep their own ids in Supabase (checklist_items, comments,
+        // custom_fields, attachments are all separate tables keyed by id) — a naive
+        // deep clone would leave the copy sharing ids with the original task, which
+        // collide the moment both get saved together. Give every nested item a
+        // fresh id, same as the top-level task.
+        (newTask.checklist || []).forEach(item => { item.id = generateId(); });
+        (newTask.comments || []).forEach(c => { c.id = generateId(); });
+        (newTask.customFields || []).forEach(cf => { cf.id = generateId(); });
+
         // Re-upload attachments if checkbox is checked
         if (copyAttachmentsCb && copyAttachmentsCb.checked && newTask.attachments && newTask.attachments.length > 0) {
             newTask.attachments = await copyAttachments(newTask.attachments);
@@ -9560,7 +9569,7 @@
             try {
                 // Skip external links, only copy files
                 if (att.isLink) {
-                    newAttachments.push(att);
+                    newAttachments.push({ ...att, id: generateId() });
                     continue;
                 }
 
