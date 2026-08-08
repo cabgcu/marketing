@@ -54,26 +54,21 @@ Deno.serve(async (req) => {
 
     const brevoApiKey = secretRow.value;
 
-    // Load app state to verify user and store token
-    const { data: stateRow, error: fetchError } = await supabase
-      .from("app_state")
-      .select("data")
-      .eq("id", 1)
-      .single();
+    // Look up the user directly in the users table (was: read the whole
+    // app_state blob and search appData.settings.users in memory).
+    const { data: user, error: fetchError } = await supabase
+      .from("users")
+      .select("email, name")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
-    if (fetchError || !stateRow) {
+    if (fetchError) {
       console.error("DB fetch error:", fetchError);
       return new Response(
         JSON.stringify({ error: "Database error" }),
         { status: 500, headers: { "Content-Type": "application/json", ...CORS_HEADERS } }
       );
     }
-
-    const appData = stateRow.data;
-    const users: any[] = appData?.settings?.users || [];
-    const user = users.find(
-      (u: any) => u.email?.toLowerCase() === normalizedEmail
-    );
 
     // Return success regardless to avoid email enumeration
     if (!user) {
@@ -87,21 +82,14 @@ Deno.serve(async (req) => {
     const token = generateToken();
     const expiry = Date.now() + 60 * 60 * 1000;
 
-    if (!appData.settings.passwordResetTokens) {
-      appData.settings.passwordResetTokens = [];
-    }
-
-    // Remove any prior token for this email
-    appData.settings.passwordResetTokens = (
-      appData.settings.passwordResetTokens as any[]
-    ).filter((t: any) => t.email !== normalizedEmail);
-
-    appData.settings.passwordResetTokens.push({ email: normalizedEmail, token, expiry });
+    // password_reset_tokens is its own table now — remove any prior token for
+    // this email, then insert the new one, instead of read-modify-writing the
+    // whole blob.
+    await supabase.from("password_reset_tokens").delete().eq("email", normalizedEmail);
 
     const { error: updateError } = await supabase
-      .from("app_state")
-      .update({ data: appData })
-      .eq("id", 1);
+      .from("password_reset_tokens")
+      .insert({ email: normalizedEmail, token, expiry });
 
     if (updateError) {
       console.error("DB update error:", updateError);

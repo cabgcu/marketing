@@ -56,23 +56,21 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Read full app state
-  const { data: row, error } = await supabase
-    .from("app_state")
-    .select("data")
-    .eq("id", 1)
-    .single();
+  // Data lives in real tables now; load_app_state() reassembles them into the
+  // same shape this function has always worked with, so the logic below is
+  // unchanged. Only the read (here) and write (at the bottom) are different.
+  const { data: appDataRaw, error } = await supabase.rpc("load_app_state");
 
-  if (error || !row?.data) {
-    console.error("[scheduled-reminders] Could not read app_state:", error);
-    return new Response(JSON.stringify({ error: "Could not read app_state" }), {
+  if (error || !appDataRaw) {
+    console.error("[scheduled-reminders] Could not load app state:", error);
+    return new Response(JSON.stringify({ error: "Could not load app state" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
 
   // deno-lint-ignore no-explicit-any
-  const appData: Record<string, any> = row.data;
+  const appData: Record<string, any> = appDataRaw;
   const tasks: Record<string, unknown>[] = appData.tasks || [];
   const settings: Record<string, unknown> = appData.settings || {};
   const allUsers: string[] = ((settings.users || []) as { name: string }[]).map((u) => u.name);
@@ -89,8 +87,10 @@ Deno.serve(async (req) => {
     return userPrefs[type] !== false;
   }
 
-  // Mutable notification store and sent-reminders tracker
+  // Mutable notification store (kept only so addInAppNotif's existing shape
+  // doesn't need to change) and the list of brand-new rows to insert below.
   const notifications: Record<string, Record<string, unknown>[]> = appData.notifications || {};
+  const newNotifRows: Record<string, unknown>[] = [];
 
   // sentReminders tracks which reminders were already dispatched.
   // Keys encode enough info to be unique per event; values store the date sent.
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     if (!isGlobalNotifEnabled(type)) return;
     if (!isUserNotifEnabled(userName, type)) return;
     if (!notifications[userName]) notifications[userName] = [];
-    notifications[userName].unshift({
+    const notif = {
       id: generateId(),
       type,
       title,
@@ -139,9 +139,15 @@ Deno.serve(async (req) => {
       iconBg: getNotifIconBg(type),
       read: false,
       timestamp: now.toISOString(),
-    });
+    };
+    notifications[userName].unshift(notif);
     // Cap per-user notifications at 100
     notifications[userName] = notifications[userName].slice(0, 100);
+    newNotifRows.push({
+      id: notif.id, user_name: userName, type: notif.type, title: notif.title,
+      body: notif.body, task_id: notif.taskId, icon: notif.icon, icon_bg: notif.iconBg,
+      read: notif.read, timestamp: notif.timestamp,
+    });
   }
 
   function queuePush(targets: string[], notif: Record<string, unknown>) {
@@ -249,21 +255,30 @@ Deno.serve(async (req) => {
   }
 
   // ── persist updated state ─────────────────────────────────────────────────
+  // Targeted writes only — notifications and app_settings are their own
+  // tables now, so this only touches the rows this run actually produced
+  // instead of re-saving the whole app state (which risked clobbering
+  // task/column/board edits made by users while this ran).
 
-  const updatedData = {
-    ...appData,
-    notifications,
-    scheduledRemindersSent: sentReminders,
-  };
+  if (newNotifRows.length > 0) {
+    const { error: notifError } = await supabase.from("notifications").insert(newNotifRows);
+    if (notifError) {
+      console.error("[scheduled-reminders] Failed to insert notifications:", notifError);
+      return new Response(JSON.stringify({ error: "Failed to save notifications" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   const { error: saveError } = await supabase
-    .from("app_state")
-    .update({ data: updatedData })
+    .from("app_settings")
+    .update({ scheduled_reminders_sent: sentReminders })
     .eq("id", 1);
 
   if (saveError) {
-    console.error("[scheduled-reminders] Failed to save app_state:", saveError);
-    return new Response(JSON.stringify({ error: "Failed to save notifications" }), {
+    console.error("[scheduled-reminders] Failed to save scheduled_reminders_sent:", saveError);
+    return new Response(JSON.stringify({ error: "Failed to save reminder tracking" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
