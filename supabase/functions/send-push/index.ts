@@ -177,17 +177,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Read push subscriptions from app_state
+    // push_subscriptions is its own table now, keyed by user_name — fetch only
+    // the rows for the users we're actually pushing to instead of the whole
+    // app state blob.
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data, error } = await supabase.from("app_state").select("data").eq("id", 1).single();
-    if (error || !data?.data) {
-      return new Response(JSON.stringify({ error: "Could not read app_state", details: error }), {
+    const { data: subRows, error } = await supabase
+      .from("push_subscriptions")
+      .select("user_name, subscription")
+      .in("user_name", targets);
+    if (error) {
+      return new Response(JSON.stringify({ error: "Could not read push_subscriptions", details: error }), {
         status: 500,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    const subscriptions = data.data.pushSubscriptions || {};
+    const subscriptions: Record<string, { endpoint: string; keys: { p256dh: string; auth: string } }> = {};
+    for (const row of subRows || []) {
+      subscriptions[row.user_name] = row.subscription;
+    }
     const privateKey = await importVapidPrivateKey();
     const results: Record<string, string> = {};
 
@@ -234,13 +242,12 @@ Deno.serve(async (req) => {
         const respText = await resp.text();
         results[userName] = resp.ok ? "sent" : `error_${resp.status}: ${respText}`;
 
-        // Clean up expired subscriptions
+        // Clean up expired subscriptions — a direct targeted delete now that
+        // each subscription is its own row, instead of read-merge-writing
+        // the whole blob.
         if (resp.status === 404 || resp.status === 410) {
           delete subscriptions[userName];
-          await supabase
-            .from("app_state")
-            .update({ data: { ...data.data, pushSubscriptions: subscriptions } })
-            .eq("id", 1);
+          await supabase.from("push_subscriptions").delete().eq("user_name", userName);
           results[userName] = "subscription_expired";
         }
       } catch (err) {

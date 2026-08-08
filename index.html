@@ -3095,19 +3095,16 @@
 
     async function initData() {
         try {
-            const { data, error } = await _supabase.from('app_state').select('data').eq('id', 1).single();
+            // Data lives in real tables now (see supabase/migrations/); load_app_state()
+            // reassembles them into the same shape appData has always had, so everything
+            // below this line is unchanged from when it read a single JSON blob.
+            const { data, error } = await _supabase.rpc('load_app_state');
             if (error) {
-                if (error.code === 'PGRST116') { 
-                    // Truly empty database. Safe to setup defaults and save to cloud.
-                    setupDefaults(true); 
-                    isDatabaseLoaded = true;
-                } else { 
-                    console.error("Supabase load error:", error); 
-                    showToast("Database connection error. Please refresh the page.");
-                    return; // CRITICAL: Stop execution, do NOT overwrite data
-                }
-            } else if (data && data.data) {
-                appData = data.data;
+                console.error("Supabase load error:", error);
+                showToast("Database connection error. Please refresh the page.");
+                return; // CRITICAL: Stop execution, do NOT overwrite data
+            } else if (data) {
+                appData = data;
                 if (!appData.boards)     appData.boards = [];
                 if (!appData.columns)    appData.columns = [];
                 if (!appData.tasks)      appData.tasks = [];
@@ -3916,7 +3913,10 @@
 
     async function saveData() {
         try {
-            const { error } = await _supabase.from('app_state').upsert({ id: 1, data: appData });
+            // save_app_state() upserts every row from appData into its real table and
+            // removes rows that are no longer present, so this one call keeps the
+            // normalized tables in sync the same way the old whole-blob upsert did.
+            const { error } = await _supabase.rpc('save_app_state', { payload: appData });
             if (error) {
                 console.error("Supabase sync error:", error);
             } else if (appData.settings && appData.settings.googleCalendarAutoSync && appData.settings.googleCalendarWebhook) {
@@ -6237,7 +6237,7 @@
 
             // Save directly here so we can log the result
             try {
-                const { error: saveErr } = await _supabase.from('app_state').upsert({ id: 1, data: appData });
+                const { error: saveErr } = await _supabase.rpc('save_app_state', { payload: appData });
                 if (saveErr) {
                     console.error('❌ syncMondayAttachments: Supabase save FAILED:', saveErr);
                     if (!silent) showToast('⚠️ Files uploaded but save failed: ' + saveErr.message);
@@ -7602,19 +7602,14 @@
             // Store subscription in appData so the Edge Function can look it up
             if (!appData.pushSubscriptions) appData.pushSubscriptions = {};
             appData.pushSubscriptions[currentUserName] = sub.toJSON();
-            // Targeted merge-save: read remote first, overlay our subscription, write back.
-            // This prevents overwriting other users' subscriptions with our local-only copy.
+            // push_subscriptions is its own table now, keyed by user name, so this is
+            // a targeted upsert of just this row — no more read-merge-write needed to
+            // avoid clobbering other users' subscriptions.
             if (_supabase) {
                 try {
-                    const { data: current } = await _supabase.from('app_state').select('data').eq('id', 1).single();
-                    if (current && current.data) {
-                        const merged = { ...(current.data.pushSubscriptions || {}), [currentUserName]: sub.toJSON() };
-                        current.data.pushSubscriptions = merged;
-                        await _supabase.from('app_state').update({ data: current.data }).eq('id', 1);
-                        appData.pushSubscriptions = merged;
-                    } else {
-                        await saveData();
-                    }
+                    const { error } = await _supabase.from('push_subscriptions')
+                        .upsert({ user_name: currentUserName, subscription: sub.toJSON() });
+                    if (error) throw error;
                 } catch {
                     await saveData();
                 }
@@ -7819,13 +7814,11 @@
             notifs.forEach(n => _clearedNotifIds.add(n.id));
             _persistClearedIds();
             saveNotifications([]);
-            // Sync cleared status to Supabase immediately
+            // notifications is its own table now, keyed by user_name — a direct
+            // targeted delete for just this user instead of a read-merge-write.
             try {
-                const { data } = await _supabase.from('app_state').select('data').eq('id', 1).single();
-                if (data && data.data) {
-                    data.data.notifications[currentUserName] = [];
-                    await _supabase.from('app_state').update({ data: data.data }).eq('id', 1);
-                }
+                const { error } = await _supabase.from('notifications').delete().eq('user_name', currentUserName);
+                if (error) throw error;
             } catch (err) {
                 console.error('Error syncing cleared notifications:', err);
             }
@@ -7985,9 +7978,11 @@
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
         try {
-            const { data, error } = await _supabase.from('app_state').select('data').eq('id', 1).single();
-            if (error || !data || !data.data) return;
-            let remoteNotifs = (data.data.notifications && data.data.notifications[currentUserName]) || [];
+            // load_app_state() reassembles the same shape the old app_state blob had,
+            // so everything below is unchanged except where noted.
+            const { data, error } = await _supabase.rpc('load_app_state');
+            if (error || !data) return;
+            let remoteNotifs = (data.notifications && data.notifications[currentUserName]) || [];
             const localNotifs = getNotifications();
             // Filter out any notifications this client has cleared
             remoteNotifs = remoteNotifs.filter(n => !_clearedNotifIds.has(n.id));
@@ -8008,24 +8003,24 @@
             ensureNotifStructures();
             appData.notifications[currentUserName] = remoteNotifs;
             // Also sync other fields that may have changed (tasks, columns, etc.)
-            if (data.data.tasks) appData.tasks = data.data.tasks;
-            if (data.data.columns) appData.columns = data.data.columns;
-            if (data.data.boards) appData.boards = data.data.boards;
-            if (data.data.notifPrefs) appData.notifPrefs = data.data.notifPrefs;
+            if (data.tasks) appData.tasks = data.tasks;
+            if (data.columns) appData.columns = data.columns;
+            if (data.boards) appData.boards = data.boards;
+            if (data.notifPrefs) appData.notifPrefs = data.notifPrefs;
             // Sync push subscriptions — remote is authoritative for all users except the current
             // user's own entry (kept local so a fresh re-subscribe isn't overwritten by stale remote)
-            if (data.data.pushSubscriptions) {
+            if (data.pushSubscriptions) {
                 const localOwnSub = (appData.pushSubscriptions || {})[currentUserName];
-                appData.pushSubscriptions = { ...data.data.pushSubscriptions };
+                appData.pushSubscriptions = { ...data.pushSubscriptions };
                 if (localOwnSub) appData.pushSubscriptions[currentUserName] = localOwnSub;
             }
             // Presence heartbeat: stamp our own "last active" in the remote copy, and pull
             // everyone else's latest timestamp into local state so the UI stays fresh without
             // requiring a full-document saveData() (which would clobber other users' data).
             let presenceChanged = false;
-            if (data.data.settings && Array.isArray(data.data.settings.users)) {
+            if (data.settings && Array.isArray(data.settings.users)) {
                 const emailKey = (currentUserEmail || '').toLowerCase();
-                data.data.settings.users.forEach(remoteUser => {
+                data.settings.users.forEach(remoteUser => {
                     if ((remoteUser.email || '').toLowerCase() === emailKey) {
                         remoteUser.lastActive = Date.now();
                         presenceChanged = true;
@@ -8033,15 +8028,25 @@
                 });
                 if (appData.settings && Array.isArray(appData.settings.users)) {
                     appData.settings.users.forEach(localUser => {
-                        const match = data.data.settings.users.find(u => (u.email || '').toLowerCase() === (localUser.email || '').toLowerCase());
+                        const match = data.settings.users.find(u => (u.email || '').toLowerCase() === (localUser.email || '').toLowerCase());
                         if (match && match.lastActive) localUser.lastActive = match.lastActive;
                     });
                 }
             }
-            // Sync read/cleared status and presence back to Supabase so other tabs and future polls stay in sync
-            if (readStatusChanged || _clearedNotifIds.size > 0 || presenceChanged) {
-                data.data.notifications[currentUserName] = remoteNotifs;
-                await _supabase.from('app_state').update({ data: data.data }).eq('id', 1);
+            // Sync read/cleared status and presence back to Supabase so other tabs and future
+            // polls stay in sync. notifications and users are their own tables now, so these
+            // are targeted writes rather than a full-document save.
+            if (_clearedNotifIds.size > 0) {
+                await _supabase.from('notifications').delete().eq('user_name', currentUserName).in('id', [..._clearedNotifIds]);
+            }
+            if (readStatusChanged) {
+                const idsNowRead = remoteNotifs.filter(n => n.read).map(n => n.id);
+                if (idsNowRead.length > 0) {
+                    await _supabase.from('notifications').update({ read: true }).eq('user_name', currentUserName).in('id', idsNowRead);
+                }
+            }
+            if (presenceChanged) {
+                await _supabase.from('users').update({ last_active: Date.now() }).eq('email', (currentUserEmail || '').toLowerCase());
             }
             // Update UI
             updateNotifBadge();
