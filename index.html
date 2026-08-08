@@ -2917,10 +2917,27 @@
     const GAS_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzDQQAbA4LNhh5R1PM8VECUQu5bz1pZKSxrWE81gqWBn27RbgIZW2KmDbi86FBHJres-g/exec';
 
     let isAuthenticated = false;
-    let currentUserRole = null; 
+    let currentUserRole = null;
     let currentUserEmail = null;
     let currentUserName = null;
     let pendingLoginEmail = '';
+
+    // ── Password hashing helpers ─────────────────────────────────────────────
+    // Passwords are never stored or compared in plaintext. Existing plaintext
+    // values (from before this was added) are still accepted once, then
+    // transparently upgraded to a hash on next successful login/change.
+    async function sha256Hex(str) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    function looksHashed(value) {
+        return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+    }
+    async function verifyPassword(storedValue, plainInput) {
+        if (!storedValue) return false;
+        if (looksHashed(storedValue)) return (await sha256Hex(plainInput)) === storedValue;
+        return storedValue === plainInput; // legacy plaintext, migrated on successful match
+    }
 
     function updatePWAManifest() {
         const iconUrl = (appData.settings && appData.settings.appIconUrl)
@@ -3232,7 +3249,8 @@
         const colInProgress = generateId();
         const colCompleted = generateId();
         appData = {
-            settings: { password: 'Marketing49!', users: [], cabbieAi: { apiKey: '', enabled: true } },
+            // SHA-256 of the initial default password (change it immediately after first login).
+            settings: { password: '158374c3a18a9800d747b4b34109bb78621d66c66c97eb77ac129b9f7fa6c3e1', users: [], cabbieAi: { apiKey: '', enabled: true } },
             notifications: {},
             notifPrefs: {},
             boards: [{ id: defaultBoardId, year: '2026-2027', backgroundImage: '', settings: { mondayApiToken: '', mondayBoardId: '', mondayTeamName: 'CAB', mondayDefaultListId: 'group_1', mondayImportedIds: [], fieldEventName: 'text_mkv54kad', fieldDate: 'date_mkv5tftz', fieldTime: 'text_mkv8jajm', fieldDescription: 'long_text_mkv5467b', fieldLocation: 'text_mkv5brpa', fieldSubmittedBy: 'text_mkv8ebee', fieldEmail: 'email_mkv8x9x', fieldInspiration: 'file_mkv5hqye' } }],
@@ -3284,7 +3302,7 @@
         if (shouldSave) saveData();
     }
 
-    function handleLoginSubmit(isAuto = false, deferVisualClose = false) {
+    async function handleLoginSubmit(isAuto = false, deferVisualClose = false) {
         if (!isDatabaseLoaded) {
             if (!isAuto) showToast("Database is still loading or failed. Please refresh.");
             return false;
@@ -3293,15 +3311,19 @@
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
         const pass = document.getElementById('loginPassword').value;
         pendingLoginEmail = email;
-        const storedPass = appData.settings?.password || 'Marketing49!';
+        const storedPass = appData.settings?.password;
 
-        if ((email === 'admin' || email === '') && pass === storedPass) {
+        if ((email === 'admin' || email === '') && await verifyPassword(storedPass, pass)) {
             isAuthenticated = true;
             currentUserRole = 'admin';
             currentUserEmail = 'admin';
             currentUserName = 'Admin';
+            if (!looksHashed(storedPass)) {
+                appData.settings.password = await sha256Hex(pass);
+                saveData();
+            }
             localStorage.setItem('cab_auth_email', email);
-            localStorage.setItem('cab_auth_pass', pass);
+            localStorage.setItem('cab_auth_hash', await sha256Hex(pass));
             closeLoginOverlay(deferVisualClose);
             return true;
         }
@@ -3313,7 +3335,7 @@
             if (!isAuto) showToast("Email not registered.");
             if (isAuto) {
                 localStorage.removeItem('cab_auth_email');
-                localStorage.removeItem('cab_auth_pass');
+                localStorage.removeItem('cab_auth_hash');
             }
             return false;
         }
@@ -3326,15 +3348,16 @@
             return false;
         }
 
-        if (user.password === pass) {
+        if (await verifyPassword(user.password, pass)) {
             isAuthenticated = true;
             currentUserRole = user.role === 'admin' ? 'admin' : 'user';
             currentUserEmail = email;
             currentUserName = user.name || email.split('@')[0];
             user.lastActive = Date.now();
+            if (!looksHashed(user.password)) user.password = await sha256Hex(pass);
             saveData();
             localStorage.setItem('cab_auth_email', email);
-            localStorage.setItem('cab_auth_pass', pass);
+            localStorage.setItem('cab_auth_hash', await sha256Hex(pass));
             closeLoginOverlay(deferVisualClose);
             return true;
         } else {
@@ -3342,10 +3365,50 @@
             document.getElementById('loginPassword').value = '';
             if (isAuto) {
                 localStorage.removeItem('cab_auth_email');
-                localStorage.removeItem('cab_auth_pass');
+                localStorage.removeItem('cab_auth_hash');
             }
             return false;
         }
+    }
+
+    // Silent auto-login using a remembered password hash (never the raw password).
+    async function handleAutoLogin(email, savedHash) {
+        if (!isDatabaseLoaded || !savedHash) return false;
+
+        if (email === 'admin' || email === '') {
+            const storedPass = appData.settings?.password;
+            const storedHash = storedPass ? (looksHashed(storedPass) ? storedPass : await sha256Hex(storedPass)) : null;
+            if (storedHash && storedHash === savedHash) {
+                isAuthenticated = true;
+                currentUserRole = 'admin';
+                currentUserEmail = 'admin';
+                currentUserName = 'Admin';
+                closeLoginOverlay(true);
+                return true;
+            }
+            localStorage.removeItem('cab_auth_email');
+            localStorage.removeItem('cab_auth_hash');
+            return false;
+        }
+
+        if (!appData.settings.users) appData.settings.users = [];
+        const user = appData.settings.users.find(u => u.email.toLowerCase() === email);
+        const storedHash = user?.password ? (looksHashed(user.password) ? user.password : await sha256Hex(user.password)) : null;
+
+        if (storedHash && storedHash === savedHash) {
+            isAuthenticated = true;
+            currentUserRole = user.role === 'admin' ? 'admin' : 'user';
+            currentUserEmail = email;
+            currentUserName = user.name || email.split('@')[0];
+            user.lastActive = Date.now();
+            saveData();
+            closeLoginOverlay(true);
+            return true;
+        }
+
+        localStorage.removeItem('cab_auth_email');
+        localStorage.removeItem('cab_auth_hash');
+        return false;
     }
 
     // When deferVisualClose is true, the caller (the auto-login "Welcome Home" sequence)
@@ -3464,7 +3527,7 @@
         if (!user) return false;
 
         user.name = name;
-        user.password = pass1;
+        user.password = await sha256Hex(pass1);
         user.lastActive = Date.now();
 
         // Upload profile picture if provided
@@ -3506,7 +3569,7 @@
         currentUserEmail = email;
         currentUserName = name;
         localStorage.setItem('cab_auth_email', email);
-        localStorage.setItem('cab_auth_pass', pass1);
+        localStorage.setItem('cab_auth_hash', await sha256Hex(pass1));
         closeLoginOverlay(true);
         showToast("Account ready!");
         return true;
@@ -3618,7 +3681,7 @@
         const user = appData.settings.users?.find(u => u.email?.toLowerCase() === email);
         if (!user) { showToast("User not found."); return; }
 
-        user.password = pass1;
+        user.password = await sha256Hex(pass1);
         appData.settings.passwordResetTokens = tokens.filter(t => t.token !== _pendingResetToken);
         _pendingResetToken = null;
 
@@ -3629,7 +3692,7 @@
         currentUserEmail = email;
         currentUserName = user.name || email.split('@')[0];
         localStorage.setItem('cab_auth_email', email);
-        localStorage.setItem('cab_auth_pass', pass1);
+        localStorage.setItem('cab_auth_hash', user.password);
         closeLoginOverlay();
         showToast("Password updated! You're now logged in.");
     }
@@ -3642,6 +3705,7 @@
         resetCabbieChatState();
         pendingLoginEmail = '';
         localStorage.removeItem('cab_auth_email');
+        localStorage.removeItem('cab_auth_hash');
         localStorage.removeItem('cab_auth_pass');
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
@@ -3688,15 +3752,15 @@
     async function changePassword() {
         const current = await showPrompt('Change Password', 'Enter current password:');
         if (!current) return;
-        const storedPass = appData.settings?.password || 'Marketing49!';
-        if (current !== storedPass) {
+        const storedPass = appData.settings?.password;
+        if (!(await verifyPassword(storedPass, current))) {
             showToast('Incorrect current password.');
             return;
         }
         const newPass = await showPrompt('New Password', 'Enter the new master password:');
         if (newPass && newPass.trim()) {
             if (!appData.settings) appData.settings = {};
-            appData.settings.password = newPass.trim();
+            appData.settings.password = await sha256Hex(newPass.trim());
             saveData();
             showToast('Password updated successfully.');
         }
@@ -3704,22 +3768,22 @@
 
     async function changeMyPassword() {
         if (currentUserRole === 'admin') {
-            changePassword(); 
+            changePassword();
             return;
         }
-        
+
         const current = await showPrompt('Change Password', 'Enter current password:');
         if (!current) return;
-        
+
         const user = appData.settings.users.find(u => u.email === currentUserEmail);
-        if (!user || user.password !== current) {
+        if (!user || !(await verifyPassword(user.password, current))) {
             showToast('Incorrect current password.');
             return;
         }
-        
+
         const newPass = await showPrompt('New Password', 'Enter your new password:');
         if (newPass && newPass.trim().length >= 6) {
-            user.password = newPass.trim();
+            user.password = await sha256Hex(newPass.trim());
             saveData();
             showToast('Password updated successfully.');
         } else if (newPass) {
@@ -3946,8 +4010,8 @@
                 html += `<div class="due-row" data-action="open-task-modal" data-col-id="${task.columnId}" data-task-id="${task.id}">
                     ${priorityDot}
                     <div style="flex:1; min-width:0;">
-                        <div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${task.title}</div>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${board ? board.name : ''} ${task.eventLocation ? '· 📍' + task.eventLocation : ''}</div>
+                        <div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(task.title)}</div>
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${board ? escapeHtml(board.name) : ''} ${task.eventLocation ? '· 📍' + escapeHtml(task.eventLocation) : ''}</div>
                     </div>
                     <span class="due-countdown" style="background:rgba(255,59,48,0.15); color:#FF3B30;">${dateStr}</span>
                 </div>`;
@@ -3971,8 +4035,8 @@
                 html += `<div class="due-row" data-action="open-task-modal" data-col-id="${task.columnId}" data-task-id="${task.id}">`
                     + priorityDot
                     + '<div style="flex:1; min-width:0;">'
-                    + `<div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${task.title}</div>`
-                    + `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${board ? board.name : ''}${task.eventLocation ? ' · 📍' + task.eventLocation : ''}</div>`
+                    + `<div style="font-weight:800; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(task.title)}</div>`
+                    + `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${board ? escapeHtml(board.name) : ''}${task.eventLocation ? ' · 📍' + escapeHtml(task.eventLocation) : ''}</div>`
                     + '</div>'
                     + `<span class="due-countdown" style="background:${badge.bg}; color:${badge.color};">${dateStr}</span>`
                     + '</div>';
@@ -4699,13 +4763,13 @@
             const colMembers = col.members || [];
             const directTaskCount = appData.tasks.filter(t => t.columnId === col.id).length;
             const memberAvatars = colMembers.map((m, i) => {
-                return `<div class="avatar" style="width:22px;height:22px;font-size:0.55rem;border:2px solid #111;margin-left:${i===0?'0':'2px'};cursor:pointer;" title="Remove ${m}" data-action="remove-column-member" data-col-id="${col.id}" data-member="${m}">${getAvatarContent(m)}</div>`;
+                return `<div class="avatar" style="width:22px;height:22px;font-size:0.55rem;border:2px solid #111;margin-left:${i===0?'0':'2px'};cursor:pointer;" title="Remove ${escapeHtml(m)}" data-action="remove-column-member" data-col-id="${col.id}" data-member="${escapeHtml(m)}">${getAvatarContent(m)}</div>`;
             }).join('');
             const memberBar = `<div style="display:flex;align-items:center;margin-top:5px;">${memberAvatars}<button data-action="add-column-member" data-arg="${col.id}" style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.07);border:1.5px dashed rgba(255,255,255,0.2);color:var(--text-muted);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:${colMembers.length?'2px':'0'};flex-shrink:0;transition:0.2s;" data-hover-style="background:rgba(10,132,255,0.2);border-color:#0A84FF;color:#0A84FF" data-normal-style="background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.2);color:var(--text-muted)" title="Add member">+</button></div>`;
-            let assignedHtml = col.assignedTo ? `<div class="column-assignee">${col.assignedTo}</div>` : '';
+            let assignedHtml = col.assignedTo ? `<div class="column-assignee">${escapeHtml(col.assignedTo)}</div>` : '';
             header.innerHTML = `
                 <div style="display: flex; flex-direction: column; flex-grow: 1; padding-right: 10px; align-items: flex-start;">
-                    <span style="line-height: 1.2;">${col.title}</span>
+                    <span style="line-height: 1.2;">${escapeHtml(col.title)}</span>
                     ${assignedHtml}
                     ${memberBar}
                 </div>
@@ -4794,7 +4858,7 @@
                 }
                 let labelsHtml = '';
                 if(task.labels && task.labels.length > 0) {
-                    labelsHtml = `<div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">${task.labels.map(l => `<span class="label-tag ${l.color}" style="font-size: 0.65rem; padding: 2px 6px;">${l.text}</span>`).join('')}</div>`;
+                    labelsHtml = `<div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">${task.labels.map(l => `<span class="label-tag ${l.color}" style="font-size: 0.65rem; padding: 2px 6px;">${escapeHtml(l.text)}</span>`).join('')}</div>`;
                 }
                 const colMembersList = col.members || [];
                 const taskMembersList = task.members || [];
@@ -4818,7 +4882,7 @@
                         const isTaskMember = taskMembersList.includes(m);
                         const borderStyle = (isListMember && isTaskMember) ? 'border-color:#0A84FF;' : isListMember ? 'border-color:#BF5AF2;' : '';
                         const titleNote = (isListMember && isTaskMember) ? ' (list + card)' : isListMember ? ' (list member)' : ' (card member)';
-                        return '<div class="avatar" style="width:24px;height:24px;font-size:0.6rem;' + borderStyle + '" title="' + m + titleNote + '">' + getAvatarContent(m) + '</div>';
+                        return '<div class="avatar" style="width:24px;height:24px;font-size:0.6rem;' + borderStyle + '" title="' + escapeHtml(m + titleNote) + '">' + getAvatarContent(m) + '</div>';
                     }).join('');
                     membersHtml = collabBadge + '<div class="collab-avatars">' + avatars + '</div>';
                 }
@@ -4837,7 +4901,7 @@
                     </div>
                 `;
 
-                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${task.title || 'Untitled Task'}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
+                taskEl.innerHTML = `${coverHtml}${completeBtnHtml}${labelsHtml}<div class="card-title" style="font-weight: 800; font-size: 1rem; margin-bottom: 5px; padding-right: 36px; word-break: break-word;">${priorityDotHtml}${escapeHtml(task.title || 'Untitled Task')}</div>${postingHtml}${clHtml}<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">${orderBtnsHtml}<div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">${attachmentBadge}${membersHtml}</div></div>`;
                 taskEl.onclick = (e) => {
                     if (e.target.classList.contains('complete-btn')) return;
                     if (e.shiftKey || selectedCards.size > 0) {
@@ -5016,7 +5080,7 @@
         if (activeTasks.length === 0) { showToast("Create a task on the board first!"); return; }
         document.getElementById('quickPostDate').value = dateStr;
         const taskSelect = document.getElementById('quickPostTaskSelect');
-        taskSelect.innerHTML = activeTasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+        taskSelect.innerHTML = activeTasks.map(t => `<option value="${t.id}">${escapeHtml(t.title)}</option>`).join('');
         document.getElementById('quickPostTime').value = "";
         document.getElementById('quickPostTypeSelect').value = "story";
         openModal('quickPostModal');
@@ -5353,7 +5417,7 @@
             return `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;">
                     <div style="flex: 1;">
-                        <div style="font-weight: 600;">${col.title}</div>
+                        <div style="font-weight: 600;">${escapeHtml(col.title)}</div>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Can be hidden by users</div>
                     </div>
                     <input type="checkbox" ${hideable ? 'checked' : ''} data-change-action="toggle-list-hideability" data-arg="${col.id}" style="width: 20px; height: 20px; cursor: pointer;">
@@ -7661,6 +7725,53 @@
         const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
     }
 
+    // Attachment/link URLs can come from user input or imported data — only
+    // ever treat http(s) links as navigable, so a crafted "javascript:" (or
+    // similar) URL can't run when a link is clicked or auto-downloaded.
+    function isSafeHttpUrl(url) {
+        if (typeof url !== 'string' || !url) return false;
+        try {
+            const u = new URL(url, window.location.href);
+            return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // The task description is a rich-text field (bold/italic/link buttons in
+    // the editor), so it can't just be escaped like plain text — instead we
+    // parse it and strip anything that isn't on a small formatting allowlist,
+    // which also removes event-handler attributes and non-http(s) link URLs.
+    function sanitizeRichHtml(html) {
+        if (!html) return '';
+        const ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'A', 'BR', 'DIV', 'SPAN', 'P']);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        function cleanChildren(parent) {
+            Array.from(parent.childNodes).forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) return;
+                if (node.nodeType !== Node.ELEMENT_NODE) { parent.removeChild(node); return; }
+
+                cleanChildren(node);
+
+                if (!ALLOWED_TAGS.has(node.tagName)) {
+                    while (node.firstChild) parent.insertBefore(node.firstChild, node);
+                    parent.removeChild(node);
+                    return;
+                }
+
+                Array.from(node.attributes).forEach(attr => {
+                    if (node.tagName === 'A' && attr.name === 'href' && /^(https?:|mailto:)/i.test(attr.value.trim())) return;
+                    node.removeAttribute(attr.name);
+                });
+                if (node.tagName === 'A') node.setAttribute('rel', 'noopener noreferrer');
+            });
+        }
+
+        cleanChildren(doc.body);
+        return doc.body.innerHTML;
+    }
+
     function getTimeAgo(timestamp) {
         const diff = Date.now() - new Date(timestamp).getTime();
         const mins = Math.floor(diff / 60000);
@@ -8081,7 +8192,7 @@
         const posSelect = document.getElementById('settingTaskPosition');
         const boardCols = appData.columns.filter(c => c.boardId === appData.activeBoardId).sort((a,b) => a.order - b.order);
         
-        moveSelect.innerHTML = boardCols.map(c => `<option value="${c.id}" ${c.id === colId ? 'selected' : ''}>${c.title}</option>`).join('');
+        moveSelect.innerHTML = boardCols.map(c => `<option value="${c.id}" ${c.id === colId ? 'selected' : ''}>${escapeHtml(c.title)}</option>`).join('');
         
         const colTasks = appData.tasks.filter(t => t.columnId === colId);
         let currentPos = colTasks.findIndex(t => t.id === taskId);
@@ -8119,6 +8230,7 @@
             if (content && !content.includes('<') && content.includes('\n')) {
                 content = content.replace(/\n/g, '<br>');
             }
+            content = sanitizeRichHtml(content);
             content = highlightMentions(content);
             descEl.innerHTML = content;
 
@@ -8164,7 +8276,7 @@
     function renderLabels() {
         const list = document.getElementById('taskLabelsList');
         const labels = currentEditingTask.labels || [];
-        list.innerHTML = labels.map(l => `<span class="label-tag ${l.color}">${l.text} <span style="cursor:pointer; margin-left:4px;" data-action="remove-label" data-arg="${l.text}">&times;</span></span>`).join('') + 
+        list.innerHTML = labels.map(l => `<span class="label-tag ${l.color}">${escapeHtml(l.text)} <span style="cursor:pointer; margin-left:4px;" data-action="remove-label" data-arg="${escapeHtml(l.text)}">&times;</span></span>`).join('') +
             `<button type="button" class="sidebar-btn" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; justify-content: center; background: rgba(255,255,255,0.1);" data-action="add-label">+</button>`;
     }
 
@@ -8364,10 +8476,10 @@
         container.innerHTML = currentEditingTask.customFields.map(cf => `
             <div style="position: relative;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <label class="stat-label editable-label" style="margin: 0;" contenteditable="true" data-blur-action="update-cf-name" data-arg="${cf.id}" title="Click to edit name">${cf.name}</label>
+                    <label class="stat-label editable-label" style="margin: 0;" contenteditable="true" data-blur-action="update-cf-name" data-arg="${cf.id}" title="Click to edit name">${escapeHtml(cf.name)}</label>
                     <button type="button" class="col-delete-btn" style="font-size: 1.2rem; padding: 0; line-height: 1; background: transparent; border: none; color: var(--text-muted); cursor: pointer;" data-action="remove-cf" data-arg="${cf.id}">&times;</button>
                 </div>
-                <input type="${cf.type || 'text'}" class="modern-input" value="${cf.value || ''}" data-change-action="update-cf-value" data-arg="${cf.id}" style="font-size: 0.9rem;">
+                <input type="${cf.type || 'text'}" class="modern-input" value="${escapeHtml(cf.value || '')}" data-change-action="update-cf-value" data-arg="${cf.id}" style="font-size: 0.9rem;">
             </div>
         `).join('');
     }
@@ -8512,7 +8624,7 @@
                     <div class="attachment-meta">${metaText}</div>
                 </div>
                 <div class="attachment-actions">
-                    <a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="attachment-btn view" data-action="stop-propagation">${viewLabel}</a>
+                    <a href="${isSafeHttpUrl(viewUrl) ? viewUrl : '#'}" target="_blank" rel="noopener noreferrer" class="attachment-btn view" data-action="stop-propagation">${viewLabel}</a>
                     ${!isLink ? `<button type="button" class="attachment-btn dl" data-action="download-attachment" data-arg="${att.id}">Download</button>` : ''}
                     <button type="button" class="attachment-btn rename-btn" data-action="rename-attachment" data-arg="${att.id}" title="Rename">✏️</button>
                     <button type="button" class="attachment-btn delete-btn" data-action="delete-attachment" data-arg="${att.id}" title="Delete">✕</button>
@@ -8538,9 +8650,13 @@
     async function downloadAttachment(id) {
         const att = currentEditingTask.attachments.find(a => a.id === id);
         if (!att) return;
-        
+        if (!isSafeHttpUrl(att.url) && !isSafeHttpUrl(att.viewerUrl)) {
+            showToast("This attachment's link isn't valid.");
+            return;
+        }
+
         showToast("Preparing download...");
-        
+
         let directUrl = att.url;
         let isNativeUpload = !att.isLink || att.size === 'Google Drive';
 
@@ -8749,7 +8865,7 @@
             <div class="checklist-item ${item.done ? 'done' : ''}" data-cl-id="${item.id}" style="display: flex; align-items: center; gap: 8px;">
                 <span class="cl-drag-handle" title="Drag to reorder"><svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="9" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="9" cy="13" r="1.5"/></svg></span>
                 <input type="checkbox" ${item.done ? 'checked' : ''} data-change-action="toggle-checklist-item" data-arg="${item.id}" style="margin: 0; flex-shrink: 0;">
-                <div class="checklist-text" contenteditable="true" data-blur-action="update-checklist-item-text" data-arg="${item.id}" style="flex-grow: 1; line-height: 1.4; min-width: 60px; padding-right: 4px;">${item.text}</div>
+                <div class="checklist-text" contenteditable="true" data-blur-action="update-checklist-item-text" data-arg="${item.id}" style="flex-grow: 1; line-height: 1.4; min-width: 60px; padding-right: 4px;">${escapeHtml(item.text)}</div>
                 ${dateBadge}
                 ${assignHtml}
                 <button type="button" class="task-btn delete" data-action="delete-checklist-item" data-arg="${item.id}" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1; padding:0 4px; flex-shrink: 0; min-height: 44px; display: flex; align-items: center;" title="Remove">&times;</button>
@@ -9383,7 +9499,7 @@
         copyBoardSelect.onchange = () => {
             const selectedBoardId = copyBoardSelect.value;
             const boardCols = appData.columns.filter(c => c.boardId === selectedBoardId).sort((a, b) => a.order - b.order);
-            copyColSelect.innerHTML = boardCols.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+            copyColSelect.innerHTML = boardCols.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
         };
 
         // Trigger initial column population
@@ -9714,7 +9830,7 @@
         const taskId = document.getElementById('taskModalTaskId').value;
         const title = document.getElementById('taskTitleInput').value.trim();
         if (!title || !colId) return;
-        const desc = document.getElementById('taskContentInput').innerHTML;
+        const desc = sanitizeRichHtml(document.getElementById('taskContentInput').innerHTML);
         const dueDate = document.getElementById('taskDueDateNative').value;
         const postingObj = normalizePostingSchedule(currentEditingTask && currentEditingTask.postingSchedule);
         // Drop empty placeholder rows when persisting
@@ -10008,7 +10124,7 @@
                     }
                     case 'append_description': {
                         const appendText = act.value.replace('{card_title}', task.title || '');
-                        task.description = (task.description || '') + `<p>${appendText}</p>`;
+                        task.description = (task.description || '') + `<p>${escapeHtml(appendText)}</p>`;
                         task.text = task.description;
                         modified = true;
                         showToast('🤖 Description updated');
@@ -10211,7 +10327,7 @@
         const type = row.querySelector('.act-type-select').value;
         const area = row.querySelector('.act-value-area');
         const cols = appData.columns.filter(c => c.boardId === appData.activeBoardId);
-        const colOptions = cols.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+        const colOptions = cols.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
         
         const allLabels = Array.from(new Set(appData.tasks.flatMap(t => (t.labels||[]).map(l => l.text))));
         const dlId = 'dl_labels_' + rowId;
@@ -10281,7 +10397,7 @@
         trigDaysWrap.style.display = 'none';
         trigPrioritySelect.style.display = 'none';
         const cols = appData.columns.filter(c => c.boardId === appData.activeBoardId);
-        const colOptions = cols.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+        const colOptions = cols.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('');
         
         const allLabels = Array.from(new Set(appData.tasks.flatMap(t => (t.labels||[]).map(l => l.text))));
         let dlLabels = document.getElementById('autoTriggerLabelList');
@@ -10411,19 +10527,29 @@
         }
     });
 
-    function tryAutoLogin() {
+    async function tryAutoLogin() {
         if (!isDatabaseLoaded) return;
+
+        // One-time migration: earlier versions stored the raw password in
+        // localStorage. Convert it to a hash (or drop it) and never keep the
+        // plaintext around.
+        const legacyPass = localStorage.getItem('cab_auth_pass');
+        if (legacyPass !== null) {
+            const legacyEmail = localStorage.getItem('cab_auth_email');
+            localStorage.removeItem('cab_auth_pass');
+            if (legacyEmail !== null) localStorage.setItem('cab_auth_hash', await sha256Hex(legacyPass));
+        }
+
         const savedEmail = localStorage.getItem('cab_auth_email');
-        const savedPass = localStorage.getItem('cab_auth_pass');
-        if (savedEmail !== null && savedPass !== null) {
+        const savedHash = localStorage.getItem('cab_auth_hash');
+        if (savedEmail !== null && savedHash !== null) {
             pendingLoginEmail = savedEmail;
             document.getElementById('loginEmail').value = savedEmail;
-            document.getElementById('loginPassword').value = savedPass;
             if (typeof playLoginEntrance === 'function') playLoginEntrance();
             // Let the entrance animation play out, then run the "Welcome Home" auto-login sequence.
             setTimeout(() => {
-                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(() => handleLoginSubmit(true, true));
-                else handleLoginSubmit(true);
+                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(() => handleAutoLogin(savedEmail, savedHash));
+                else handleAutoLogin(savedEmail, savedHash);
             }, 1400);
         }
     }
@@ -10790,6 +10916,7 @@
         if (desc) {
             let content = desc;
             if (!content.includes('<') && content.includes('\n')) content = content.replace(/\n/g, '<br>');
+            content = sanitizeRichHtml(content);
             html += `<div style="font-size:0.95rem; line-height:1.7; color:#e0e0e0; margin-bottom:20px; word-break:break-word;">${content}</div>`;
         }
 
@@ -10852,7 +10979,7 @@
                 const safeName = escapeHtml(att.name || 'Untitled');
                 const isLink = att.isLink && att.size !== 'Google Drive';
                 const viewUrl = att.viewerUrl || att.url;
-                html += `<a href="${viewUrl}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:8px; text-decoration:none; color:inherit; transition:0.15s;" data-hover-style="background:rgba(255,255,255,0.06)" data-normal-style="background:rgba(255,255,255,0.03)">
+                html += `<a href="${isSafeHttpUrl(viewUrl) ? viewUrl : '#'}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:8px; text-decoration:none; color:inherit; transition:0.15s;" data-hover-style="background:rgba(255,255,255,0.06)" data-normal-style="background:rgba(255,255,255,0.03)">
                     <span style="font-size:1.2rem;">${isLink ? '🔗' : '📄'}</span>
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:0.88rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${safeName}</div>
