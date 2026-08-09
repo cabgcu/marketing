@@ -3109,7 +3109,8 @@
                 if (!appData.columns)    appData.columns = [];
                 if (!appData.tasks)      appData.tasks = [];
                 if (!appData.automations) appData.automations = [];
-                if (!appData.settings)   appData.settings = { password: 'Marketing49!' };
+                // SHA-256 of the initial default password (change it immediately after first login).
+                if (!appData.settings)   appData.settings = { password: '158374c3a18a9800d747b4b34109bb78621d66c66c97eb77ac129b9f7fa6c3e1' };
                 if (!appData.settings.users) appData.settings.users = [];
                 if (!appData.settings.cabbieAi) appData.settings.cabbieAi = { apiKey: '', enabled: true };
 
