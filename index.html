@@ -8734,41 +8734,22 @@
             return;
         }
 
-        // Any public, unauthenticated Drive URL (uc?export=download, the
-        // usercontent.google.com variant, confirm tokens, etc.) serves a small
-        // HTML "Google Drive can't scan this file for viruses" page instead of
-        // the actual bytes for videos and other types Drive won't scan — that's
-        // the tiny/corrupt downloads users were seeing, and no client-side URL
-        // trick reliably avoids it. Route the file ID through the Apps Script
-        // proxy instead: it reads the file server-side via DriveApp using the
-        // deploying account's authenticated access, so the interstitial never
-        // comes into play, and hands back the real bytes.
-        if (fid) {
-            try {
-                const res = await fetch(`${GAS_UPLOAD_URL}?id=${encodeURIComponent(fid[1])}`);
-                if (!res.ok) throw new Error("Proxy fetch failed");
-                const result = await res.json();
-                if (!result.success) throw new Error(result.error || "Proxy returned failure");
-                const dataRes = await fetch(`data:${result.mimeType || 'application/octet-stream'};base64,${result.base64}`);
-                const blob = await dataRes.blob();
-                triggerBlobDownload(blob, att.name || result.name);
-                showToast("Download started!");
-                return;
-            } catch (e) {
-                console.warn("Drive proxy download failed, falling back to direct link", e);
-            }
-        }
-
-        // Fallback: direct link (non-Drive attachments, or proxy failure)
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = dlUrl;
-        a.target = '_blank';
-        a.download = att.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        showToast("Download started!");
+        // Videos and other types Drive won't virus-scan get a small HTML
+        // "can't scan this file for viruses" interstitial instead of the real
+        // bytes when fetched anonymously (via fetch/XHR or an invisible <a>
+        // click) — that's the tiny/corrupt downloads users were seeing. There's
+        // no reliable way to script around that interstitial: it needs an
+        // actual user click, and a proxy can't hold large videos in memory
+        // (Apps Script is single-execution, in-memory only, and reliably runs
+        // out of memory on anything past a few MB). So instead of trying to
+        // force a silent download, open Drive's own download URL as a normal
+        // top-level navigation in a new tab — small/scannable files download
+        // immediately, and for videos/large files the user sees Google's own
+        // "Download anyway" confirmation and clicks through once, exactly like
+        // downloading directly from Drive already does.
+        const openUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid[1]}` : dlUrl;
+        window.open(openUrl, '_blank', 'noopener');
+        showToast("Opening download…");
     }
 
     async function deleteAttachment(id) {
