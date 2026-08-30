@@ -8676,9 +8676,16 @@
 
         let directUrl = att.url;
         let isNativeUpload = !att.isLink || att.size === 'Google Drive';
+        // lh3.googleusercontent.com/d/<id> only ever serves a static preview —
+        // the actual image for image attachments, but just a JPEG thumbnail
+        // frame for videos and other non-image files. toDirectDriveUrl()
+        // rewrites every attachment's url to this lh3 form for inline
+        // previews, so this shortcut must be restricted to real images or it
+        // silently downloads a thumbnail mislabeled with the video's filename.
+        const isImage = att.mimeType ? att.mimeType.startsWith('image/') : att.name.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
 
         // 1. Try invisible fetch for images (lh3 links support CORS)
-        if (isNativeUpload && directUrl.includes('lh3.googleusercontent.com')) {
+        if (isNativeUpload && isImage && directUrl.includes('lh3.googleusercontent.com')) {
             try {
                 const res = await fetch(directUrl);
                 if (!res.ok) throw new Error("Fetch failed");
