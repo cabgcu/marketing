@@ -8691,7 +8691,11 @@
         let dlUrl = att.viewerUrl || att.url;
         const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
         if (fid) {
-            dlUrl = `https://drive.google.com/uc?export=download&id=${fid[1]}`;
+            // drive.google.com/uc?export=download serves a small HTML "can't scan
+            // for viruses" interstitial for videos/large files instead of the file
+            // itself. drive.usercontent.google.com honors confirm=t and streams the
+            // actual bytes directly, matching what "View in Drive > Download" does.
+            dlUrl = `https://drive.usercontent.google.com/download?id=${fid[1]}&export=download&confirm=t`;
         }
 
         // Check if user is inside an iOS PWA (Home Screen App)
