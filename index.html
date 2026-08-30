@@ -8653,6 +8653,17 @@
         showToast('🔒 Files locked — Monday.com will no longer update attachments for this card');
     }
 
+    function triggerBlobDownload(blob, filename) {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { window.URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+    }
+
     async function downloadAttachment(id) {
         const att = currentEditingTask.attachments.find(a => a.id === id);
         if (!att) return;
@@ -8672,14 +8683,7 @@
                 const res = await fetch(directUrl);
                 if (!res.ok) throw new Error("Fetch failed");
                 const blob = await res.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = blobUrl;
-                a.download = att.name;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { window.URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+                triggerBlobDownload(blob, att.name);
                 showToast("Download started!");
                 return;
             } catch (e) {
@@ -8688,24 +8692,17 @@
         }
 
         // 2. Video / Large File Fallback Logic
-        let dlUrl = att.viewerUrl || att.url;
+        const dlUrl = att.viewerUrl || att.url;
         const fid = dlUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || dlUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        if (fid) {
-            // drive.google.com/uc?export=download serves a small HTML "can't scan
-            // for viruses" interstitial for videos/large files instead of the file
-            // itself. drive.usercontent.google.com honors confirm=t and streams the
-            // actual bytes directly, matching what "View in Drive > Download" does.
-            dlUrl = `https://drive.usercontent.google.com/download?id=${fid[1]}&export=download&confirm=t`;
-        }
 
         // Check if user is inside an iOS PWA (Home Screen App)
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
         if (isIOS && isPWA) {
-            // iOS PWAs white-screen on Drive redirect loops. 
+            // iOS PWAs white-screen on Drive redirect loops.
             // We copy the safe viewer link to the clipboard instead to prevent crashing.
-            let safeUrl = att.viewerUrl || att.url;
+            let safeUrl = dlUrl;
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     await navigator.clipboard.writeText(safeUrl);
@@ -8727,18 +8724,44 @@
                 type: 'alert',
                 confirmText: 'Got it'
             });
-        } else {
-            // Desktop or standard browser (Safari/Chrome) handles redirects perfectly
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = dlUrl;
-            a.target = '_blank';
-            a.download = att.name;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            showToast("Download started!");
+            return;
         }
+
+        // Any public, unauthenticated Drive URL (uc?export=download, the
+        // usercontent.google.com variant, confirm tokens, etc.) serves a small
+        // HTML "Google Drive can't scan this file for viruses" page instead of
+        // the actual bytes for videos and other types Drive won't scan — that's
+        // the tiny/corrupt downloads users were seeing, and no client-side URL
+        // trick reliably avoids it. Route the file ID through the Apps Script
+        // proxy instead: it reads the file server-side via DriveApp using the
+        // deploying account's authenticated access, so the interstitial never
+        // comes into play, and hands back the real bytes.
+        if (fid) {
+            try {
+                const res = await fetch(`${GAS_UPLOAD_URL}?id=${encodeURIComponent(fid[1])}`);
+                if (!res.ok) throw new Error("Proxy fetch failed");
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || "Proxy returned failure");
+                const dataRes = await fetch(`data:${result.mimeType || 'application/octet-stream'};base64,${result.base64}`);
+                const blob = await dataRes.blob();
+                triggerBlobDownload(blob, att.name || result.name);
+                showToast("Download started!");
+                return;
+            } catch (e) {
+                console.warn("Drive proxy download failed, falling back to direct link", e);
+            }
+        }
+
+        // Fallback: direct link (non-Drive attachments, or proxy failure)
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = dlUrl;
+        a.target = '_blank';
+        a.download = att.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showToast("Download started!");
     }
 
     async function deleteAttachment(id) {
