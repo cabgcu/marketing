@@ -5,13 +5,6 @@
  *   { sourceUrl: "https://...", filename: "file.jpg" }   ← URL fetch (used by attachment sync)
  *   { base64: "...", mimeType: "image/jpeg", filename: "file.jpg" }  ← base64 upload (legacy)
  *
- * doGet(?id=<driveFileId>) reads a file straight off Drive via DriveApp
- * (authenticated as the deploying account) and returns it as base64 JSON.
- * This is what the app's video/large-file download button calls — it exists
- * because drive.google.com's public export=download URLs serve a small HTML
- * "can't scan this file for viruses" page instead of the real bytes for
- * videos and other unscannable types when fetched anonymously.
- *
  * Deploy as a Web App:
  *   Execute as: Me
  *   Who has access: Anyone
@@ -19,24 +12,6 @@
  */
 
 const PROXY_FOLDER_NAME = 'CAB Deliverables';
-
-function doGet(e) {
-  try {
-    const id = e && e.parameter && e.parameter.id;
-    if (!id) return jsonOut({ success: false, error: 'Missing id parameter' });
-
-    const file = DriveApp.getFileById(id);
-    const blob = file.getBlob();
-    return jsonOut({
-      success: true,
-      name: file.getName(),
-      mimeType: blob.getContentType() || 'application/octet-stream',
-      base64: Utilities.base64Encode(blob.getBytes())
-    });
-  } catch (err) {
-    return jsonOut({ success: false, error: String(err) });
-  }
-}
 
 function doPost(e) {
   try {
