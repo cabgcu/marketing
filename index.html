@@ -2905,6 +2905,16 @@
     <img id="attachmentPreviewImg" src="" alt="Attachment preview" data-action="stop-propagation">
 </div>
 
+<div id="userActivityModal" class="modal-overlay" data-action="close-modal" data-arg="userActivityModal">
+    <div class="modal-content" data-action="stop-propagation" style="max-width: 540px;">
+        <button class="close-modal" data-action="close-modal" data-arg="userActivityModal">&times;</button>
+        <h2 style="margin-top:0; margin-bottom:4px; font-weight: 800;" id="userActivityModalName">User</h2>
+        <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:10px;" id="userActivityModalEmail"></div>
+        <div style="font-size:0.8rem; margin-bottom:20px; display:flex; align-items:center;" id="userActivityModalStatus"></div>
+        <div style="max-height: 55vh; overflow-y: auto;" class="custom-scrollbar" id="userActivityList"></div>
+    </div>
+</div>
+
 <script>
     const SUPABASE_URL = 'https://qcfntvqvcmshbbpcxmgo.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
@@ -2920,6 +2930,8 @@
     let currentUserRole = null;
     let currentUserEmail = null;
     let currentUserName = null;
+    let _activityEditLogged = false;
+    let _activityOpenSnapshot = null;
     let pendingLoginEmail = '';
 
     // ── Password hashing helpers ─────────────────────────────────────────────
@@ -3322,6 +3334,7 @@
             }
             localStorage.setItem('cab_auth_email', email);
             localStorage.setItem('cab_auth_hash', await sha256Hex(pass));
+            logUserActivity('login', 'Logged in');
             closeLoginOverlay(deferVisualClose);
             return true;
         }
@@ -3356,6 +3369,7 @@
             saveData();
             localStorage.setItem('cab_auth_email', email);
             localStorage.setItem('cab_auth_hash', await sha256Hex(pass));
+            logUserActivity('login', 'Logged in');
             closeLoginOverlay(deferVisualClose);
             return true;
         } else {
@@ -3381,6 +3395,7 @@
                 currentUserRole = 'admin';
                 currentUserEmail = 'admin';
                 currentUserName = 'Admin';
+                logUserActivity('login', 'Logged in (auto)');
                 closeLoginOverlay();
                 return true;
             }
@@ -3400,6 +3415,7 @@
             currentUserName = user.name || email.split('@')[0];
             user.lastActive = Date.now();
             saveData();
+            logUserActivity('login', 'Logged in (auto)');
             closeLoginOverlay();
             return true;
         }
@@ -3568,6 +3584,7 @@
         currentUserName = name;
         localStorage.setItem('cab_auth_email', email);
         localStorage.setItem('cab_auth_hash', await sha256Hex(pass1));
+        logUserActivity('login', 'Completed account setup');
         closeLoginOverlay(true);
         showToast("Account ready!");
         return true;
@@ -3691,11 +3708,13 @@
         currentUserName = user.name || email.split('@')[0];
         localStorage.setItem('cab_auth_email', email);
         localStorage.setItem('cab_auth_hash', user.password);
+        logUserActivity('login', 'Logged in after resetting password');
         closeLoginOverlay();
         showToast("Password updated! You're now logged in.");
     }
 
     function logout() {
+        logUserActivity('logout', 'Logged out');
         isAuthenticated = false;
         currentUserRole = null;
         currentUserEmail = null;
@@ -3926,6 +3945,108 @@
         } catch (err) {
             console.error("Supabase request failed:", err);
         }
+    }
+
+    // Compact fingerprint of the fields doAutoSave can change, so an edit is only
+    // logged once per modal session and only when something actually changed
+    // (doAutoSave also fires, unconditionally, on plain modal close).
+    function _activitySnapshotOf(task) {
+        return JSON.stringify({
+            title: task.title || '', description: task.description || task.text || '',
+            dueDate: task.dueDate || '', eventLocation: task.eventLocation || '',
+            priority: task.priority || '', columnId: task.columnId || '',
+            checklist: task.checklist || [], members: task.members || [], labels: task.labels || []
+        });
+    }
+
+    // Fire-and-forget audit trail: who did what, to which card, and when.
+    // Lives in its own table (not the appData blob) so it never touches
+    // save_app_state/load_app_state and can't clobber or be clobbered by them.
+    function logUserActivity(action, detail = '', taskId = null, taskTitle = '') {
+        if (!_supabase || !currentUserEmail) return;
+        try {
+            _supabase.from('user_activity_log').insert({
+                user_email: currentUserEmail.toLowerCase(),
+                user_name: currentUserName || currentUserEmail,
+                action,
+                detail: detail || '',
+                task_id: taskId || null,
+                task_title: taskTitle || ''
+            }).then(({ error }) => { if (error) console.error('Activity log error:', error); });
+        } catch (err) {
+            console.error('Activity log failed:', err);
+        }
+    }
+
+    const ACTIVITY_ICONS = {
+        view: '👁️', edit: '✏️', create: '🆕', delete: '🗑️', move: '📦',
+        comment: '💬', comment_delete: '🗑️', login: '🔓', logout: '🔒'
+    };
+    const ACTIVITY_LABELS = {
+        view: 'Viewed', edit: 'Edited', create: 'Created', delete: 'Deleted', move: 'Moved',
+        comment: 'Commented on', comment_delete: 'Deleted a comment on', login: 'Logged in', logout: 'Logged out'
+    };
+
+    async function openUserActivityModal(email) {
+        if (currentUserRole !== 'admin') return;
+        const user = (appData.settings.users || []).find(u => u.email === email);
+        const nameEl = document.getElementById('userActivityModalName');
+        const emailEl = document.getElementById('userActivityModalEmail');
+        const statusEl = document.getElementById('userActivityModalStatus');
+        const listEl = document.getElementById('userActivityList');
+        if (!nameEl || !emailEl || !statusEl || !listEl) return;
+
+        nameEl.textContent = (user && user.name) ? user.name : email;
+        emailEl.textContent = email;
+        const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+        const lastActive = user ? user.lastActive : null;
+        const isOnline = !!lastActive && (Date.now() - lastActive) < ONLINE_THRESHOLD_MS;
+        const presenceColor = isOnline ? '#34C759' : 'var(--text-muted)';
+        const presenceText = isOnline ? 'Active now' : `Last active: ${formatTimeAgo(lastActive)}`;
+        statusEl.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${presenceColor};display:inline-block;margin-right:6px;"></span><span style="color:${presenceColor};">${presenceText}</span>`;
+
+        listEl.innerHTML = '<div style="color:var(--text-muted); font-style:italic; padding:12px 0;">Loading activity…</div>';
+        openModal('userActivityModal');
+
+        if (!_supabase) { listEl.innerHTML = '<div style="color:var(--text-muted);">Not connected.</div>'; return; }
+        try {
+            const { data, error } = await _supabase
+                .from('user_activity_log')
+                .select('*')
+                .eq('user_email', email.toLowerCase())
+                .order('created_at', { ascending: false })
+                .limit(150);
+            if (error) throw error;
+            renderUserActivityList(data || []);
+        } catch (err) {
+            console.error('Failed to load user activity:', err);
+            listEl.innerHTML = '<div style="color:#FF3B30;">Failed to load activity.</div>';
+        }
+    }
+
+    function renderUserActivityList(rows) {
+        const listEl = document.getElementById('userActivityList');
+        if (!listEl) return;
+        if (!rows || rows.length === 0) {
+            listEl.innerHTML = '<div style="color:var(--text-muted); font-style:italic; padding:12px 0;">No activity recorded yet.</div>';
+            return;
+        }
+        listEl.innerHTML = rows.map(r => {
+            const icon = ACTIVITY_ICONS[r.action] || '•';
+            const label = ACTIVITY_LABELS[r.action] || r.action;
+            const cardPart = r.task_title ? ` <strong>${escapeHtml(r.task_title)}</strong>` : '';
+            const detailPart = r.detail ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px; white-space:pre-wrap;">${escapeHtml(r.detail)}</div>` : '';
+            const when = formatTimeAgo(new Date(r.created_at).getTime());
+            return `
+            <div class="activity-item" style="margin-bottom:10px; align-items:flex-start;">
+                <div style="width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1rem;">${icon}</div>
+                <div class="activity-details">
+                    <div>${label}${cardPart}</div>
+                    ${detailPart}
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">${when}</div>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     function switchView(viewName) {
@@ -5329,7 +5450,7 @@
             const presenceColor = isOnline ? '#34C759' : 'var(--text-muted)';
             const presenceText = isOnline ? 'Active now' : `Last active: ${formatTimeAgo(u.lastActive)}`;
             return `
-            <div class="user-management-row">
+            <div class="user-management-row" style="cursor:pointer;" data-action="view-user-activity" data-arg="${u.email}" title="Click to view activity">
                 <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0A84FF,#BF5AF2);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:600;color:white;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight: bold; margin-bottom: 4px;">${u.name ? u.name + ' <span style="font-weight:normal;color:var(--text-muted);">(' + u.email + ')</span>' : u.email} ${u.role === 'admin' ? '<span style="font-size:0.7rem;font-weight:800;background:var(--gradient-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ADMIN</span>' : ''}</div>
@@ -5340,6 +5461,7 @@
                     </div>
                 </div>
                 <div class="user-management-actions">
+                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" data-action="view-user-activity" data-arg="${u.email}">Activity</button>
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; ${u.role === 'admin' ? 'border-color: rgba(191,90,242,0.5); color: #BF5AF2;' : ''}" data-action="toggle-user-admin" data-arg="${u.email}">${u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}</button>
                     ${u.password ? `<button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" data-action="reset-user-password" data-arg="${u.email}">Reset Pass</button>` : ''}
                     <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem; border-color: rgba(255,59,48,0.4); color: #FF3B30;" data-action="remove-user" data-arg="${u.email}">Remove</button>
@@ -7017,6 +7139,7 @@
             processAutomations(task, 'card_moved', { newColId });
             const newCol = appData.columns.find(c => c.id === newColId);
             notifyCardMembers(task, 'move', 'Moved: ' + (task.title || 'Untitled'), (currentUserName || 'Someone') + ' moved this to ' + (newCol ? newCol.title : 'another list'));
+            logUserActivity('move', 'Moved to "' + (newCol ? newCol.title : 'another list') + '"', task.id, task.title || 'Untitled');
         }
         saveData(); renderBoard();
     }
@@ -8185,6 +8308,7 @@
     }
 
     function openTaskModal(colId, taskId = null) {
+        _activityEditLogged = false;
         document.getElementById('taskModalColId').value = colId;
         document.getElementById('taskModalTaskId').value = taskId || '';
         const col = appData.columns.find(c => c.id === colId);
@@ -8230,6 +8354,8 @@
         if (taskId) {
             const task = appData.tasks.find(t => t.id === taskId);
             currentEditingTask = JSON.parse(JSON.stringify(task));
+            logUserActivity('view', '', taskId, task.title || 'Untitled');
+            _activityOpenSnapshot = _activitySnapshotOf(task);
             titleEl.value = task.title || '';
             
             let content = task.description || task.text || '';
@@ -9473,6 +9599,7 @@
             const idx = appData.tasks.findIndex(t => t.id === taskId);
             if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
         }
+        logUserActivity('comment', text.slice(0, 140), taskId || null, currentEditingTask.title || 'Untitled');
         renderComments();
         // Notify card members + anyone @mentioned
         const cardMembers = currentEditingTask.members || [];
@@ -9490,6 +9617,7 @@
                 const idx = appData.tasks.findIndex(t => t.id === taskId);
                 if (idx > -1) { appData.tasks[idx].comments = currentEditingTask.comments; saveData(); }
             }
+            logUserActivity('comment_delete', '', taskId || null, currentEditingTask.title || 'Untitled');
             renderComments();
             showToast('Comment deleted.');
         }
@@ -9896,6 +10024,15 @@
 
                 if (priority && priority !== prevPriority) processAutomations(appData.tasks[taskIndex], 'priority_set', { priority });
                 processAutomations(appData.tasks[taskIndex], 'task_saved');
+
+                if (!_activityEditLogged) {
+                    const newSnapshot = _activitySnapshotOf(appData.tasks[taskIndex]);
+                    if (newSnapshot !== _activityOpenSnapshot) {
+                        logUserActivity('edit', 'Edited card details', taskId, title);
+                        _activityEditLogged = true;
+                        _activityOpenSnapshot = newSnapshot;
+                    }
+                }
             }
         } else {
             const newTask = { id: generateId(), boardId: appData.activeBoardId, columnId: colId, title, description: desc, text: desc, dueDate, eventLocation, priority, postingSchedule: postingObj, customFields: currentEditingTask.customFields || [], attachments: currentEditingTask.attachments || [], coverImage: currentEditingTask.coverImage || '', checklist: currentEditingTask.checklist || [], members: currentEditingTask.members || [], labels: currentEditingTask.labels || [], comments: [] };
@@ -9904,6 +10041,11 @@
             appData.tasks.push(newTask);
             document.getElementById('taskModalTaskId').value = newTask.id;
             currentEditingTask = newTask;
+            if (!_activityEditLogged) {
+                logUserActivity('create', '', newTask.id, newTask.title || 'Untitled');
+                _activityEditLogged = true;
+                _activityOpenSnapshot = _activitySnapshotOf(newTask);
+            }
         }
         saveData();
 
@@ -9939,7 +10081,13 @@
 
     async function deleteTask(id) {
         const ok = await showConfirm('Delete Task', 'Delete this task? This cannot be undone.', 'Delete', true);
-        if (ok) { appData.tasks = appData.tasks.filter(t => t.id !== id); saveData(); renderApp(); }
+        if (ok) {
+            const deletedTask = appData.tasks.find(t => t.id === id);
+            appData.tasks = appData.tasks.filter(t => t.id !== id);
+            saveData();
+            logUserActivity('delete', '', id, deletedTask ? (deletedTask.title || 'Untitled') : 'Untitled');
+            renderApp();
+        }
     }
 
     // ── AUTOMATION ENGINE ─────────────────────────────────────
@@ -10550,7 +10698,7 @@
                 closeModal(null, 'attachmentPreviewModal');
                 return;
             }
-            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal', 'importModal', 'importSummaryModal', 'attachmentStorageModal'].forEach(id => {
+            ['newBoardModal', 'taskModal', 'colModal', 'quickPostModal', 'automationsModal', 'editColModal', 'workspaceModal', 'importModal', 'importSummaryModal', 'attachmentStorageModal', 'userActivityModal'].forEach(id => {
                 const m = document.getElementById(id);
                 if (m && m.classList.contains('show')) closeModal(null, id);
             });
@@ -11355,6 +11503,7 @@
             case 'set-calendar-mode': setCalendarMode(el.dataset.arg); break;
             case 'open-quick-post-modal': openQuickPostModal(el.dataset.arg); break;
             case 'toggle-user-admin': toggleUserAdmin(el.dataset.arg); break;
+            case 'view-user-activity': openUserActivityModal(el.dataset.arg); break;
             case 'reset-user-password': resetUserPassword(el.dataset.arg); break;
             case 'remove-user': removeUser(el.dataset.arg); break;
             case 'request-notif-permission': requestNotifPermission(); break;
