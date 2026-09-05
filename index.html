@@ -3381,7 +3381,7 @@
                 currentUserRole = 'admin';
                 currentUserEmail = 'admin';
                 currentUserName = 'Admin';
-                closeLoginOverlay(true);
+                closeLoginOverlay();
                 return true;
             }
             localStorage.removeItem('cab_auth_email');
@@ -3400,7 +3400,7 @@
             currentUserName = user.name || email.split('@')[0];
             user.lastActive = Date.now();
             saveData();
-            closeLoginOverlay(true);
+            closeLoginOverlay();
             return true;
         }
 
@@ -10575,12 +10575,8 @@
         if (savedEmail !== null && savedHash !== null) {
             pendingLoginEmail = savedEmail;
             document.getElementById('loginEmail').value = savedEmail;
-            if (typeof playLoginEntrance === 'function') playLoginEntrance();
-            // Let the entrance animation play out, then run the "Welcome Home" auto-login sequence.
-            setTimeout(() => {
-                if (typeof playLoginZoomSequence === 'function') playLoginZoomSequence(() => handleAutoLogin(savedEmail, savedHash));
-                else handleAutoLogin(savedEmail, savedHash);
-            }, 1400);
+            // Skip the entrance/zoom animations for returning users and sign them in immediately.
+            handleAutoLogin(savedEmail, savedHash);
         }
     }
 
