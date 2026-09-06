@@ -6421,7 +6421,14 @@
                 const taskIdx = appData.tasks.findIndex(t => t.id === task.id);
                 if (taskIdx === -1) { console.warn('syncMondayAttachments: task vanished from appData', task.id); continue; }
 
-                const manualAttachments = (appData.tasks[taskIdx].attachments || []).filter(a => !a._mondayAssetId);
+                // Drop any manually-added attachment whose filename exactly matches one we
+                // just synced from Monday - almost always the same design file uploaded by
+                // hand before this card's Monday sync existed, now duplicated by the sync.
+                // Attachments with different names (notes, references, etc.) are left alone.
+                const mondayNames = new Set(mondayAttachments.map(a => (a.name || '').trim().toLowerCase()));
+                const manualAttachments = (appData.tasks[taskIdx].attachments || [])
+                    .filter(a => !a._mondayAssetId)
+                    .filter(a => !mondayNames.has((a.name || '').trim().toLowerCase()));
                 appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
                 console.log(`💾 "${task.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
 
