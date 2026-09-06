@@ -5910,10 +5910,14 @@
 
     // Debug helper: dumps each configured board's real column IDs/titles to the console
     // so an admin can find the new board's field IDs after a Monday.com board migration,
-    // without needing to dig through Monday's UI or API docs.
+    // without needing to dig through Monday's UI or API docs. Covers both the submission
+    // board(s) and the separate deliverables board used by attachment/revision sync.
     async function inspectMondayColumns() {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
-        const boardIds = parseMondayBoardIds(activeBoard?.settings?.mondayBoardId);
+        const boardIds = Array.from(new Set([
+            ...parseMondayBoardIds(activeBoard?.settings?.mondayBoardId),
+            ...parseMondayBoardIds(activeBoard?.settings?.mondayAttachBoardId)
+        ]));
         if (!activeBoard?.settings?.mondayApiToken || boardIds.length === 0) {
             showToast('Please configure and save Monday.com API token and Board ID first.');
             return;
