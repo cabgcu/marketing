@@ -2311,20 +2311,20 @@
 
                 <h3 class="section-title" style="font-size:0.95rem; margin-bottom:8px;">📎 Attachment &amp; Revision Sync</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
-                    For each card that was imported from Monday.com, pull the latest deliverable attachments and revision round label from a separate deliverables board. Files are downloaded from Monday.com and re-uploaded to Google Drive.
+                    For each card that was imported from Monday.com, pull the latest deliverable attachments and revision round label from a deliverables board (can be the same board submissions come from). Files are downloaded from Monday.com and re-uploaded to Google Drive. Board ID and column ID fields accept comma-separated lists if old and new boards/columns need to be synced at once during a migration.
                 </p>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                     <div style="grid-column: 1 / -1;">
                         <label class="stat-label" style="font-size: 0.85rem;">Deliverables Board ID</label>
-                        <input type="text" id="mondayAttachBoardId" class="modern-input" placeholder="e.g. 18369530025" style="padding: 8px 12px; font-size: 14px;">
+                        <input type="text" id="mondayAttachBoardId" class="modern-input" placeholder="e.g. 18426990406" style="padding: 8px 12px; font-size: 14px;">
                     </div>
                     <div>
                         <label class="stat-label" style="font-size: 0.85rem;">Attachments Column ID</label>
-                        <input type="text" id="mondayAttachColId" class="modern-input" placeholder="lookup_mkxfhsp2" style="padding: 8px 12px; font-size: 14px;">
+                        <input type="text" id="mondayAttachColId" class="modern-input" placeholder="lookup_mm2fta2" style="padding: 8px 12px; font-size: 14px;">
                     </div>
                     <div>
                         <label class="stat-label" style="font-size: 0.85rem;">Revision Round Column ID</label>
-                        <input type="text" id="mondayRevisionColId" class="modern-input" placeholder="lookup_mkxf9mzq" style="padding: 8px 12px; font-size: 14px;">
+                        <input type="text" id="mondayRevisionColId" class="modern-input" placeholder="lookup_mm6c1xjg" style="padding: 8px 12px; font-size: 14px;">
                     </div>
                     <div style="grid-column: 1 / -1;">
                         <label class="stat-label" style="font-size: 0.85rem;">Drive Proxy URL <span style="color:var(--text-muted); font-weight:400;">(deploy <code>monday-drive-proxy.gs</code> as a Web App and paste the /exec URL here)</span></label>
@@ -6199,9 +6199,12 @@
             return;
         }
 
-        const attachBoardId  = (activeBoard.settings?.mondayAttachBoardId  || '18369530025').trim();
-        const attachColId    = (activeBoard.settings?.mondayAttachColId    || 'lookup_mkxfhsp2').trim();
-        const revisionColId  = (activeBoard.settings?.mondayRevisionColId  || 'lookup_mkxf9mzq').trim();
+        // Both settings may list several comma-separated values (one per Monday.com board)
+        // when the deliverables board changed during a migration but old-board cards still
+        // need syncing from the old board's own columns.
+        const attachBoardIds = parseMondayBoardIds(activeBoard.settings?.mondayAttachBoardId || '18369530025');
+        const attachColIds   = (activeBoard.settings?.mondayAttachColId   || 'lookup_mkxfhsp2').split(',').map(s => s.trim()).filter(Boolean);
+        const revisionColIds = (activeBoard.settings?.mondayRevisionColId || 'lookup_mkxf9mzq').split(',').map(s => s.trim()).filter(Boolean);
         const proxyGasUrl    = (activeBoard.settings?.mondayProxyGasUrl    || '').trim();
         const REVISION_PREFIX = 'Round:';
 
@@ -6209,19 +6212,24 @@
             if (!silent) showToast('Please set the Drive Proxy URL in Settings → Monday.com first. Deploy monday-drive-proxy.gs as a Web App and paste the /exec URL.');
             return;
         }
+        if (attachBoardIds.length === 0) {
+            if (!silent) showToast('Please configure the Deliverables Board ID in Settings → Monday.com first.');
+            return;
+        }
 
         if (!silent) showToast('Syncing attachments from Monday.com…');
 
         try {
-            // Step 1: Fetch items with both mirror columns
+            // Step 1: Fetch items with both mirror columns, across all configured boards
+            const allColIds = Array.from(new Set([...attachColIds, ...revisionColIds]));
             const boardQuery = `
                 query {
-                    boards(ids: ${attachBoardId}) {
+                    boards(ids: [${attachBoardIds.join(',')}]) {
                         items_page(limit: 100) {
                             items {
                                 id
                                 name
-                                column_values(ids: ["${attachColId}", "${revisionColId}"]) {
+                                column_values(ids: [${allColIds.map(id => `"${id}"`).join(',')}]) {
                                     id
                                     text
                                     ... on MirrorValue { display_value }
@@ -6241,17 +6249,18 @@
             const boardJson = await boardRes.json();
             if (boardJson.errors) throw new Error(boardJson.errors[0]?.message || 'Monday.com API error');
 
-            const items = boardJson.data?.boards?.[0]?.items_page?.items || [];
+            const items = (boardJson.data?.boards || []).flatMap(b => b.items_page?.items || []);
             if (items.length === 0) {
                 if (!silent) showToast('No items found on deliverables board.');
                 return;
             }
 
-            // Parse each item — extract asset IDs and revision round
+            // Parse each item — extract asset IDs and revision round. A board may only have
+            // one of the candidate column IDs present, so try each in order.
             const allAssetIds = [];
             const parsedItems = items.map(item => {
-                const attachCol   = item.column_values.find(cv => cv.id === attachColId);
-                const revisionCol = item.column_values.find(cv => cv.id === revisionColId);
+                const attachCol   = attachColIds.map(id => item.column_values.find(cv => cv.id === id)).find(Boolean);
+                const revisionCol = revisionColIds.map(id => item.column_values.find(cv => cv.id === id)).find(Boolean);
 
                 const revisionRound = (revisionCol?.display_value || revisionCol?.text || '').trim();
 
