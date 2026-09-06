@@ -6335,10 +6335,14 @@
                 let task = appData.tasks.find(t => t._mondayId === parsed.id);
 
                 if (!task) {
-                    // Extract event name from "Team | Event Name - DD Month YYYY" pattern
+                    // Extract event name from "Team | Event Name | DD Month YYYY" (this board's
+                    // actual format) or the older "Team | Event Name - DD Month YYYY" pattern
                     let extractedName = parsed.name.trim();
                     const pipeIdx = extractedName.indexOf(' | ');
                     if (pipeIdx !== -1) extractedName = extractedName.slice(pipeIdx + 3).trim();
+                    // Strip trailing " | DD Month YYYY" or " | MM/DD" / " | MM/DD/YYYY" date
+                    extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
+                    extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*$/, '').trim();
                     // Strip trailing " - DD Month YYYY" or " - MM/DD/YYYY" date
                     extractedName = extractedName.replace(/\s*-\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
                     extractedName = extractedName.replace(/\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim();
