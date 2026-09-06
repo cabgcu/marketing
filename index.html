@@ -6297,23 +6297,41 @@
         extractedName = extractedName.replace(/\s*-\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
         extractedName = extractedName.replace(/\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim();
 
-        const lcExtracted = extractedName.toLowerCase();
-        const lcFull = (itemName || '').trim().toLowerCase();
+        // Collapse ALL whitespace (including non-breaking spaces, tabs, etc. - anything
+        // JS's \s matches) to a single normal space. Titles copy-pasted from Monday.com,
+        // Google Docs, or emails frequently carry non-breaking spaces that look identical
+        // on screen but silently break exact/substring string matching.
+        const normalize = (s) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+        const lcExtracted = normalize(extractedName);
+        const lcFull = normalize(itemName);
 
         // 1. Exact match on extracted event name
-        task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcExtracted);
+        task = appData.tasks.find(t => normalize(t.title) === lcExtracted);
         // 2. Exact match on full Monday item name
-        if (!task) task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcFull);
+        if (!task) task = appData.tasks.find(t => normalize(t.title) === lcFull);
         // 3. Card title is contained inside the Monday item name (substring)
         if (!task) task = appData.tasks.find(t => {
-            const ct = (t.title || '').trim().toLowerCase();
+            const ct = normalize(t.title);
             return ct.length > 3 && lcFull.includes(ct);
         });
         // 4. Monday extracted name is contained inside the card title
         if (!task) task = appData.tasks.find(t => {
-            const ct = (t.title || '').trim().toLowerCase();
+            const ct = normalize(t.title);
             return lcExtracted.length > 3 && ct.includes(lcExtracted);
         });
+
+        if (!task) {
+            // Reveal any non-ASCII/invisible character (e.g. a stray non-breaking space,
+            // smart quote, or emoji) that a plain console.log would render identically to
+            // its normal-looking equivalent.
+            const revealHidden = (s) => (s || '').replace(/[^\x20-\x7E]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+            console.log(`🔎 No match for "${itemName}" — extracted: "${revealHidden(lcExtracted)}", trying against ${appData.tasks.length} card titles. Closest by length:`,
+                appData.tasks
+                    .map(t => ({ title: t.title, normalized: revealHidden(normalize(t.title)) }))
+                    .filter(t => t.normalized.toLowerCase().includes(lcExtracted.split(' ')[0]) || lcExtracted.includes((t.normalized.split(' ')[0] || '\0')))
+            );
+        }
 
         return task || null;
     }
