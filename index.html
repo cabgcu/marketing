@@ -2335,6 +2335,8 @@
                     <button class="btn-outline" style="flex:1; min-width: 200px;" data-action="save-monday-settings">Save Settings</button>
                     <button class="btn-action" style="flex:1; min-width: 200px; background: linear-gradient(135deg,#BF5AF2,#0A84FF);" data-action="sync-monday-attachments-once" data-arg="mondayAttachLastSync">Sync Attachments Now</button>
                 </div>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 16px; margin-bottom: 8px;">Program-wide maintenance: removes duplicate attachment entries (same filename, or the same Monday.com source file) from every card. Does not delete the underlying Google Drive files.</p>
+                <button class="btn-outline" style="width:100%; border-color:rgba(255,59,48,0.4); color:#FF3B30;" data-action="cleanup-duplicate-attachments">🧹 Clean Up Duplicate Attachments (All Cards)</button>
             </div>
 
             <div class="settings-card admin-only">
@@ -6187,6 +6189,69 @@
         if (r.includes('3') || r.includes('third')  || r.includes('three'))return 'purple';
         if (r.includes('4') || r.includes('fourth') || r.includes('four')) return 'orange';
         return 'gray';
+    }
+
+    // Given one card's attachments, returns a deduped list plus how many were dropped.
+    // Two attachments count as duplicates when they share the same Monday.com source
+    // asset (_mondayAssetId - the strongest signal, e.g. the same file re-synced before
+    // the DB fix that made reuse possible), or otherwise when they share the exact same
+    // filename (e.g. a manually-uploaded copy of a file later synced from Monday). When
+    // duplicates are found, the Monday-sourced copy is kept over a manual one. Attachments
+    // with no name are never deduped, since there's nothing reliable to match them on.
+    function dedupeAttachments(attachments) {
+        const list = attachments || [];
+        const sorted = [...list].sort((a, b) => (b._mondayAssetId ? 1 : 0) - (a._mondayAssetId ? 1 : 0));
+        const seenAssetIds = new Set();
+        const seenNames = new Set();
+        const keptIds = new Set();
+        let removed = 0;
+        for (const att of sorted) {
+            const assetId = att._mondayAssetId;
+            const nameKey = (att.name || '').trim().toLowerCase();
+            if (assetId) {
+                if (seenAssetIds.has(assetId)) { removed++; continue; }
+                seenAssetIds.add(assetId);
+                if (nameKey) seenNames.add(nameKey);
+                keptIds.add(att.id);
+                continue;
+            }
+            if (nameKey && seenNames.has(nameKey)) { removed++; continue; }
+            if (nameKey) seenNames.add(nameKey);
+            keptIds.add(att.id);
+        }
+        // Preserve original ordering among the attachments we're keeping
+        return { deduped: list.filter(a => keptIds.has(a.id)), removed };
+    }
+
+    async function cleanupDuplicateAttachments() {
+        if (currentUserRole !== 'admin') { showToast('Only admins can run this cleanup.'); return; }
+
+        let totalRemoved = 0;
+        const perTask = [];
+        for (const task of appData.tasks) {
+            const { removed } = dedupeAttachments(task.attachments);
+            if (removed > 0) { totalRemoved += removed; perTask.push({ title: task.title, removed }); }
+        }
+
+        if (totalRemoved === 0) {
+            showToast('No duplicate attachments found.');
+            return;
+        }
+
+        const ok = await showConfirm(
+            'Remove Duplicate Attachments?',
+            `Found ${totalRemoved} duplicate attachment(s) across ${perTask.length} card(s) — files with the same name or the same Monday.com source on the same card. This keeps one copy of each and removes the extra references (the underlying Google Drive files themselves are not deleted). This cannot be undone. Continue?`,
+            'Yes, Clean Up',
+            true
+        );
+        if (!ok) return;
+
+        for (const task of appData.tasks) {
+            task.attachments = dedupeAttachments(task.attachments).deduped;
+        }
+        await saveData();
+        console.log('🧹 Duplicate attachment cleanup — per card:', perTask);
+        showToast(`✅ Removed ${totalRemoved} duplicate attachment(s) across ${perTask.length} card(s).`);
     }
 
     async function syncMondayAttachments(silent = false) {
@@ -11547,6 +11612,7 @@
             case 'clear-monday-import-history': clearMondayImportHistory(); break;
             case 'inspect-monday-columns': inspectMondayColumns(); break;
             case 'sync-monday-attachments-once': syncMondayAttachments(false).then(()=>localStorage.setItem(el.dataset.arg, String(Date.now()))); break;
+            case 'cleanup-duplicate-attachments': cleanupDuplicateAttachments(); break;
             case 'save-google-calendar-settings': saveGoogleCalendarSettings(); break;
             case 'sync-board-to-google-calendar': syncBoardToGoogleCalendar(); break;
             case 'save-cabbie-ai-settings': saveCabbieAiSettings(); break;
