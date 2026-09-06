@@ -6220,8 +6220,12 @@
         if (!silent) showToast('Syncing attachments from Monday.com…');
 
         try {
-            // Step 1: Fetch items with both mirror columns, across all configured boards
-            const allColIds = Array.from(new Set([...attachColIds, ...revisionColIds]));
+            // Step 1: Fetch items with both mirror columns, across all configured boards.
+            // Temporarily also pull the per-round asset-status mirrors (R1/R2/R3) so we can
+            // see in the console whether "Campaign Asset Files" is cumulative across rounds
+            // or per-round, without another trip through Monday's UI.
+            const DEBUG_ROUND_COL_IDS = ['lookup_mm6jnfw8', 'lookup_mm6jgpa3', 'lookup_mm6jy509'];
+            const allColIds = Array.from(new Set([...attachColIds, ...revisionColIds, ...DEBUG_ROUND_COL_IDS]));
             const boardQuery = `
                 query {
                     boards(ids: [${attachBoardIds.join(',')}]) {
@@ -6277,6 +6281,20 @@
                     if (assetIds.length === 0) {
                         console.warn(`⚠️ Attachment column had text but no /resources/ URL matched for "${item.name}":`, { attachColRaw: attachCol });
                     }
+                }
+
+                // DEBUG: raw per-round mirrors, to see if "Campaign Asset Files" is cumulative
+                // across rounds or reflects only the current one.
+                const debugRoundCols = DEBUG_ROUND_COL_IDS.map(id => {
+                    const cv = item.column_values.find(c => c.id === id);
+                    return cv ? (cv.display_value || cv.text || '') : undefined;
+                });
+                if (assetIds.length > 0) {
+                    console.log(`🔍 Round debug for "${item.name}":`, {
+                        assetCount: assetIds.length,
+                        R1: debugRoundCols[0], R2: debugRoundCols[1], R3: debugRoundCols[2],
+                        attachColRawLength: rawValue.length
+                    });
                 }
 
                 return { id: item.id, name: item.name, assetIds, revisionRound };
