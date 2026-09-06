@@ -6274,6 +6274,9 @@
                             allAssetIds.push(match[1]);
                         }
                     });
+                    if (assetIds.length === 0) {
+                        console.warn(`⚠️ Attachment column had text but no /resources/ URL matched for "${item.name}":`, { attachColRaw: attachCol });
+                    }
                 }
 
                 return { id: item.id, name: item.name, assetIds, revisionRound };
