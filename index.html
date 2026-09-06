@@ -2340,6 +2340,14 @@
             </div>
 
             <div class="settings-card admin-only">
+                <h3 class="section-title">💬 Monday.com Conversation Mirror</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                    Pulls each card's Monday.com "Updates" thread (including replies) into that card's Comments, so conversations happening on Monday.com show up here too. Uses the same Deliverables Board ID configured above. This is a periodic pull (on page load + this button), not a live push — Monday.com doesn't notify this app the instant something is posted.
+                </p>
+                <button class="btn-action" style="width:100%; background: linear-gradient(135deg,#34C759,#0A84FF);" data-action="sync-monday-comments-once" data-arg="mondayCommentsLastSync">Sync Comments Now</button>
+            </div>
+
+            <div class="settings-card admin-only">
                 <h3 class="section-title">Google Calendar Sync</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
                     Connect a Google Apps Script webhook to push Event Calendar + Content Calendar dates to your team Google Calendar.
@@ -3254,6 +3262,21 @@
                     .then(() => localStorage.setItem('mondayAttachLastSync', String(Date.now())))
                     .catch(err => console.warn('Auto attach-sync skipped:', err));
             }
+        }
+
+        // Auto-pull Monday.com conversations every 5 minutes, both on load and while the
+        // tab stays open, so comments stay close to live without needing a page reload.
+        if (activeBoard?.settings?.mondayApiToken && activeBoard?.settings?.mondayAttachBoardId) {
+            const COMMENT_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+            const runCommentSync = () => {
+                const lastSync = parseInt(localStorage.getItem('mondayCommentsLastSync') || '0', 10);
+                if (Date.now() - lastSync < COMMENT_SYNC_INTERVAL_MS) return;
+                syncMondayComments(true)
+                    .then(() => localStorage.setItem('mondayCommentsLastSync', String(Date.now())))
+                    .catch(err => console.warn('Auto comment-sync skipped:', err));
+            };
+            runCommentSync();
+            setInterval(runCommentSync, COMMENT_SYNC_INTERVAL_MS);
         }
     }
 
@@ -6254,6 +6277,47 @@
         showToast(`✅ Removed ${totalRemoved} duplicate attachment(s) across ${perTask.length} card(s).`);
     }
 
+    // Matches a Monday.com item back to a card: exact _mondayId match first, then a
+    // cascade of fuzzy title strategies (extracted event name, full item name, and
+    // substring containment either way). Shared by attachment and comment sync so both
+    // stay in lockstep instead of drifting into two subtly different matchers.
+    function matchMondayItemToTask(itemId, itemName) {
+        let task = appData.tasks.find(t => t._mondayId === itemId);
+        if (task) return task;
+
+        // Extract event name from "Team | Event Name | DD Month YYYY" (this board's
+        // actual format) or the older "Team | Event Name - DD Month YYYY" pattern
+        let extractedName = (itemName || '').trim();
+        const pipeIdx = extractedName.indexOf(' | ');
+        if (pipeIdx !== -1) extractedName = extractedName.slice(pipeIdx + 3).trim();
+        // Strip trailing " | DD Month YYYY" or " | MM/DD" / " | MM/DD/YYYY" date
+        extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
+        extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*$/, '').trim();
+        // Strip trailing " - DD Month YYYY" or " - MM/DD/YYYY" date
+        extractedName = extractedName.replace(/\s*-\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
+        extractedName = extractedName.replace(/\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim();
+
+        const lcExtracted = extractedName.toLowerCase();
+        const lcFull = (itemName || '').trim().toLowerCase();
+
+        // 1. Exact match on extracted event name
+        task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcExtracted);
+        // 2. Exact match on full Monday item name
+        if (!task) task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcFull);
+        // 3. Card title is contained inside the Monday item name (substring)
+        if (!task) task = appData.tasks.find(t => {
+            const ct = (t.title || '').trim().toLowerCase();
+            return ct.length > 3 && lcFull.includes(ct);
+        });
+        // 4. Monday extracted name is contained inside the card title
+        if (!task) task = appData.tasks.find(t => {
+            const ct = (t.title || '').trim().toLowerCase();
+            return lcExtracted.length > 3 && ct.includes(lcExtracted);
+        });
+
+        return task || null;
+    }
+
     async function syncMondayAttachments(silent = false) {
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
         if (!activeBoard) return;
@@ -6396,40 +6460,7 @@
             console.log('🔍 App cards with _mondayId:', appData.tasks.filter(t => t._mondayId).map(t => ({ id: t.id, title: t.title, _mondayId: t._mondayId })));
 
             for (const parsed of parsedItems) {
-                // Try _mondayId first, then several name-based strategies
-                let task = appData.tasks.find(t => t._mondayId === parsed.id);
-
-                if (!task) {
-                    // Extract event name from "Team | Event Name | DD Month YYYY" (this board's
-                    // actual format) or the older "Team | Event Name - DD Month YYYY" pattern
-                    let extractedName = parsed.name.trim();
-                    const pipeIdx = extractedName.indexOf(' | ');
-                    if (pipeIdx !== -1) extractedName = extractedName.slice(pipeIdx + 3).trim();
-                    // Strip trailing " | DD Month YYYY" or " | MM/DD" / " | MM/DD/YYYY" date
-                    extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
-                    extractedName = extractedName.replace(/\s*\|\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*$/, '').trim();
-                    // Strip trailing " - DD Month YYYY" or " - MM/DD/YYYY" date
-                    extractedName = extractedName.replace(/\s*-\s*\d{1,2}\s+\w+\s+\d{4}\s*$/, '').trim();
-                    extractedName = extractedName.replace(/\s*-\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim();
-
-                    const lcExtracted = extractedName.toLowerCase();
-                    const lcFull = parsed.name.trim().toLowerCase();
-
-                    // 1. Exact match on extracted event name
-                    task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcExtracted);
-                    // 2. Exact match on full Monday item name
-                    if (!task) task = appData.tasks.find(t => (t.title || '').trim().toLowerCase() === lcFull);
-                    // 3. Card title is contained inside the Monday item name (substring)
-                    if (!task) task = appData.tasks.find(t => {
-                        const ct = (t.title || '').trim().toLowerCase();
-                        return ct.length > 3 && lcFull.includes(ct);
-                    });
-                    // 4. Monday extracted name is contained inside the card title
-                    if (!task) task = appData.tasks.find(t => {
-                        const ct = (t.title || '').trim().toLowerCase();
-                        return lcExtracted.length > 3 && ct.includes(lcExtracted);
-                    });
-                }
+                const task = matchMondayItemToTask(parsed.id, parsed.name);
 
                 if (!task) {
                     console.log(`⚠️ No card matched for Monday item: "${parsed.name}" (id: ${parsed.id})`);
@@ -6553,6 +6584,134 @@
         } catch (err) {
             console.error('syncMondayAttachments error:', err);
             if (!silent) showToast('Sync failed: ' + err.message);
+        }
+    }
+
+    // Mirrors Monday.com's "Updates" (its item-level comment/conversation thread,
+    // including replies) into each matched card's own comments, so team conversations
+    // happening on Monday.com show up here too. Purely additive - existing in-app
+    // comments are never touched or removed, and this only ever appends/refreshes text,
+    // it never deletes a comment that later disappears from Monday.com. Pulled on a
+    // schedule (page load + manual button), not pushed live - Monday.com would need a
+    // webhook integration for true real-time delivery, which this app doesn't have.
+    async function syncMondayComments(silent = false) {
+        const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
+        if (!activeBoard) return;
+
+        const token = activeBoard.settings?.mondayApiToken;
+        if (!token) {
+            if (!silent) showToast('Please configure your Monday.com API token first.');
+            return;
+        }
+
+        // Reuses the same board(s) as attachment sync, since that's already pointed at
+        // whichever board holds the live item for each card.
+        const commentBoardIds = parseMondayBoardIds(activeBoard.settings?.mondayAttachBoardId || '');
+        if (commentBoardIds.length === 0) {
+            if (!silent) showToast('Please configure the Deliverables Board ID in Settings → Monday.com first.');
+            return;
+        }
+
+        if (!silent) showToast('Pulling Monday.com conversations…');
+
+        try {
+            const query = `
+                query {
+                    boards(ids: [${commentBoardIds.join(',')}]) {
+                        items_page(limit: 100) {
+                            items {
+                                id
+                                name
+                                updates(limit: 50) {
+                                    id
+                                    text_body
+                                    created_at
+                                    creator { name }
+                                    replies {
+                                        id
+                                        text_body
+                                        created_at
+                                        creator { name }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }`;
+
+            const res = await fetch('https://api.monday.com/v2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token, 'API-Version': '2024-01' },
+                body: JSON.stringify({ query })
+            });
+            if (!res.ok) throw new Error('Monday.com connection failed: ' + res.statusText);
+
+            const json = await res.json();
+            if (json.errors) throw new Error(json.errors[0]?.message || 'Monday.com API error');
+
+            const items = (json.data?.boards || []).flatMap(b => b.items_page?.items || []);
+
+            const fmtTime = (iso) => {
+                const d = new Date(iso);
+                if (isNaN(d.getTime())) return '';
+                return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d);
+            };
+
+            let addedCount = 0, updatedCount = 0;
+            const touchedTitles = new Set();
+
+            for (const item of items) {
+                const flatUpdates = [];
+                for (const u of (item.updates || [])) {
+                    flatUpdates.push({ id: u.id, text: (u.text_body || '').trim(), author: u.creator?.name || 'Monday.com', createdAt: u.created_at });
+                    for (const r of (u.replies || [])) {
+                        flatUpdates.push({ id: r.id, text: (r.text_body || '').trim(), author: r.creator?.name || 'Monday.com', createdAt: r.created_at });
+                    }
+                }
+                const withText = flatUpdates.filter(u => u.text);
+                if (withText.length === 0) continue;
+
+                const task = matchMondayItemToTask(item.id, item.name);
+                if (!task) continue;
+
+                const taskIdx = appData.tasks.findIndex(t => t.id === task.id);
+                if (taskIdx === -1) continue;
+                if (!appData.tasks[taskIdx].comments) appData.tasks[taskIdx].comments = [];
+
+                withText.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+                let taskTouched = false;
+                for (const u of withText) {
+                    const existing = appData.tasks[taskIdx].comments.find(c => c._mondayUpdateId === u.id);
+                    if (existing) {
+                        if (existing.text !== u.text) { existing.text = u.text; updatedCount++; taskTouched = true; }
+                        continue;
+                    }
+                    appData.tasks[taskIdx].comments.push({
+                        id: generateId(),
+                        user: `${u.author} (Monday.com)`,
+                        text: u.text,
+                        time: fmtTime(u.createdAt),
+                        _mondayUpdateId: u.id
+                    });
+                    addedCount++;
+                    taskTouched = true;
+                }
+                if (taskTouched) touchedTitles.add(task.title);
+            }
+
+            if (addedCount === 0 && updatedCount === 0) {
+                if (!silent) showToast('No new Monday.com conversation activity found.');
+                return;
+            }
+
+            await saveData();
+            console.log('💬 Monday.com comment sync — cards touched:', Array.from(touchedTitles));
+            if (currentEditingTask) { renderComments(); }
+            if (!silent) showToast(`✅ Pulled ${addedCount} new comment(s)${updatedCount ? `, updated ${updatedCount}` : ''} across ${touchedTitles.size} card(s).`);
+        } catch (error) {
+            console.error('Monday.com comment sync error:', error);
+            if (!silent) showToast('Error syncing Monday.com comments: ' + error.message);
         }
     }
 
@@ -11613,6 +11772,7 @@
             case 'inspect-monday-columns': inspectMondayColumns(); break;
             case 'sync-monday-attachments-once': syncMondayAttachments(false).then(()=>localStorage.setItem(el.dataset.arg, String(Date.now()))); break;
             case 'cleanup-duplicate-attachments': cleanupDuplicateAttachments(); break;
+            case 'sync-monday-comments-once': syncMondayComments(false).then(()=>localStorage.setItem(el.dataset.arg, String(Date.now()))); break;
             case 'save-google-calendar-settings': saveGoogleCalendarSettings(); break;
             case 'sync-board-to-google-calendar': syncBoardToGoogleCalendar(); break;
             case 'save-cabbie-ai-settings': saveCabbieAiSettings(); break;
