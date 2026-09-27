@@ -3026,6 +3026,12 @@
     }
 
     let appData = { boards: [], columns: [], tasks: [], automations: [], settings: {}, activeBoardId: null };
+    // pollNotifications() replaces appData.tasks with the server copy every 30s. These
+    // let it skip that replace when it could clobber local writes: while a Monday.com
+    // attachment sync is mid-flight (it uploads files for a while before saving), or when
+    // a local save started after the poll's own load did (so the poll's data is stale).
+    let _mondayAttachSyncInProgress = false;
+    let _lastLocalSaveAt = 0;
     let currentView = 'board';
     let calDate = new Date();
     let calendarMode = 'grid';
@@ -3963,6 +3969,7 @@
             // save_app_state() upserts every row from appData into its real table and
             // removes rows that are no longer present, so this one call keeps the
             // normalized tables in sync the same way the old whole-blob upsert did.
+            _lastLocalSaveAt = Date.now();
             const { error } = await _supabase.rpc('save_app_state', { payload: appData });
             if (error) {
                 console.error("Supabase sync error:", error);
@@ -6364,6 +6371,12 @@
             return;
         }
 
+        if (_mondayAttachSyncInProgress) {
+            if (!silent) showToast('An attachment sync is already running.');
+            return;
+        }
+        _mondayAttachSyncInProgress = true;
+
         if (!silent) showToast('Syncing attachments from Monday.com…');
 
         try {
@@ -6464,13 +6477,19 @@
                     body: JSON.stringify({ query: assetQuery })
                 });
                 const assetJson = await assetRes.json();
+                if (assetJson.errors) console.warn('⚠️ Attachment sync — assets query returned errors:', assetJson.errors);
                 (assetJson.data?.assets || []).forEach(a => {
                     assetMap[a.id] = { name: a.name, url: a.public_url };
                 });
             }
 
-            // Step 3: Update matching cards
-            let updatedCount = 0;
+            // Step 3: Upload new files for each matching card. Results are collected per card
+            // and only written into appData afterwards, in one synchronous pass right before
+            // saving - the uploads take a while, and anything written into appData.tasks
+            // before then could be replaced by a background reload in the meantime.
+            // Several Monday items can match the same card (e.g. its old- and new-board rows
+            // during a migration); their files are merged instead of the last one winning.
+            const pendingByTaskId = new Map();
 
             console.log('🔍 Attachment sync — Monday items found:', parsedItems.map(p => ({
                 id: p.id, name: p.name, assetCount: p.assetIds.length, revision: p.revisionRound
@@ -6493,19 +6512,28 @@
 
                 console.log(`✅ Matched Monday item "${parsed.name}" → card "${task.title}"`);
 
+                let pending = pendingByTaskId.get(task.id);
+                if (!pending) {
+                    pending = { title: task.title, mondayAttachments: [], revisionRound: '' };
+                    pendingByTaskId.set(task.id, pending);
+                }
+                if (parsed.revisionRound) pending.revisionRound = parsed.revisionRound;
 
                 // Build new Monday-sourced attachments, reusing already-uploaded ones
-                const mondayAttachments = [];
                 for (const assetId of parsed.assetIds) {
-                    const asset = assetMap[assetId];
-                    if (!asset?.url) continue;
+                    if (pending.mondayAttachments.some(a => a._mondayAssetId === assetId)) continue;
 
-                    // Reuse if already uploaded to Drive
+                    // Reuse if already uploaded to Drive - checked before the asset lookup so a
+                    // file already on the card is kept even if Monday didn't return a URL for it
+                    // this time (expired/failed assets query), instead of being dropped.
                     const existing = (task.attachments || []).find(a => a._mondayAssetId === assetId);
                     if (existing) {
-                        mondayAttachments.push(existing);
+                        pending.mondayAttachments.push(existing);
                         continue;
                     }
+
+                    const asset = assetMap[assetId];
+                    if (!asset?.url) continue;
 
                     // Proxy download + upload through GAS (avoids browser CORS on Monday's S3)
                     try {
@@ -6518,7 +6546,7 @@
                         console.log(`☁️ Upload result for asset ${assetId}:`, uploadResult);
 
                         if (uploadResult.success) {
-                            mondayAttachments.push({
+                            pending.mondayAttachments.push({
                                 id: generateId(),
                                 name: uploadResult.name || asset.name,
                                 url: toDirectDriveUrl(uploadResult.url),
@@ -6534,10 +6562,14 @@
                         console.warn(`Attachment sync: failed to upload asset ${assetId}:`, e);
                     }
                 }
+            }
 
-                // Write back via index to guarantee appData.tasks is updated
-                const taskIdx = appData.tasks.findIndex(t => t.id === task.id);
-                if (taskIdx === -1) { console.warn('syncMondayAttachments: task vanished from appData', task.id); continue; }
+            // Step 4: Apply everything to the current appData in one synchronous pass
+            let updatedCount = 0;
+            for (const [taskId, pending] of pendingByTaskId) {
+                const taskIdx = appData.tasks.findIndex(t => t.id === taskId);
+                if (taskIdx === -1) { console.warn('syncMondayAttachments: task vanished from appData', taskId); continue; }
+                const mondayAttachments = pending.mondayAttachments;
 
                 // Drop any manually-added attachment whose filename exactly matches one we
                 // just synced from Monday - almost always the same design file uploaded by
@@ -6548,31 +6580,31 @@
                     .filter(a => !a._mondayAssetId)
                     .filter(a => !mondayNames.has((a.name || '').trim().toLowerCase()));
                 appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
-                console.log(`💾 "${task.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
+                console.log(`💾 "${pending.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
 
                 // Set cover image from any attachment whose filename contains "GCU Life Header"
                 const coverAttach = mondayAttachments.find(a => a.name && a.name.toLowerCase().includes('gcu life header'));
                 if (coverAttach) {
                     appData.tasks[taskIdx].coverImage = coverAttach.url; // already toDirectDriveUrl'd
-                    console.log(`🖼️ "${task.title}" — cover set from: ${coverAttach.name}`);
+                    console.log(`🖼️ "${pending.title}" — cover set from: ${coverAttach.name}`);
                 }
 
                 // Update revision round label and fire automations
-                if (parsed.revisionRound) {
+                if (pending.revisionRound) {
                     if (!appData.tasks[taskIdx].labels) appData.tasks[taskIdx].labels = [];
                     appData.tasks[taskIdx].labels = appData.tasks[taskIdx].labels.filter(l => !l.text.startsWith(REVISION_PREFIX));
                     const newLabel = {
-                        text: `${REVISION_PREFIX} ${parsed.revisionRound}`,
-                        color: getRevisionLabelColor(parsed.revisionRound)
+                        text: `${REVISION_PREFIX} ${pending.revisionRound}`,
+                        color: getRevisionLabelColor(pending.revisionRound)
                     };
                     appData.tasks[taskIdx].labels.push(newLabel);
                     processAutomations(appData.tasks[taskIdx], 'label_added', { labelText: newLabel.text });
-                    console.log(`🏷️ "${task.title}" — label set: ${newLabel.text}`);
+                    console.log(`🏷️ "${pending.title}" — label set: ${newLabel.text}`);
 
                 }
 
                 // If this card is currently open in the modal, sync the live editing state too
-                if (typeof currentEditingTask !== 'undefined' && currentEditingTask?.id === task.id) {
+                if (typeof currentEditingTask !== 'undefined' && currentEditingTask?.id === taskId) {
                     currentEditingTask.attachments = appData.tasks[taskIdx].attachments;
                     currentEditingTask.labels = appData.tasks[taskIdx].labels;
                     if (typeof renderAttachments === 'function') renderAttachments();
@@ -6584,6 +6616,7 @@
 
             // Save directly here so we can log the result
             try {
+                _lastLocalSaveAt = Date.now();
                 const { error: saveErr } = await _supabase.rpc('save_app_state', { payload: appData });
                 if (saveErr) {
                     console.error('❌ syncMondayAttachments: Supabase save FAILED:', saveErr);
@@ -6602,6 +6635,8 @@
         } catch (err) {
             console.error('syncMondayAttachments error:', err);
             if (!silent) showToast('Sync failed: ' + err.message);
+        } finally {
+            _mondayAttachSyncInProgress = false;
         }
     }
 
@@ -8453,6 +8488,7 @@
 
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
+        const pollStartedAt = Date.now();
         try {
             // load_app_state() reassembles the same shape the old app_state blob had,
             // so everything below is unchanged except where noted.
@@ -8478,10 +8514,14 @@
             // Update local appData with merged remote data
             ensureNotifStructures();
             appData.notifications[currentUserName] = remoteNotifs;
-            // Also sync other fields that may have changed (tasks, columns, etc.)
-            if (data.tasks) appData.tasks = data.tasks;
-            if (data.columns) appData.columns = data.columns;
-            if (data.boards) appData.boards = data.boards;
+            // Also sync other fields that may have changed (tasks, columns, etc.) - unless
+            // that would overwrite local changes the server doesn't have yet.
+            const remoteMayBeStale = _mondayAttachSyncInProgress || _lastLocalSaveAt >= pollStartedAt;
+            if (!remoteMayBeStale) {
+                if (data.tasks) appData.tasks = data.tasks;
+                if (data.columns) appData.columns = data.columns;
+                if (data.boards) appData.boards = data.boards;
+            }
             if (data.notifPrefs) appData.notifPrefs = data.notifPrefs;
             // Sync push subscriptions — remote is authoritative for all users except the current
             // user's own entry (kept local so a fresh re-subscribe isn't overwritten by stale remote)
