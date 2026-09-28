@@ -3026,12 +3026,209 @@
     }
 
     let appData = { boards: [], columns: [], tasks: [], automations: [], settings: {}, activeBoardId: null };
-    // pollNotifications() replaces appData.tasks with the server copy every 30s. These
-    // let it skip that replace when it could clobber local writes: while a Monday.com
-    // attachment sync is mid-flight (it uploads files for a while before saving), or when
-    // a local save started after the poll's own load did (so the poll's data is stale).
+    // Guards against two Monday.com attachment syncs running at once.
     let _mondayAttachSyncInProgress = false;
-    let _lastLocalSaveAt = 0;
+
+    // ── Conflict-safe saving ──────────────────────────────────────────────────
+    // save_app_state() writes the whole document: it upserts every row in the payload
+    // and deletes every row that's missing from it. Saving a stale copy would therefore
+    // undo other people's edits and delete cards/comments/attachments they added since
+    // this browser last loaded. To prevent that, every save first reloads the server's
+    // current state and three-way merges it with this browser's changes:
+    //   base   = what the server had when this browser last loaded/saved (_serverBaseline)
+    //   local  = appData (this browser's copy, including unsaved edits)
+    //   remote = what the server has now
+    // Whatever only one side changed is kept; items are matched by id at every level
+    // (cards, columns, comments, attachments, checklist items...), so two people editing
+    // different cards, or adding different comments to the same card, both survive. When
+    // both sides changed the exact same value, this browser's edit wins.
+    // The 30s background poll uses the same merge instead of replacing appData.tasks,
+    // and both run one at a time so a poll can't apply an older server copy on top of a
+    // newer save.
+    let _serverBaseline = null;
+    // Top-level keys that are per-browser state and are never taken from the server.
+    const _LOCAL_ONLY_KEYS = ['activeBoardId'];
+
+    function _clone(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
+    function _isPlainObject(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
+
+    // Key order independent (load_app_state's jsonb output orders keys differently
+    // from objects built in the browser).
+    function _deepEqual(a, b) {
+        if (a === b) return true;
+        if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+            // undefined and a missing key are equivalent
+            return a === b;
+        }
+        if (Array.isArray(a) !== Array.isArray(b)) return false;
+        if (Array.isArray(a)) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) if (!_deepEqual(a[i], b[i])) return false;
+            return true;
+        }
+        const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+        for (const k of keys) {
+            if (a[k] === undefined && b[k] === undefined) continue;
+            if (!_deepEqual(a[k], b[k])) return false;
+        }
+        return true;
+    }
+
+    function _itemKey(x) {
+        if (!_isPlainObject(x)) return null;
+        if (x.id !== undefined && x.id !== null && x.id !== '') return 'id:' + x.id;
+        if (x.email) return 'email:' + String(x.email).toLowerCase();
+        if (x.token) return 'token:' + x.token;
+        return null;
+    }
+
+    function _isKeyedArray(arr) {
+        if (!Array.isArray(arr)) return false;
+        const seen = new Set();
+        for (const x of arr) {
+            const k = _itemKey(x);
+            if (!k || seen.has(k)) return false;
+            seen.add(k);
+        }
+        return true;
+    }
+
+    // Orders `primary`'s keys, then slots each extra key from `secondary` in right after
+    // the key it follows there (or at the front if it's first).
+    function _mergeKeyOrder(primary, secondary) {
+        const result = [...primary];
+        const inResult = new Set(result);
+        let prev = null;
+        for (const k of secondary) {
+            if (!inResult.has(k)) {
+                const at = prev === null ? 0 : result.indexOf(prev) + 1;
+                result.splice(at, 0, k);
+                inResult.add(k);
+            }
+            prev = k;
+        }
+        return result;
+    }
+
+    function _mergeKeyedArrays(base, local, remote) {
+        const toMap = arr => new Map(arr.map(x => [_itemKey(x), x]));
+        const bm = toMap(base), lm = toMap(local), rm = toMap(remote);
+        const lKeys = local.map(_itemKey), rKeys = remote.map(_itemKey), bKeys = base.map(_itemKey);
+
+        // Keep the server's ordering unless this browser reordered the items it shares
+        // with the baseline (e.g. dragged a card); then keep this browser's ordering.
+        const localShared = lKeys.filter(k => bm.has(k));
+        const baseShared  = bKeys.filter(k => lm.has(k));
+        const localReordered = !_deepEqual(localShared, baseShared);
+        const order = localReordered ? _mergeKeyOrder(lKeys, rKeys) : _mergeKeyOrder(rKeys, lKeys);
+
+        const out = [];
+        for (const k of order) {
+            const b = bm.get(k), l = lm.get(k), r = rm.get(k);
+            if (l !== undefined && r !== undefined) { out.push(_merge3(b, l, r)); continue; }
+            if (l !== undefined) {
+                // Missing on the server: new here (keep), or deleted there (drop, unless
+                // this browser edited it since - then the edit wins and it's restored).
+                if (b === undefined || !_deepEqual(l, b)) out.push(l);
+                continue;
+            }
+            // Missing here: added by someone else (keep), or deleted here (drop, unless
+            // someone else edited it since).
+            if (b === undefined || !_deepEqual(r, b)) out.push(_clone(r));
+        }
+        return out;
+    }
+
+    function _merge3(base, local, remote) {
+        if (_deepEqual(local, base)) return _clone(remote);
+        if (_deepEqual(remote, base) || _deepEqual(remote, local)) return local;
+        if (_isKeyedArray(local) && _isKeyedArray(remote) && (base == null || _isKeyedArray(base))) {
+            return _mergeKeyedArrays(base || [], local, remote);
+        }
+        if (_isPlainObject(local) && _isPlainObject(remote)) {
+            const b = _isPlainObject(base) ? base : {};
+            const out = {};
+            for (const k of new Set([...Object.keys(local), ...Object.keys(remote)])) {
+                // A key the server doesn't return is a field it doesn't store, not a
+                // deletion - keep this browser's value.
+                if (remote[k] === undefined) { out[k] = local[k]; continue; }
+                if (local[k] === undefined && b[k] === undefined) { out[k] = _clone(remote[k]); continue; }
+                const v = _merge3(b[k], local[k], remote[k]);
+                if (v !== undefined) out[k] = v;
+            }
+            return out;
+        }
+        return local; // both changed the same single value: this browser's edit wins
+    }
+
+    // Brings someone else's changes into the card open in the modal, which edits a
+    // copy (currentEditingTask) that doAutoSave later writes back wholesale - without
+    // this, closing the modal would silently undo their changes to that card.
+    function _rebaseOpenTask(baseTasks, remoteTasks, mergedTasks) {
+        if (typeof currentEditingTask === 'undefined' || !currentEditingTask?.id) return;
+        const id = currentEditingTask.id;
+        const b = (baseTasks || []).find(t => t.id === id);
+        const r = (remoteTasks || []).find(t => t.id === id);
+        const m = (mergedTasks || []).find(t => t.id === id);
+        if (!b || !r || !m) return;
+
+        const listFields = { checklist: renderChecklist, attachments: renderAttachments, comments: renderComments,
+            labels: renderLabels, members: renderMembers, customFields: renderCustomFields, postingSchedule: renderPostingSchedule };
+        const toRender = new Set();
+        for (const [f, renderFn] of Object.entries(listFields)) {
+            if (_deepEqual(b[f], r[f])) continue;
+            currentEditingTask[f] = _merge3(b[f], currentEditingTask[f], r[f]);
+            toRender.add(renderFn);
+        }
+        if (!_deepEqual(b.coverImage, r.coverImage) && _deepEqual(m.coverImage, r.coverImage)) {
+            currentEditingTask.coverImage = r.coverImage;
+        }
+        toRender.forEach(fn => { try { fn(); } catch (e) { console.warn('Re-render of open card failed:', e); } });
+
+        // Plain inputs: only take the other person's value when this browser hasn't
+        // changed that field and the field isn't being typed in right now.
+        const inputs = { title: 'taskTitleInput', dueDate: 'taskDueDateNative', eventLocation: 'taskEventLocation', priority: 'taskPriority' };
+        for (const [f, elId] of Object.entries(inputs)) {
+            const el = document.getElementById(elId);
+            if (!el || el === document.activeElement) continue;
+            if (_deepEqual(b[f], r[f]) || !_deepEqual(m[f], r[f])) continue;
+            el.value = r[f] || '';
+            if (f === 'dueDate' && typeof _cdpUpdateBtnLabel === 'function') _cdpUpdateBtnLabel(r[f] || '');
+        }
+        const descEl = document.getElementById('taskContentInput');
+        if (descEl && descEl !== document.activeElement && !_deepEqual(b.description, r.description) && _deepEqual(m.description, r.description)) {
+            let content = r.description || r.text || '';
+            if (content && !content.includes('<') && content.includes('\n')) content = content.replace(/\n/g, '<br>');
+            descEl.innerHTML = highlightMentions(sanitizeRichHtml(content));
+        }
+    }
+
+    // Merges the server's current state into appData in place (see above) and makes it
+    // the new baseline. Re-renders the board if other people changed anything visible.
+    function _rebaseOnRemote(remote) {
+        const base = _serverBaseline || {};
+        const merged = _merge3(base, appData, remote);
+        if (merged !== appData) {
+            _rebaseOpenTask(base.tasks, remote.tasks, merged.tasks);
+            const localOnly = {};
+            _LOCAL_ONLY_KEYS.forEach(k => { localOnly[k] = appData[k]; });
+            Object.keys(merged).forEach(k => { appData[k] = merged[k]; });
+            Object.assign(appData, localOnly);
+        }
+        const remoteChangedBoard = ['tasks', 'columns', 'boards'].some(k => !_deepEqual(base[k], remote[k]));
+        _serverBaseline = _clone(remote);
+        if (remoteChangedBoard && isDatabaseLoaded && !draggedTaskId && typeof renderBoard === 'function') {
+            try { renderBoard(); } catch (e) { console.warn('Re-render after merging remote changes failed:', e); }
+        }
+    }
+
+    // Runs load/save round-trips one at a time.
+    let _dataOpChain = Promise.resolve();
+    function _runDataOpExclusive(fn) {
+        const p = _dataOpChain.then(fn);
+        _dataOpChain = p.catch(() => {});
+        return p;
+    }
     let currentView = 'board';
     let calDate = new Date();
     let calendarMode = 'grid';
@@ -3134,6 +3331,7 @@
                 showToast("Database connection error. Please refresh the page.");
                 return; // CRITICAL: Stop execution, do NOT overwrite data
             } else if (data) {
+                _serverBaseline = _clone(data);
                 appData = data;
                 if (!appData.boards)     appData.boards = [];
                 if (!appData.columns)    appData.columns = [];
@@ -3964,20 +4162,45 @@
         }
     }
 
-    async function saveData() {
+    // Resolves to { error } (null on success). Calls made while a save is already
+    // waiting its turn share that save - it snapshots appData when it starts, so it
+    // picks up their changes too.
+    let _queuedSave = null;
+    function saveData() {
+        if (_queuedSave) return _queuedSave;
+        const p = _runDataOpExclusive(() => { _queuedSave = null; return _saveDataNow(); });
+        _queuedSave = p;
+        return p;
+    }
+
+    async function _saveDataNow() {
         try {
-            // save_app_state() upserts every row from appData into its real table and
-            // removes rows that are no longer present, so this one call keeps the
-            // normalized tables in sync the same way the old whole-blob upsert did.
-            _lastLocalSaveAt = Date.now();
-            const { error } = await _supabase.rpc('save_app_state', { payload: appData });
+            // save_app_state() upserts every row from the payload into its real table and
+            // removes rows that aren't in it, so merge in everyone else's changes first
+            // (see _rebaseOnRemote) - otherwise this would overwrite or delete them.
+            const { data: remote, error: loadErr } = await _supabase.rpc('load_app_state');
+            if (loadErr || !remote) {
+                // Don't write blind: a whole-document save from a copy we couldn't check
+                // against the server could wipe out other people's changes. The edits stay
+                // in appData and go out with the next save.
+                console.error("Supabase sync error (pre-save load failed, not saving):", loadErr);
+                return { error: loadErr || new Error('Could not load current data before saving') };
+            }
+            _rebaseOnRemote(remote);
+            const payload = _clone(appData);
+            const { error } = await _supabase.rpc('save_app_state', { payload });
             if (error) {
                 console.error("Supabase sync error:", error);
-            } else if (appData.settings && appData.settings.googleCalendarAutoSync && appData.settings.googleCalendarWebhook) {
+                return { error };
+            }
+            _serverBaseline = payload;
+            if (appData.settings && appData.settings.googleCalendarAutoSync && appData.settings.googleCalendarWebhook) {
                 queueGoogleCalendarAutoSync();
             }
+            return { error: null };
         } catch (err) {
             console.error("Supabase request failed:", err);
+            return { error: err };
         }
     }
 
@@ -6614,10 +6837,9 @@
                 updatedCount++;
             }
 
-            // Save directly here so we can log the result
+            // Save here so we can log the result
             try {
-                _lastLocalSaveAt = Date.now();
-                const { error: saveErr } = await _supabase.rpc('save_app_state', { payload: appData });
+                const { error: saveErr } = await saveData();
                 if (saveErr) {
                     console.error('❌ syncMondayAttachments: Supabase save FAILED:', saveErr);
                     if (!silent) showToast('⚠️ Files uploaded but save failed: ' + saveErr.message);
@@ -8488,12 +8710,18 @@
 
     async function pollNotifications() {
         if (!currentUserName || !_supabase) return;
-        const pollStartedAt = Date.now();
         try {
-            // load_app_state() reassembles the same shape the old app_state blob had,
-            // so everything below is unchanged except where noted.
-            const { data, error } = await _supabase.rpc('load_app_state');
-            if (error || !data) return;
+            // Merge other people's changes (cards, columns, settings...) into appData
+            // without losing this browser's unsaved edits - see _rebaseOnRemote. Runs in
+            // turn with saves so an older server copy is never applied over a newer save.
+            const data = await _runDataOpExclusive(async () => {
+                if (!isDatabaseLoaded) return null;
+                const { data, error } = await _supabase.rpc('load_app_state');
+                if (error || !data) return null;
+                _rebaseOnRemote(data);
+                return data;
+            });
+            if (!data) return;
             let remoteNotifs = (data.notifications && data.notifications[currentUserName]) || [];
             const localNotifs = getNotifications();
             // Filter out any notifications this client has cleared
@@ -8514,15 +8742,6 @@
             // Update local appData with merged remote data
             ensureNotifStructures();
             appData.notifications[currentUserName] = remoteNotifs;
-            // Also sync other fields that may have changed (tasks, columns, etc.) - unless
-            // that would overwrite local changes the server doesn't have yet.
-            const remoteMayBeStale = _mondayAttachSyncInProgress || _lastLocalSaveAt >= pollStartedAt;
-            if (!remoteMayBeStale) {
-                if (data.tasks) appData.tasks = data.tasks;
-                if (data.columns) appData.columns = data.columns;
-                if (data.boards) appData.boards = data.boards;
-            }
-            if (data.notifPrefs) appData.notifPrefs = data.notifPrefs;
             // Sync push subscriptions — remote is authoritative for all users except the current
             // user's own entry (kept local so a fresh re-subscribe isn't overwritten by stale remote)
             if (data.pushSubscriptions) {
