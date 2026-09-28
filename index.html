@@ -5167,10 +5167,16 @@
             let colTasks = appData.tasks.filter(t => t.columnId === col.id);
             if (col.members && col.members.length > 0) {
                 const colMemberSet = new Set(col.members);
+                // Cards sitting in a "Completed" list count as done even if their checkbox
+                // isn't ticked (dragged there, moved via the menu, or by an automation).
+                const completedColIds = new Set(appData.columns
+                    .filter(c => c.boardId === col.boardId && (c.title || '').trim().toLowerCase() === 'completed')
+                    .map(c => c.id));
                 const mirrored = appData.tasks.filter(t =>
                     t.columnId !== col.id &&
                     t.boardId === col.boardId &&
                     !t.completed &&
+                    !completedColIds.has(t.columnId) &&
                     (t.members || []).some(m => colMemberSet.has(m))
                 ).map(t => Object.assign({}, t, { _mirrored: true, _mirrorFromCol: t.columnId }));
                 colTasks = colTasks.concat(mirrored);
