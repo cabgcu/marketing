@@ -5167,10 +5167,16 @@
             let colTasks = appData.tasks.filter(t => t.columnId === col.id);
             if (col.members && col.members.length > 0) {
                 const colMemberSet = new Set(col.members);
+                // Cards sitting in a "Completed" list count as done even if their checkbox
+                // isn't ticked (dragged there, moved via the menu, or by an automation).
+                const completedColIds = new Set(appData.columns
+                    .filter(c => c.boardId === col.boardId && (c.title || '').trim().toLowerCase() === 'completed')
+                    .map(c => c.id));
                 const mirrored = appData.tasks.filter(t =>
                     t.columnId !== col.id &&
                     t.boardId === col.boardId &&
                     !t.completed &&
+                    !completedColIds.has(t.columnId) &&
                     (t.members || []).some(m => colMemberSet.has(m))
                 ).map(t => Object.assign({}, t, { _mirrored: true, _mirrorFromCol: t.columnId }));
                 colTasks = colTasks.concat(mirrored);
@@ -6737,23 +6743,24 @@
 
                 let pending = pendingByTaskId.get(task.id);
                 if (!pending) {
-                    pending = { title: task.title, mondayAttachments: [], revisionRound: '' };
+                    // assetIds: every file Monday lists for this card, in order.
+                    // uploaded: files uploaded to Drive during this run, keyed by asset id.
+                    pending = { title: task.title, assetIds: [], uploaded: new Map(), revisionRound: '' };
                     pendingByTaskId.set(task.id, pending);
                 }
                 if (parsed.revisionRound) pending.revisionRound = parsed.revisionRound;
 
-                // Build new Monday-sourced attachments, reusing already-uploaded ones
+                // Upload files that aren't on the card yet
                 for (const assetId of parsed.assetIds) {
-                    if (pending.mondayAttachments.some(a => a._mondayAssetId === assetId)) continue;
+                    if (pending.assetIds.includes(assetId)) continue;
+                    pending.assetIds.push(assetId);
 
-                    // Reuse if already uploaded to Drive - checked before the asset lookup so a
-                    // file already on the card is kept even if Monday didn't return a URL for it
-                    // this time (expired/failed assets query), instead of being dropped.
-                    const existing = (task.attachments || []).find(a => a._mondayAssetId === assetId);
-                    if (existing) {
-                        pending.mondayAttachments.push(existing);
-                        continue;
-                    }
+                    // Already uploaded to Drive (checked against the card's latest copy too, in
+                    // case a background merge brought in another browser's upload since the sync
+                    // started) - nothing to do; Step 4 picks it up from the card.
+                    const latestTask = appData.tasks.find(t => t.id === task.id) || task;
+                    const onCard = a => a._mondayAssetId === assetId;
+                    if ((latestTask.attachments || []).some(onCard) || (task.attachments || []).some(onCard)) continue;
 
                     const asset = assetMap[assetId];
                     if (!asset?.url) continue;
@@ -6769,7 +6776,7 @@
                         console.log(`☁️ Upload result for asset ${assetId}:`, uploadResult);
 
                         if (uploadResult.success) {
-                            pending.mondayAttachments.push({
+                            pending.uploaded.set(assetId, {
                                 id: generateId(),
                                 name: uploadResult.name || asset.name,
                                 url: toDirectDriveUrl(uploadResult.url),
@@ -6792,24 +6799,37 @@
             for (const [taskId, pending] of pendingByTaskId) {
                 const taskIdx = appData.tasks.findIndex(t => t.id === taskId);
                 if (taskIdx === -1) { console.warn('syncMondayAttachments: task vanished from appData', taskId); continue; }
-                const mondayAttachments = pending.mondayAttachments;
+                // Monday returned no files at all for this card (blank or failed mirror column):
+                // leave its attachments alone rather than wiping everything already synced.
+                if (pending.assetIds.length === 0) {
+                    console.log(`⏭️ "${pending.title}" — Monday listed no files; keeping current attachments`);
+                } else {
+                    // Built from the card's attachments as they are right now, not as they were when
+                    // the sync started: a file already on the card is always kept while Monday still
+                    // lists it, even if this run's copy of the card was older or its upload failed.
+                    // Only Monday files that Monday no longer lists are removed.
+                    const currentAttachments = appData.tasks[taskIdx].attachments || [];
+                    const mondayAttachments = pending.assetIds
+                        .map(assetId => currentAttachments.find(a => a._mondayAssetId === assetId) || pending.uploaded.get(assetId))
+                        .filter(Boolean);
 
-                // Drop any manually-added attachment whose filename exactly matches one we
-                // just synced from Monday - almost always the same design file uploaded by
-                // hand before this card's Monday sync existed, now duplicated by the sync.
-                // Attachments with different names (notes, references, etc.) are left alone.
-                const mondayNames = new Set(mondayAttachments.map(a => (a.name || '').trim().toLowerCase()));
-                const manualAttachments = (appData.tasks[taskIdx].attachments || [])
-                    .filter(a => !a._mondayAssetId)
-                    .filter(a => !mondayNames.has((a.name || '').trim().toLowerCase()));
-                appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
-                console.log(`💾 "${pending.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
+                    // Drop any manually-added attachment whose filename exactly matches one we
+                    // just synced from Monday - almost always the same design file uploaded by
+                    // hand before this card's Monday sync existed, now duplicated by the sync.
+                    // Attachments with different names (notes, references, etc.) are left alone.
+                    const mondayNames = new Set(mondayAttachments.map(a => (a.name || '').trim().toLowerCase()));
+                    const manualAttachments = (appData.tasks[taskIdx].attachments || [])
+                        .filter(a => !a._mondayAssetId)
+                        .filter(a => !mondayNames.has((a.name || '').trim().toLowerCase()));
+                    appData.tasks[taskIdx].attachments = [...manualAttachments, ...mondayAttachments];
+                    console.log(`💾 "${pending.title}" — attachments set: ${appData.tasks[taskIdx].attachments.length} total (${mondayAttachments.length} from Monday)`);
 
-                // Set cover image from any attachment whose filename contains "GCU Life Header"
-                const coverAttach = mondayAttachments.find(a => a.name && a.name.toLowerCase().includes('gcu life header'));
-                if (coverAttach) {
-                    appData.tasks[taskIdx].coverImage = coverAttach.url; // already toDirectDriveUrl'd
-                    console.log(`🖼️ "${pending.title}" — cover set from: ${coverAttach.name}`);
+                    // Set cover image from any attachment whose filename contains "GCU Life Header"
+                    const coverAttach = mondayAttachments.find(a => a.name && a.name.toLowerCase().includes('gcu life header'));
+                    if (coverAttach) {
+                        appData.tasks[taskIdx].coverImage = coverAttach.url; // already toDirectDriveUrl'd
+                        console.log(`🖼️ "${pending.title}" — cover set from: ${coverAttach.name}`);
+                    }
                 }
 
                 // Update revision round label and fire automations
