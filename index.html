@@ -49,7 +49,10 @@
             --accent-blue: #2563eb;
             --accent-blue-hover: #1d4ed8;
             --accent-purple: #8b5cf6;
-            --modal-backdrop: linear-gradient(rgba(9, 9, 11, 0.4), rgba(9, 9, 11, 0.4)), #131316 url('https://i.imgur.com/APGH0Wv.png') center / cover no-repeat;
+            /* The main app background. applyBoardBackground() swaps in the workspace's own
+               background image, so the login screen and pop-up cards always match the app. */
+            --app-bg-image: url('https://i.imgur.com/APGH0Wv.png');
+            --modal-backdrop: linear-gradient(rgba(9, 9, 11, 0.4), rgba(9, 9, 11, 0.4)), #131316 var(--app-bg-image) center / cover no-repeat;
 
             --bg-dark: #131316;
             --glass-surface: var(--card-bg);
@@ -2279,7 +2282,7 @@
         ::selection { background: rgba(139, 92, 246, .35); }
         #bg-container {
             z-index: -2; height: 100vh; height: 100lvh; bottom: auto;
-            background: #131316 url('https://i.imgur.com/APGH0Wv.png') center / cover no-repeat;
+            background: #131316 var(--app-bg-image) center / cover no-repeat !important;
             background-attachment: scroll;
         }
         #bg-container::after { content: ''; position: absolute; inset: 0; background: rgba(19, 19, 22, 0.25); }
@@ -2288,7 +2291,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #52525b !important; }
 
         /* Login */
-        #login-bg-photo { background-color: #131316; background-image: url('https://i.imgur.com/APGH0Wv.png'); filter: none; }
+        #login-bg-photo { background: #131316 var(--app-bg-image) center / cover no-repeat; filter: none; }
         #login-bg-overlay { background: rgba(19, 19, 22, 0.25); }
         .login-box {
             background: var(--card-bg); border: 1px solid var(--line);
@@ -2616,6 +2619,9 @@
                     });
                 });
             }
+            // Show the last-used app background on the login screen straight away
+            var cachedBg = localStorage.getItem('cachedAppBgImage');
+            if (cachedBg) document.documentElement.style.setProperty('--app-bg-image', cachedBg);
             var cachedIcon = localStorage.getItem('cachedAppIconUrl');
             if (cachedIcon) {
                 var fav = document.getElementById('dynamic-favicon');
@@ -5195,13 +5201,19 @@
         updateCabbieVisibility();
     }
 
+    // One background for the whole app: the main screen, the login screen and the
+    // backdrop behind pop-up cards all read --app-bg-image.
     function applyBoardBackground() {
-        const bgContainer = document.getElementById('bg-container');
         const activeBoard = appData.boards.find(b => b.id === appData.activeBoardId);
-        if (activeBoard && activeBoard.backgroundImage) {
-            bgContainer.style.backgroundImage = `linear-gradient(rgba(5, 5, 5, 0.3), rgba(5, 5, 5, 0.5)), url('${activeBoard.backgroundImage}')`;
+        const custom = activeBoard && activeBoard.backgroundImage;
+        const root = document.documentElement;
+        if (custom) {
+            const value = `url("${String(custom).replace(/["\\\n]/g, encodeURIComponent)}")`;
+            root.style.setProperty('--app-bg-image', value);
+            try { localStorage.setItem('cachedAppBgImage', value); } catch (e) {}
         } else {
-            bgContainer.style.backgroundImage = '';
+            root.style.removeProperty('--app-bg-image');
+            try { localStorage.removeItem('cachedAppBgImage'); } catch (e) {}
         }
     }
 
