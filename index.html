@@ -2557,6 +2557,22 @@
             -webkit-backdrop-filter: var(--frost) !important;
         }
         .topbar.app-header { backdrop-filter: var(--frost); -webkit-backdrop-filter: var(--frost); }
+
+        /* Opening a card fills the whole screen (not a floating rounded panel) */
+        #taskModal.modal-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
+        #taskModal .modal-content {
+            width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none !important;
+            border: none; border-radius: 0 !important; box-shadow: none;
+            padding-top: env(safe-area-inset-top);
+        }
+        /* Keep the text at a readable width in the middle of big screens */
+        #taskModal .task-modal-main-wrap { padding-left: max(32px, calc((100% - 1100px) / 2)); padding-right: max(32px, calc((100% - 1100px) / 2)); }
+        #taskModal .modal-cover-title-wrap { left: max(32px, calc((100% - 1100px) / 2)); right: max(32px, calc((100% - 1100px) / 2)); }
+        @media (max-width: 900px) {
+            #taskModal .modal-content { padding-top: 0; }
+            #taskModal .task-modal-main-wrap { padding-left: 16px; padding-right: 16px; }
+            #taskModal .modal-cover-title-wrap { left: 16px; right: 16px; }
+        }
     </style>
 </head>
 <body>
