@@ -2546,6 +2546,17 @@
             #toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
             .modal-content { border-radius: 24px 24px 0 0; }
         }
+
+        /* Frost: blur the background photo behind every glass surface */
+        :root { --frost: blur(28px) saturate(140%); }
+        .kanban-column, .nav-tabs, .login-box, .modal-content, .calendar-wrapper,
+        .settings-card, .settings-sidebar, .side-card, .planner-task-row, .due-row,
+        .notif-panel, .cabbie-panel, .cabbie-fab, .search-input, .icon-btn, .notif-bell,
+        #workspacePill, .add-col-btn, .bulk-bar, #sync-indicator {
+            backdrop-filter: var(--frost) !important;
+            -webkit-backdrop-filter: var(--frost) !important;
+        }
+        .topbar.app-header { backdrop-filter: var(--frost); -webkit-backdrop-filter: var(--frost); }
     </style>
 </head>
 <body>
