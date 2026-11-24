@@ -333,7 +333,7 @@ begin
     end if;
 
     foreach t in array (select array_agg(x order by o desc) from unnest(p_order) with ordinality u(x, o)) loop
-        execute format('delete from %I.%I', p_schema, t);
+        execute format('delete from %I.%I where true', p_schema, t);
     end loop;
 
     foreach t in array p_order loop
