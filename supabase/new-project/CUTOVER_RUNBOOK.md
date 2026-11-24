@@ -2,9 +2,11 @@
 
 The end state:
 
-- **The Google Sheet is the master copy.** See `google-sheet-hub/README.md`.
-- **The new Supabase project is the fast copy** that the sites talk to. Each
-  site has its own schema; the marketing app's is `marketing`.
+- **The Google Sheet is the database.** See `google-sheet-hub/README.md`.
+- **The new Supabase project is only a cache plus a short inbox,** used so the
+  sites load and save fast. Saves land in the inbox and the Sheet's script
+  moves them into the Sheet. Each site has its own schema; the marketing
+  app's is `marketing`.
 - **The old project** (`qcfntvqvcmshbbpcxmgo`) is never modified. It stays as
   a rollback until you're confident, and then you can pause it.
 
@@ -26,17 +28,20 @@ Then go to **Project Settings → Data API → Exposed schemas**, add
 Follow `google-sheet-hub/README.md`, steps 1–5: paste in the script, add the
 Hub menu, and connect to the new project.
 
-## 3. Rehearse the copy
+## 3. Rehearse the move
 
-**Hub → Migrate from old marketing project…** → **YES (fresh copy)**.
+**Hub → Migrate from old marketing project…**. It reads the old project,
+writes everything into the Sheet, builds the new Supabase cache from the
+Sheet, and compares every value of every row: old project vs. the new cache.
 
-- Check the report on the Control Panel. Every table should say **OK**, with
-  matching row counts.
-- Look through the **Marketing App** tab: are the boards, tasks, comments and
-  users you'd expect all there?
-- **Don't edit the Sheet yet.** The final copy in step 6 replaces everything in
-  the new project, so edits made now would be lost. Leave auto-sync off until
-  step 6.
+- Check the report on the Control Panel. Every table should say **OK**. If a
+  row says "value(s) differ", stop and send me the example it shows.
+- Look through the **Marketing App** tab and the hidden **🔒 Private** tab
+  (right-click any tab → Show hidden sheets). Are the boards, tasks, comments
+  and users you'd expect all there?
+- **Don't edit the Sheet yet.** Each migration run replaces the Marketing App
+  tab with a fresh copy of the old project, so edits made now would be lost.
+  Leave auto-sync off until step 6.
 
 You can rehearse as many times as you like.
 
@@ -77,8 +82,9 @@ const SUPABASE_SCHEMA = 'marketing';
    in the old project after the next step won't be copied.
 2. **Old project** SQL Editor: stop reminders there.
    `select cron.unschedule('scheduled-reminders-every-2min');`
-3. **Hub → Migrate from old marketing project…** → **YES (fresh copy)**. This is
-   the final copy. Check that the report is all **OK**.
+3. **Hub → Migrate from old marketing project…**. This is the final copy.
+   Check that the report is all **OK**. **Never run Migrate again after
+   this.** From now on the Sheet holds newer data than the old project.
 4. **New project** SQL Editor: create the two Vault secrets described at the
    top of `03_marketing_cron.sql`, then run that file.
 5. Deploy the `index.html` change from step 5.
@@ -87,7 +93,8 @@ const SUPABASE_SCHEMA = 'marketing';
 ## 7. Check it works
 
 - Load the app and log in. Your boards, tasks and columns should be there.
-- Rename a task in the app. After the next sync it shows in the Sheet.
+- Rename a task in the app. After the next sync it shows in the Sheet, and
+  `select count(*) from public.sheet_inbox;` in the new project is back to 0.
 - Change a task title in the Sheet. **Hub → Sync now**, then refresh the app:
   the new title is there.
 - Add a comment, a checklist item and an attachment link in the app, refresh,
@@ -109,23 +116,25 @@ back at it:
    to restart reminders.
 3. **New project:** `select cron.unschedule('scheduled-reminders-every-2min');`
 
-Anything created in the app after the switch exists only in the new project
-and in the Sheet, not in the old project. If you roll back, re-enter those
-changes by hand.
+Anything created after the switch is in the Sheet, not in the old project. If
+you roll back, re-enter those changes by hand.
 
 ## What's different in the new project (on purpose)
 
 - **Tables live in the `marketing` schema**, not `public`, so other sites can
   share the project.
-- **Every table has an `updated_at` column**, plus triggers that record
-  changes and deletions for the Sheet sync. The app doesn't see or use them.
+- **Every table has an inbox trigger.** Each save the app makes is also put in
+  `public.sheet_inbox`: the whole row for a new record, only the changed
+  columns for an edit, just the id for a delete. The Sheet's script moves
+  those into the Sheet and deletes them. The app never sees the inbox.
 - **`save_app_state()` saves exactly what it did before**, but it no longer
   deletes and re-inserts labels, notification preferences, push subscriptions
-  and reset tokens on every save. It only touches rows that actually changed,
-  so the Sheet isn't flooded with fake changes.
+  and reset tokens on every save. Only rows that actually changed are
+  touched, so the inbox only gets real changes.
 - **`app_secrets` (the Brevo key) can only be read by the server side.** The
   Edge Functions and `send_password_reset_email` can read it; the public key
-  can't. Everything else keeps the old open-to-the-app access. Moving logins to
-  Supabase Auth is still the separate, bigger fix for that.
-- **Passwords, API keys, reset tokens, push keys and the old JSON blob are never
-  copied into the Sheet.**
+  can't. Everything else keeps the old open-to-the-app access. Moving logins
+  to Supabase Auth is still the separate, bigger fix for that.
+- **Passwords, API keys, reset tokens, push keys and the cloud-backup blob are
+  in the Sheet's hidden, owner-only 🔒 Private tab**, not the Marketing App
+  tab.

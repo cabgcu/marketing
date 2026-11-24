@@ -3,8 +3,11 @@ const fs = require('fs');
 const vm = require('vm');
 const { execFileSync } = require('child_process');
 
-const PSQL = ['-h', process.env.PGTEST_HOST || '/tmp/pgt', '-p', process.env.PGTEST_PORT || '5499', '-U', 'postgres', '-d', process.env.PGTEST_DB || 't', '-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1'];
-function sql(q) { return execFileSync('psql', PSQL.concat(['-c', q]), { encoding: 'utf8' }).trim(); }
+// Two databases: 't' plays the NEW project, 'old' plays the OLD project.
+const base = ['-h', process.env.PGTEST_HOST || '/tmp/pgt', '-p', process.env.PGTEST_PORT || '5499', '-U', 'postgres', '-X', '-A', '-t', '-q', '-v', 'ON_ERROR_STOP=1'];
+function sqlIn(db, q) { return execFileSync('psql', base.concat(['-d', db, '-f', '-']), { input: q + ';', encoding: 'utf8', maxBuffer: 1 << 28 }).trim(); }
+const sql = q => sqlIn('t', q);
+const sqlOld = q => sqlIn('old', q);
 
 // ── fake sheet ─────────────────────────────────────────────────────────
 class Sheet {
@@ -20,6 +23,9 @@ class Sheet {
   insertRowsAfter(r, n) { while (this.grid.length < r) this.grid.push([]); const rows = Array.from({ length: n }, () => []); this.grid.splice(r, 0, ...rows); this.maxRows += n; }
   insertColumnsAfter(c, n) { this.maxCols += n; }
   deleteRow(r) { this.grid.splice(r - 1, 1); this.maxRows--; }
+  deleteRows(r, n) { this.grid.splice(r - 1, n); this.maxRows -= n; }
+  protect() { const p = { setDescription: () => p, addEditor: () => p, removeEditors: () => p, getEditors: () => [], canDomainEdit: () => false }; return p; }
+  hideSheet() { this.hidden = true; }
   clear() { this.grid = []; }
   clearNotes() { this.notes = {}; }
   setFrozenRows() {} setColumnWidth() {}
@@ -62,27 +68,48 @@ const ctx = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
   CacheService: { getScriptCache: () => ({ get: k => cache[k] || null, put: (k, v) => { cache[k] = v; } }) },
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
-  Session: { getScriptTimeZone: () => 'UTC' },
+  Session: { getScriptTimeZone: () => 'UTC', getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
   Utilities: { formatDate: (d, tz, f) => f === 'HH:mm:ss' ? d.toISOString().slice(11, 19) : d.toISOString().slice(0, f.length > 10 ? 16 : 10) },
   UrlFetchApp: {
     fetch(url, req) {
-      const m = url.match(/\/rest\/v1\/rpc\/(\w+)$/);
-      if (!m) throw new Error('harness only supports rpc: ' + url);
-      const args = JSON.parse(req.payload || '{}');
-      const parts = Object.keys(args).map(k => {
-        const v = args[k];
-        let lit;
-        if (v === null) lit = 'null';
-        else if (k === 'p_skip_tables') lit = 'array[' + v.map(x => `'${x}'`).join(',') + ']::text[]';
-        else if (typeof v === 'object') lit = `$j$${JSON.stringify(v)}$j$::jsonb`;
-        else lit = `'${String(v).replace(/'/g, "''")}'`;
-        return `${k} => ${lit}`;
-      });
-      fetches.push(m[1]);
-      let out, code = 200;
-      try { out = sql(`select coalesce(public.${m[1]}(${parts.join(', ')})::text, 'null')`); }
-      catch (e) { code = 400; out = JSON.stringify({ message: String(e.stderr || e.message) }); }
-      return { getResponseCode: () => code, getContentText: () => out, getHeaders: () => ({}) };
+      const db = url.indexOf('https://old.') === 0 ? 'old' : 't';
+      const path = url.replace(/^https:\/\/[^/]+/, '');
+      fetches.push(path.split('?')[0].replace('/rest/v1/rpc/', ''));
+      const respond = (code, text, headers) => ({ getResponseCode: () => code, getContentText: () => text, getHeaders: () => headers || {} });
+      const m = path.match(/^\/rest\/v1\/rpc\/(\w+)$/);
+      try {
+        if (m) {
+          const args = JSON.parse(req.payload || '{}');
+          const parts = Object.keys(args).map(k => {
+            const v = args[k];
+            let lit;
+            if (v === null) lit = 'null';
+            else if (k === 'p_order') lit = 'array[' + v.map(x => `'${x}'`).join(',') + ']::text[]';
+            else if (typeof v === 'object') lit = `$j$${JSON.stringify(v)}$j$::jsonb`;
+            else lit = `'${String(v).replace(/'/g, "''")}'`;
+            return `${k} => ${lit}`;
+          });
+          return respond(200, sqlIn(db, `select coalesce(public.${m[1]}(${parts.join(', ')})::text, 'null')`));
+        }
+        // Table reads (the OLD project during migration). The old project's tables
+        // are in "public"; this test keeps them in a "marketing" schema of db 'old'.
+        const t = path.match(/^\/rest\/v1\/(\w+)\?(.*)$/);
+        if (t && (req.method || 'get') === 'get') {
+          const q = new URLSearchParams(t[2]);
+          const exists = sqlIn(db, `select to_regclass('marketing.${t[1]}') is not null`) === 't';
+          if (!exists) return respond(404, JSON.stringify({ code: 'PGRST205', message: 'Could not find the table' }));
+          if ((req.headers.Prefer || '').indexOf('count=exact') >= 0) {
+            const n = sqlIn(db, `select count(*) from marketing.${t[1]}`);
+            return respond(206, '[]', { 'Content-Range': '0-0/' + n });
+          }
+          const col = (q.get('order') || 'id.asc').split('.')[0];
+          const rows = sqlIn(db, `select coalesce(json_agg(x), '[]') from (select * from marketing.${t[1]} order by ${col} limit ${q.get('limit') || 1000} offset ${q.get('offset') || 0}) x`);
+          return respond(200, rows);
+        }
+        throw new Error('harness does not support ' + (req.method || 'get') + ' ' + path);
+      } catch (e) {
+        return respond(400, JSON.stringify({ message: String(e.stderr || e.message) }));
+      }
     },
   },
 };
@@ -91,9 +118,11 @@ vm.createContext(ctx);
 const dir = require('path').join(__dirname, '..');
 ['Config.gs', 'Supabase.gs', 'Sync.gs', 'Menu.gs', 'Migrate.gs'].forEach(f => vm.runInContext(fs.readFileSync(dir + '/' + f, 'utf8'), ctx, { filename: f }));
 // const declarations aren't on the context object; expose what tests need
-const G = vm.runInContext('({ SITES, syncSite_, onEdit, readTab_, setSiteStatus_, syncAll })', ctx);
+const G = vm.runInContext('({ SITES, HUB, syncSite_, onEdit, readTab_, drain_, push_, getSchema_, newConn_, runMarketingMigration_, rebuildSupabaseFromSheet_, restoreSheetFromSupabase_, collectSiteData_, openWs_ })', ctx);
 const fetches = [];
-props.SUPABASE_URL = 'https://test.supabase.co';
+props.SUPABASE_URL = 'https://new.supabase.co';
 props.SUPABASE_SERVICE_KEY = 'sb_secret_test';
+props.OLD_SUPABASE_URL = 'https://old.supabase.co';
+props.OLD_SUPABASE_SERVICE_KEY = 'sb_secret_old';
 
-module.exports = { G, sheets, sql, props, toasts, fetches, ctx };
+module.exports = { G, sheets, sql, sqlOld, props, toasts, fetches, ctx };

@@ -14,10 +14,13 @@
 --     flooded with fake changes. What gets saved is unchanged.
 --   * app_secrets is readable only by the service role (Edge Functions and
 --     SECURITY DEFINER functions), not by the public key.
---   * Sheet sync is switched on for the schema (updated_at + triggers).
+--   * Sheet sync is switched on for the schema: every save the app makes is
+--     also dropped in the inbox for the Google Sheet (see 01_sheet_sync_core).
 --
--- It creates empty tables. The data is copied over afterwards by the Sheet's
--- "Migrate from old marketing project" menu item.
+-- These tables are a CACHE of the Google Sheet, which is the real database.
+-- They start empty; the Sheet's "Migrate from old marketing project" menu
+-- item fills the Sheet from the old project and then fills these from the
+-- Sheet.
 --
 -- AFTER RUNNING: Dashboard -> Project Settings -> Data API -> "Exposed
 -- schemas" -> add `marketing`, then Save. Without that the app gets
@@ -839,11 +842,12 @@ $function$;
 
 grant execute on function marketing.send_password_reset_email(text, text) to anon, authenticated;
 
--- ── Switch on Sheet sync for every table in the schema ──────────────────
+-- ── Switch on the Sheet inbox for every table in the schema ─────────────
 select public.sheet_sync_enable('marketing');
 
 commit;
 
--- Optional sanity check: should list 19 tables, each with an updated_at.
--- select table_name from information_schema.columns
--- where table_schema = 'marketing' and column_name = 'updated_at' order by 1;
+-- Optional sanity check: should list 19 tables.
+-- select event_object_table from information_schema.triggers
+-- where trigger_schema = 'marketing' and trigger_name = 'sheet_sync_capture'
+-- group by 1 order by 1;

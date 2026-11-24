@@ -14,8 +14,8 @@ function onOpen() {
       .addItem('Every 15 minutes', 'autoSync15')
       .addItem('Off', 'autoSyncOff'))
     .addSeparator()
-    .addItem('Rebuild a site tab from Supabase…', 'rebuildMenu')
-    .addItem('Push a whole site tab to Supabase…', 'pushAllMenu')
+    .addItem('Rebuild Supabase from Sheet…', 'rebuildSupabaseMenu')
+    .addItem('Restore Sheet from Supabase (emergency)…', 'restoreSheetMenu')
     .addSeparator()
     .addItem('Migrate from old marketing project…', 'migrateMarketingMenu')
     .addItem('Forget old project key', 'forgetOldMenu')
@@ -57,8 +57,6 @@ function connectMenu() {
   }
   props.setProperty('SUPABASE_URL', url);
   props.setProperty('SUPABASE_SERVICE_KEY', conn.key);
-  // a different project means the old sync positions don't apply
-  SITES.forEach(function (s) { props.deleteProperty(wmKey_(s)); });
   ensureControlPanel_();
   ui.alert('Connected.\n\n' + found.join('\n') +
     '\n\n(0 tables means that site\'s schema SQL hasn\'t been run yet, or the schema isn\'t in Project Settings → Data API → Exposed schemas.)');
@@ -74,35 +72,37 @@ function pickSite_(verb) {
   return site;
 }
 
-function rebuildMenu() {
-  const site = pickSite_('Rebuild a site tab');
+function rebuildSupabaseMenu() {
+  const site = pickSite_('Rebuild Supabase from Sheet');
   if (!site) return;
   const ui = SpreadsheetApp.getUi();
-  if (ui.alert('Rebuild "' + site.tab + '"?',
-    'Pending edits in the tab are pushed to Supabase first, then the tab is cleared and rewritten from Supabase. ' +
-    'Any extra columns you added by hand will be removed.', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
-  runSiteAction_(site, { rebuild: true, refreshSchema: true });
+  if (ui.alert('Rebuild the Supabase cache for "' + site.name + '"?',
+    'Takes in any saves waiting in the inbox, then replaces everything in Supabase for this site with exactly ' +
+    'what\'s in the Sheet, in one step. The site pauses for a few seconds while it runs.', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+  runSiteAction_(site, function () {
+    const counts = rebuildSupabaseFromSheet_(site);
+    return 'Rebuilt: ' + Object.keys(counts).map(function (t) { return t + ' ' + counts[t]; }).join(', ');
+  });
 }
 
-function pushAllMenu() {
-  const site = pickSite_('Push a whole site tab');
+function restoreSheetMenu() {
+  const site = pickSite_('Restore Sheet from Supabase');
   if (!site) return;
   const ui = SpreadsheetApp.getUi();
-  if (ui.alert('Push all of "' + site.tab + '" to Supabase?',
-    'Every row in the tab is written to Supabase as it appears in the Sheet (the Sheet is the master copy). ' +
-    'Rows that exist only in Supabase are left alone. Use this to restore Supabase from the Sheet.',
-    ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
-  runSiteAction_(site, { forceAll: true, refreshSchema: true });
+  if (ui.alert('Overwrite the "' + site.tab + '" tab with Supabase\'s copy?',
+    'EMERGENCY USE ONLY — e.g. the tab was damaged. The Sheet is the database: this replaces it with the cache. ' +
+    'Unsynced edits in the tab are lost. Consider File → Make a copy first.', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+  runSiteAction_(site, function () { restoreSheetFromSupabase_(site); return 'Sheet restored from Supabase'; });
 }
 
-function runSiteAction_(site, opts) {
+function runSiteAction_(site, action) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30 * 1000)) { SpreadsheetApp.getUi().alert('A sync is running — try again in a minute.'); return; }
   const started = new Date();
   try {
-    const s = syncSite_(site, opts);
-    setSiteStatus_(site, started, 'OK', s);
-    ss_().toast('Done.', 'Data Hub', 5);
+    const msg = action();
+    setSiteStatus_(site, started, 'OK — ' + msg, null);
+    SpreadsheetApp.getUi().alert(msg);
   } catch (e) {
     setSiteStatus_(site, started, 'ERROR: ' + e.message, null);
     SpreadsheetApp.getUi().alert('Failed: ' + e.message);
@@ -135,7 +135,7 @@ function setAutoSync_(minutes) {
 
 const CP_HEADER_ROW = 4;
 const CP_HEADER = ['Site', 'Tab', 'Supabase schema', 'Sync on', 'Last sync', 'Result',
-  'Pushed', 'Pulled', 'Deleted', 'Sheet won', 'Errors'];
+  'Sheet → Supabase', 'Inbox → Sheet', 'Deleted', 'Sheet won', 'Errors'];
 
 function ensureControlPanel_() {
   const ss = ss_();
@@ -193,12 +193,13 @@ function writeMigrationReport_(report) {
   const startRow = CP_HEADER_ROW + SITES.length + 3;
   sh.getRange(startRow, 1, sh.getMaxRows() - startRow + 1, 6).clearContent().clearFormat();
   sh.getRange(startRow, 1).setValue('Migration report — ' + new Date()).setFontWeight('bold');
-  const rows = [['Table', 'Rows in old', 'Rows in new', 'Status', 'Note']].concat(report.map(function (r) {
-    return [r.table, r.old === null ? '—' : r.old, r.new === null ? '—' : r.new, r.status, r.note];
+  const dash = function (v) { return v === null || v === undefined ? '—' : v; };
+  const rows = [['Table', 'Old project', 'Sheet', 'Supabase cache', 'Status', 'Note']].concat(report.map(function (r) {
+    return [r.table, dash(r.old), dash(r.sheet), dash(r.cache), r.status, r.note];
   }));
-  sh.getRange(startRow + 1, 1, rows.length, 5).setValues(rows);
-  sh.getRange(startRow + 1, 1, 1, 5).setFontWeight('bold').setBackground('#e8eaed');
+  sh.getRange(startRow + 1, 1, rows.length, 6).setValues(rows);
+  sh.getRange(startRow + 1, 1, 1, 6).setFontWeight('bold').setBackground('#e8eaed');
   report.forEach(function (r, i) {
-    sh.getRange(startRow + 2 + i, 4).setFontColor(r.status === 'OK' ? '#188038' : '#c5221f');
+    sh.getRange(startRow + 2 + i, 5).setFontColor(r.status === 'OK' ? '#188038' : '#c5221f');
   });
 }
