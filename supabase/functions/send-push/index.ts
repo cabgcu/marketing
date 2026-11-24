@@ -9,6 +9,10 @@ const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@cabmarketing.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Schema holding the marketing tables: "public" in the old marketing-only
+// project, "marketing" in the shared multi-site project (set the DB_SCHEMA
+// secret there - see supabase/new-project/CUTOVER_RUNBOOK.md).
+const DB_SCHEMA = Deno.env.get("DB_SCHEMA") ?? "public";
 
 function base64urlToUint8Array(b64url: string): Uint8Array {
   const padding = "=".repeat((4 - (b64url.length % 4)) % 4);
@@ -180,7 +184,7 @@ Deno.serve(async (req) => {
     // push_subscriptions is its own table now, keyed by user_name — fetch only
     // the rows for the users we're actually pushing to instead of the whole
     // app state blob.
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { db: { schema: DB_SCHEMA } });
     const { data: subRows, error } = await supabase
       .from("push_subscriptions")
       .select("user_name, subscription")

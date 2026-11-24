@@ -6,6 +6,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Schema holding the marketing tables: "public" in the old marketing-only
+// project, "marketing" in the shared multi-site project (set the DB_SCHEMA
+// secret there - see supabase/new-project/CUTOVER_RUNBOOK.md).
+const DB_SCHEMA = Deno.env.get("DB_SCHEMA") ?? "public";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -35,7 +39,7 @@ Deno.serve(async (req) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { db: { schema: DB_SCHEMA } });
 
     // Read Brevo API key from database (stored via SQL editor)
     const { data: secretRow, error: secretError } = await supabase

@@ -3680,6 +3680,11 @@
 <script>
     const SUPABASE_URL = 'https://qcfntvqvcmshbbpcxmgo.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_cHrTtrkbSV3AtUD64tnRvA_Zd4iT_TK';
+    // Which schema holds this app's tables. 'public' = the old marketing-only
+    // project; the shared multi-site project keeps it in 'marketing'. Change
+    // this together with SUPABASE_URL/SUPABASE_KEY at cutover
+    // (supabase/new-project/CUTOVER_RUNBOOK.md).
+    const SUPABASE_SCHEMA = 'public';
     // VAPID public key for Web Push — generate a key pair and put the public key here
     // Generate keys by running: npx web-push generate-vapid-keys
     // Store the private key as VAPID_PRIVATE_KEY secret in your Supabase Edge Function
@@ -12271,7 +12276,7 @@
 
     window.onload = async () => {
         if (window.lucide) lucide.createIcons();
-        _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { db: { schema: SUPABASE_SCHEMA } });
         await initData();
 
         // Check for shared card preview mode

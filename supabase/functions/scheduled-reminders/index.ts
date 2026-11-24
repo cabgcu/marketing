@@ -8,6 +8,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Schema holding the marketing tables: "public" in the old marketing-only
+// project, "marketing" in the shared multi-site project (set the DB_SCHEMA
+// secret there - see supabase/new-project/CUTOVER_RUNBOOK.md).
+const DB_SCHEMA = Deno.env.get("DB_SCHEMA") ?? "public";
 // Optional: set CRON_SECRET in Supabase secrets and use it in the pg_net call
 // to prevent unauthorized invocations.
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
@@ -54,7 +58,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { db: { schema: DB_SCHEMA } });
 
   // Data lives in real tables now; load_app_state() reassembles them into the
   // same shape this function has always worked with, so the logic below is
